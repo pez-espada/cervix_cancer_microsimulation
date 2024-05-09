@@ -1,0 +1,850 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={Cervix Microsimulation Modeling follow-up doc},
+  pdfauthor={Carlos J. Dommar D'Lima},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{Cervix Microsimulation Modeling follow-up doc}
+\author{Carlos J. Dommar D'Lima}
+\date{2024-04-05}
+
+\begin{document}
+\maketitle
+
+This document details the progression of the development of
+microsimulation models for cervical cancer built upon the currently
+existing models Markov cohort models in the group.
+
+\hypertarget{r-options-for-microsimulation}{%
+\subsection{R options for
+Microsimulation}\label{r-options-for-microsimulation}}
+
+There are a different ways one can build and implement microsimulation
+models based in existing libraries and dedicated platforms (such as
+ABMs, in Repast, Netlogo, etc.). However I aim to use R as much as
+possible or make it R-user friendly. For this regard there is several
+ways to proceed:
+
+\begin{itemize}
+\tightlist
+\item
+  Build everything from scratch
+\item
+  Leverage existing coded libraries/packages
+\end{itemize}
+
+\hypertarget{existing-codepackages-for-micorsimulation-using-r-that-i-am-aware-of-so-far}{%
+\subsection{Existing code/packages for micorsimulation using R (that I
+am aware of, so
+far)}\label{existing-codepackages-for-micorsimulation-using-r-that-i-am-aware-of-so-far}}
+
+\begin{itemize}
+\tightlist
+\item
+  \href{https://journals.sagepub.com/doi/abs/10.1177/0272989X18754513}{Krijkamp
+  et al (2018)}
+\item
+  \href{https://cran.r-project.org/web/packages/microsimulation/index.html}{Clements
+  et al (2018?) \texttt{microsimulation} R package}
+\item
+  \href{https://microsimulation.pub/articles/00240}{Tikka's et al (2021)
+  \texttt{Sima} R open-source simulation framework}
+\end{itemize}
+
+\hypertarget{krijkamp-et-al-microsimulation-code-2018}{%
+\subsection{Krijkamp et al microsimulation code
+(2018)}\label{krijkamp-et-al-microsimulation-code-2018}}
+
+Among the reasons Krijkamps's code is a good start for implementing
+microsimulation models i R rather than start from scratch are the
+
+\begin{enumerate}
+\def\labelenumi{\alph{enumi})}
+\item
+  the documentation is good;
+\item
+  the code for the simple case Health-Sick-Sicker-Death model is also
+  simple and concise; the code seems to be maintained in a
+  \href{https://github.com/DARTH-git/Microsimulation-tutorial}{git
+  repository} and it is part of a larger open source set of tools of a
+  group called Decision Analysis in R for Technologies in Health -
+  {[}DARTH{]} (\url{http://darthworkgroup.com/}) with
+  \href{https://github.com/DARTH-git}{repositories} of a number of tools
+  that can be useful such
+  \href{https://github.com/DARTH-git/Cohort-modeling-tutorial}{cohort
+  modeling}, and a decision-analytic modeling coding {[}framework{]}
+  (\url{https://github.com/DARTH-git/darthpack});
+\item
+  Educational
+\end{enumerate}
+
+Some possible drawbacks include slow code and difficulties in scaling
+up; as the model complexity increases, the code may become less clean
+and readable. Adopting an Object-Oriented (OO) approach would likely be
+a better long-term solution for production code. In this scenario,
+exploring \texttt{Sima} would be worthwhile.
+
+\hypertarget{krijkamp-implementation-for-a-cervix-model-with-12-health-related-states-and-one-single-tranistion-matrix.}{%
+\subsubsection{Krijkamp implementation for a Cervix model with 12
+health-related states and one single tranistion
+matrix.}\label{krijkamp-implementation-for-a-cervix-model-with-12-health-related-states-and-one-single-tranistion-matrix.}}
+
+The idea is to build up on the simple
+\href{https://github.com/DARTH-git/Microsimulation-tutorial}{sick-sicker}
+model introduced by Krijkamp et al.~The initial step is to incorporate
+the model framework of the Markov cohort cervix model which has
+currently 12 mutually exclusive health-related states.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(tidyverse)}
+\FunctionTok{rm}\NormalTok{(}\AttributeTok{list =} \FunctionTok{ls}\NormalTok{())}
+
+\CommentTok{\# Define the base directory and subdirectory components}
+\NormalTok{base\_dir }\OtherTok{\textless{}{-}} \StringTok{"Q:/my\_Q\_docs"}
+\NormalTok{project\_dir }\OtherTok{\textless{}{-}} \StringTok{"Cervix\_MicroSim/CervixMicroSim\_Carlos/carlos\_\_Krijkamp\_ver/data"}
+\NormalTok{filename }\OtherTok{\textless{}{-}} \StringTok{"probs.rds"}
+\CommentTok{\#filename \textless{}{-} "probs2.rds \#this have probabilities way larger than 1 (error) }
+\CommentTok{\#filename \textless{}{-} "probs3.rds \#this have probabilities way larger than 1 (error)}
+\CommentTok{\# Construct the full path using file.path() with line continuation}
+\NormalTok{rds\_file }\OtherTok{\textless{}{-}} \FunctionTok{file.path}\NormalTok{(base\_dir, project\_dir, filename)}
+
+\CommentTok{\# Read the RDS file using the constructed path}
+\NormalTok{my\_Probs }\OtherTok{\textless{}{-}} \FunctionTok{readRDS}\NormalTok{(rds\_file)}
+
+\CommentTok{\# choose, as a test, only one of the 15 age{-}related transition matrices,}
+\NormalTok{my\_Probs }\OtherTok{\textless{}{-}} \CommentTok{\# transition matrix (for all sim cycles) }
+\NormalTok{  my\_Probs }\SpecialCharTok{\%\textgreater{}\%}
+  \CommentTok{\#dplyr::filter(Age.group == "25{-}29") \%\textgreater{}\% \# choose one for test}
+  \FunctionTok{as\_tibble}\NormalTok{() }\CommentTok{\# I need a tibble to use \textquotesingle{}rename\textquotesingle{} function down there:}
+
+\CommentTok{\# tidying up a bit the transition matrix:}
+\NormalTok{my\_Probs }\OtherTok{\textless{}{-}}\NormalTok{ my\_Probs }\SpecialCharTok{\%\textgreater{}\%}\NormalTok{ dplyr}\SpecialCharTok{::}\FunctionTok{rename}\NormalTok{(}\StringTok{"H"} \OtherTok{=} \StringTok{"Well"}\NormalTok{)}
+\CommentTok{\# Rename the \textquotesingle{}old\_name\textquotesingle{} column to \textquotesingle{}new\_name\textquotesingle{}}
+
+\NormalTok{my\_Probs }\OtherTok{\textless{}{-}}\NormalTok{ my\_Probs }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{as.data.frame}\NormalTok{() }\CommentTok{\# convert back to data.frame (no needed?)}
+
+\DocumentationTok{\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#}
+\CommentTok{\# Function to extract and convert numbers from factor levels}
+\NormalTok{extract\_numbers }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(range\_factor) \{}
+\NormalTok{  range\_string }\OtherTok{\textless{}{-}} \FunctionTok{as.character}\NormalTok{(range\_factor)}
+\NormalTok{  numbers }\OtherTok{\textless{}{-}} \FunctionTok{as.numeric}\NormalTok{(}\FunctionTok{unlist}\NormalTok{(}\FunctionTok{strsplit}\NormalTok{(range\_string, }\StringTok{"{-}"}\NormalTok{)))}
+  \FunctionTok{return}\NormalTok{(numbers)}
+\NormalTok{\}}
+\DocumentationTok{\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#}
+
+\CommentTok{\# before apply the function, convert Age.group from factor to character}
+\CommentTok{\# my\_Probs$Age.group \textless{}{-} as.character(my\_Probs$Age.group)}
+\CommentTok{\# Apply the function to the Range column and create new columns}
+\NormalTok{my\_Probs}\SpecialCharTok{$}\NormalTok{Lower  }\OtherTok{\textless{}{-}} \FunctionTok{sapply}\NormalTok{(my\_Probs}\SpecialCharTok{$}\NormalTok{Age.group, }\ControlFlowTok{function}\NormalTok{(x) }\FunctionTok{extract\_numbers}\NormalTok{(x)[}\DecValTok{1}\NormalTok{])}
+\NormalTok{my\_Probs}\SpecialCharTok{$}\NormalTok{Larger }\OtherTok{\textless{}{-}} \FunctionTok{sapply}\NormalTok{(my\_Probs}\SpecialCharTok{$}\NormalTok{Age.group, }\ControlFlowTok{function}\NormalTok{(x) }\FunctionTok{extract\_numbers}\NormalTok{(x)[}\DecValTok{2}\NormalTok{])}
+
+\CommentTok{\#rownames(my\_Probs) \textless{}{-} }
+\CommentTok{\#  my\_Probs \%\textgreater{}\% }
+\CommentTok{\#  colnames() \%\textgreater{}\% }
+\CommentTok{\#  tail({-}1)}
+
+\CommentTok{\#my\_rownames \textless{}{-} }
+\CommentTok{\#  my\_Probs \%\textgreater{}\% }
+\CommentTok{\#  colnames() \%\textgreater{}\% }
+\CommentTok{\#  tail({-}1)}
+\CommentTok{\#rm(my\_probs)  \# no needed any longer}
+
+\CommentTok{\# for feeding the microsimulation function with aged{-}based multiple transition }
+\CommentTok{\# matrices, they need a bit previous prep:}
+\CommentTok{\# so I going to make a list with elements containing a transition matrix }
+\CommentTok{\# and pass it to the microsimulation function }
+\CommentTok{\#age\_interv \textless{}{-}  \# list with all age intervals}
+\CommentTok{\#  my\_Probs \%\textgreater{}\%}
+\CommentTok{\#  select(Age.group) \%\textgreater{}\% unique()}
+\CommentTok{\#list\_matrices \textless{}{-} list()}
+\CommentTok{\#for (age in age\_interv$Age.group)}
+\CommentTok{\#\{}
+\CommentTok{\#  \#print(age)}
+\CommentTok{\#  \#rownames(my\_Probs[my\_Probs$Age.group==age]) \textless{}{-}}
+\CommentTok{\#    }
+\CommentTok{\#  my\_Probs \%\textgreater{}\% filter(Age.group == age) \%\textgreater{}\% head() \%\textgreater{}\% print()}
+\CommentTok{\#  \#list\_matrices \textless{}{-} c(list\_matrices, my\_Probs \%\textgreater{}\% filter(Age.group == age))}
+\CommentTok{\#\}}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{my\_Probs }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{head}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##   Age.group          H HR.HPV.infection      CIN1       CIN2       CIN3
+## 1     10-14 0.99990473       0.00000000 0.0000000 0.00000000 0.00000000
+## 2     10-14 0.69844771       0.08977946 0.1246488 0.08704182 0.00000000
+## 3     10-14 0.19800834       0.01427319 0.7181387 0.04273225 0.02676601
+## 4     10-14 0.17224516       0.01854424 0.5496409 0.25948797 0.00000000
+## 5     10-14 0.02520056       0.01675474 0.0000000 0.59982074 0.35814244
+## 6     10-14 0.00000000       0.00000000 0.0000000 0.00000000 0.00000000
+##      FIGO.I   FIGO.II FIGO.III FIGO.IV Survival   CC_Death  Other.Death Lower
+## 1 0.0000000 0.0000000        0       0        0 0.00000000 9.527442e-05    10
+## 2 0.0000000 0.0000000        0       0        0 0.00000000 8.223003e-05    10
+## 3 0.0000000 0.0000000        0       0        0 0.00000000 8.149336e-05    10
+## 4 0.0000000 0.0000000        0       0        0 0.00000000 8.175864e-05    10
+## 5 0.0000000 0.0000000        0       0        0 0.00000000 8.152593e-05    10
+## 6 0.5487358 0.4119176        0       0        0 0.03926509 8.150000e-05    10
+##   Larger
+## 1     14
+## 2     14
+## 3     14
+## 4     14
+## 5     14
+## 6     14
+\end{verbatim}
+
+Now I introduce the model parameters:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{n\_i   }\OtherTok{\textless{}{-}} \DecValTok{100000}                 \CommentTok{\# number of simulated individuals}
+\NormalTok{n\_t   }\OtherTok{\textless{}{-}} \DecValTok{75}                     \CommentTok{\# time horizon, 30 cycles}
+
+\CommentTok{\# cycle\_period can go from one month to one year. that is}
+\CommentTok{\# I think a sensible way is to offer the following frequencies, different to}
+\CommentTok{\# this then just set it monthly:}
+\NormalTok{cycle\_period }\OtherTok{\textless{}{-}} \StringTok{"1mth"}
+\NormalTok{cycle\_period }\OtherTok{\textless{}{-}} \StringTok{"2mth"}
+\NormalTok{cycle\_period }\OtherTok{\textless{}{-}} \StringTok{"3mth"}
+\NormalTok{cycle\_period }\OtherTok{\textless{}{-}} \StringTok{"4mth"}
+\NormalTok{cycle\_period }\OtherTok{\textless{}{-}} \StringTok{"6mth"}
+\NormalTok{cycle\_period }\OtherTok{\textless{}{-}} \StringTok{"1yr"} \CommentTok{\# i.e. 12mth}
+
+\NormalTok{v\_n }\OtherTok{\textless{}{-}} \FunctionTok{rownames}\NormalTok{(my\_Probs)}
+
+\NormalTok{n\_s   }\OtherTok{\textless{}{-}} \FunctionTok{length}\NormalTok{(v\_n)                }\CommentTok{\# the number of health states}
+\NormalTok{v\_M\_1 }\OtherTok{\textless{}{-}} \FunctionTok{rep}\NormalTok{(}\StringTok{"H"}\NormalTok{, n\_i)              }\CommentTok{\# everyone begins in the healthy state }
+\CommentTok{\#v\_M\_1 \textless{}{-} rep("Well", n\_i)              \# everyone begins in the healthy state }
+\NormalTok{d\_c   }\OtherTok{\textless{}{-}}\NormalTok{ d\_e }\OtherTok{\textless{}{-}} \FloatTok{0.03}                \CommentTok{\# equal discounting of costs and QALYs by 3\%}
+\NormalTok{v\_Trt }\OtherTok{\textless{}{-}}
+  \FunctionTok{c}\NormalTok{(}\StringTok{"No Treatment"}\NormalTok{, }\StringTok{"Treatment"}\NormalTok{)    }\CommentTok{\# store the strategy names}
+
+\DocumentationTok{\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#}
+\CommentTok{\# Cost and utility inputs }
+\NormalTok{c\_H     }\OtherTok{\textless{}{-}} \DecValTok{2000}                \CommentTok{\# cost of remaining one cycle healthy}
+\NormalTok{c\_S1    }\OtherTok{\textless{}{-}} \DecValTok{4000}                \CommentTok{\# cost of remaining one cycle sick }
+\NormalTok{c\_S2    }\OtherTok{\textless{}{-}} \DecValTok{15000}               \CommentTok{\# cost of remaining one cycle sicker}
+\NormalTok{c\_Trt   }\OtherTok{\textless{}{-}} \DecValTok{12000}               \CommentTok{\# cost of treatment (per cycle)}
+
+\NormalTok{u\_H     }\OtherTok{\textless{}{-}} \DecValTok{1}                   \CommentTok{\# utility when healthy }
+\NormalTok{u\_S1    }\OtherTok{\textless{}{-}} \FloatTok{0.75}                \CommentTok{\# utility when sick }
+\NormalTok{u\_S2    }\OtherTok{\textless{}{-}} \FloatTok{0.5}                 \CommentTok{\# utility when sicker }
+\NormalTok{u\_Trt   }\OtherTok{\textless{}{-}} \FloatTok{0.95}                \CommentTok{\# utility when sick(er) and being treated}
+
+\CommentTok{\# From our Markov cervix model (CC\textquotesingle{}s natural history?):}
+\NormalTok{cost\_Vec }\OtherTok{=} \FunctionTok{c}\NormalTok{(}\DecValTok{0}\NormalTok{, }\FloatTok{39.54}\NormalTok{, }\FloatTok{288.91}\NormalTok{, }\FloatTok{1552.27}\NormalTok{, }\FloatTok{1552.27}\NormalTok{, }
+             \FloatTok{5759.81}\NormalTok{, }\FloatTok{12903.63}\NormalTok{, }\FloatTok{23032.41}\NormalTok{, }\FloatTok{35323.14}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{0}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{the-functions}{%
+\subsection{The functions:}\label{the-functions}}
+
+\hypertarget{the-sampling-function}{%
+\subsubsection{The Sampling function:}\label{the-sampling-function}}
+
+Krijkamp et al 2017 developed a sampling function they call
+\texttt{samplev()} by modifying and random number generating for
+multinomial variables from the \texttt{Hmisc}R package. The
+\texttt{samplev()}function randomly draws the health state vector at
+t+1. \texttt{samplev()} takes as argument \texttt{probs} and \texttt{m}.
+\texttt{probs} is a matrix array of number of individuals rows
+(\texttt{n\_s}) times number of health states in the model
+(\texttt{n\_s}). Each element \(p_{i,j}\) is the probability of the
+individual \(i\) to transition to the \(j\) health-state at \(t+1\)
+given its current state at \(t\) as described in the appropriate
+transition matrix.
+
+In micro simulation we need to both sampling randomdo numbers and make a
+transisyion selection to progress with the evolution of states of
+individuals. From my AI prompt
+(\url{https://g.co/gemini/share/a4be68ba9202}):
+
+\begin{itemize}
+\item
+  Random Number Sampling: When an agent needs to make a state
+  transition, a random number is generated between 0 and 1 (uniform
+  distribution). This random number is then compared to the cumulative
+  probabilities of all possible transitions from the current state.
+\item
+  Transition Selection: The transition with a cumulative probability
+  range that encompasses the generated random number is selected. This
+  essentially means that transitions with higher probabilities have a
+  larger range within the 0-1 interval, making them more likely to be
+  chosen by the random number.
+\end{itemize}
+
+In other words:
+
+\hypertarget{cumulative-probabilities-and-binning}{%
+\subsubsection{Cumulative Probabilities and
+Binning:}\label{cumulative-probabilities-and-binning}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Calculate Cumulative Probabilities: For each state, all the individual
+  transition probabilities are summed up sequentially. This creates a
+  series of cumulative probabilities. For example, if you have three
+  transitions (A, B, and C) with probabilities 0.3, 0.4, and 0.3
+  respectively, their cumulative probabilities would be:
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  Transition A: 0.3
+\item
+  Transition B: 0.3 + 0.4 = 0.7
+\item
+  Transition C: 0.7 + 0.3 = 1.0 (This must always sum to 1)
+\end{itemize}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{1}
+\tightlist
+\item
+  Binning the Range (0-1): The range between 0 and 1 is then
+  conceptually divided into bins based on these cumulative
+  probabilities. In our example:
+\end{enumerate}
+
+\begin{itemize}
+\tightlist
+\item
+  Transition A: 0 - 0.3 (occupies the first 30\% of the range)
+\item
+  Transition B: 0.3 - 0.7 (occupies the next 40\% of the range)
+\item
+  Transition C: 0.7 - 1.0 (occupies the last 30\% of the range)
+\end{itemize}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{2}
+\tightlist
+\item
+  Selecting the Transition:
+\end{enumerate}
+
+3.1 Sample a Random Number: As you mentioned, a random number between 0
+and 1 is generated.
+
+3.2 Identify the Winning Bin: This random number is then compared to the
+binned ranges. The transition whose cumulative probability range
+encompasses the random number is chosen as the next state.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# efficient implementation of the rMultinom() function of the Hmisc package \#\#\#\# }
+\NormalTok{samplev }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{ (probs, m) \{}
+\NormalTok{  d }\OtherTok{\textless{}{-}} \FunctionTok{dim}\NormalTok{(probs) }\CommentTok{\# i.e. number of individuals times number of states: n\_i x n\_s}
+\NormalTok{  n }\OtherTok{\textless{}{-}}\NormalTok{ d[}\DecValTok{1}\NormalTok{]       }\CommentTok{\# number of individuals n\_s}
+\NormalTok{  k }\OtherTok{\textless{}{-}}\NormalTok{ d[}\DecValTok{2}\NormalTok{]       }\CommentTok{\# number of states}
+\NormalTok{  lev }\OtherTok{\textless{}{-}} \FunctionTok{dimnames}\NormalTok{(probs)[[}\DecValTok{2}\NormalTok{]] }\CommentTok{\# vector with  names of health states}
+  \ControlFlowTok{if}\NormalTok{ (}\SpecialCharTok{!}\FunctionTok{length}\NormalTok{(lev)) }\CommentTok{\# checks if \textasciigrave{}lev\textasciigrave{} vector (states names) is empty }
+                    \CommentTok{\# or has length 0 }
+\NormalTok{    lev }\OtherTok{\textless{}{-}} \DecValTok{1}\SpecialCharTok{:}\NormalTok{k }\CommentTok{\# if empty (evaluates to \textasciigrave{}TRUE\textasciigrave{}), it assigns numeric state labels}
+               \CommentTok{\# (1:k) to \textasciigrave{}lev\textasciigrave{}}
+\NormalTok{  ran }\OtherTok{\textless{}{-}} 
+    \FunctionTok{matrix}\NormalTok{(lev[}\DecValTok{1}\NormalTok{], }\AttributeTok{ncol =}\NormalTok{ m, }\AttributeTok{nrow =}\NormalTok{ n) }\CommentTok{\# create array n\_s x m (m=1) }
+                                       \CommentTok{\# consisting in of health{-}state stored in}
+                                       \CommentTok{\# \textasciigrave{}lev[1]\textasciigrave{}, "H" in our case.}
+                                            
+  \DocumentationTok{\#\#\#\# }\AlertTok{TESTING}\DocumentationTok{: }
+  \DocumentationTok{\#\#\# I can manipulate \textasciigrave{}probs\textasciigrave{} to investigate how the algorithm assigns states}
+  \DocumentationTok{\#\#\# transitions given the sampled uniform number }
+  \DocumentationTok{\#\#\# test:}
+  \CommentTok{\#probs[2, \textquotesingle{}CIN1\textquotesingle{}] \textless{}{-} 0.5   \# prob of individual 2 to go to \textquotesingle{}CNI\textquotesingle{}}
+  \CommentTok{\#probs[2, \textquotesingle{}CIN2\textquotesingle{}] \textless{}{-} 0.25  \# prob of individual 2 to go to \textquotesingle{}CN2\textquotesingle{}}
+  \CommentTok{\#probs[2, \textquotesingle{}HR.HPV.infection\textquotesingle{}] \textless{}{-} 0.212 \# prob of individual 2 to go to HR infection}
+  \CommentTok{\#probs[2,] \%\textgreater{}\% sum() \# check that probilities sum to 1 (or less than 1)}
+  
+  
+  \DocumentationTok{\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#}
+  \DocumentationTok{\#\#\#\#\#\#\#\#\#\# Creating the matrix of cumulative distributions U \#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#}
+\NormalTok{  U }\OtherTok{\textless{}{-}} \FunctionTok{t}\NormalTok{(probs)    }\CommentTok{\# transpose probs from (\textasciigrave{}n\_i*n\_s\textasciigrave{}) to (\textasciigrave{}n\_s*n\_i\textasciigrave{})}
+  \ControlFlowTok{for}\NormalTok{(i }\ControlFlowTok{in} \DecValTok{2}\SpecialCharTok{:}\NormalTok{k) \{  }
+    \CommentTok{\# This loop fills U with the cumulative probabilities of each individual}
+    \CommentTok{\# across all its possible transitions (\textasciigrave{}v\_s\textasciigrave{}or \textasciigrave{}lev\textasciigrave{} within thus function).}
+    \CommentTok{\# That is each column of \textasciigrave{}U\textasciigrave{} represents the cumulative distribution for each}
+    \CommentTok{\# individual across its corresponding transitions. }
+    \CommentTok{\# The last element of each column must sum 1 (or close enough:)}
+\NormalTok{    U[i, ] }\OtherTok{\textless{}{-}}\NormalTok{ U[i, ] }\SpecialCharTok{+}\NormalTok{ U[i }\SpecialCharTok{{-}} \DecValTok{1}\NormalTok{, ]}
+\NormalTok{  \}}
+  \ControlFlowTok{if}\NormalTok{ (}\FunctionTok{any}\NormalTok{((U[k, ] }\SpecialCharTok{{-}} \DecValTok{1}\NormalTok{) }\SpecialCharTok{\textgreater{}} \FloatTok{1e{-}04}\NormalTok{))}
+    \FunctionTok{stop}\NormalTok{(}\StringTok{"error in multinom: probabilities do not sum to 1"}\NormalTok{)}
+  \DocumentationTok{\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#}
+  \DocumentationTok{\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#}
+  
+  \DocumentationTok{\#\#\# Random sampling, binning, and moving states: }
+  \ControlFlowTok{for}\NormalTok{ (j }\ControlFlowTok{in} \DecValTok{1}\SpecialCharTok{:}\NormalTok{m) \{}
+\NormalTok{    un }\OtherTok{\textless{}{-}} \FunctionTok{rep}\NormalTok{(}\FunctionTok{runif}\NormalTok{(n), }\FunctionTok{rep}\NormalTok{(k, n)) }\CommentTok{\# repeat \textasciigrave{}runif(n)\textasciigrave{} \textasciigrave{}rep(k,n)\textasciigrave{}times}
+                                   \CommentTok{\# this create a numeric of \textasciigrave{}n\_i x n\_s\textasciigrave{} that }
+                                   \CommentTok{\# sample  an uniformed distributed number }
+                                   \CommentTok{\# between 0 and 1. The generated random number}
+                                   \CommentTok{\# repeats itself \textasciigrave{}n\_s\textasciigrave{} times and then another }
+                                   \CommentTok{\# rand unif number is drawn. This process is }
+                                   \CommentTok{\# carried out \textasciigrave{}n\_i\textasciigrave{} times. }\AlertTok{NOTE}\CommentTok{: every time}
+                                   \CommentTok{\# runif() is run it produces a new random sample}
+                                   \CommentTok{\# i.e. it does not seem dependent on the seed}
+    
+    \CommentTok{\# here\textquotesingle{}s where we choose the individuals\textquotesingle{} next states:}
+\NormalTok{    ran[, j] }\OtherTok{\textless{}{-}}\NormalTok{ lev[}\DecValTok{1} \SpecialCharTok{+} \FunctionTok{colSums}\NormalTok{(un }\SpecialCharTok{\textgreater{}}\NormalTok{ U)]}
+   \CommentTok{\#print(ran[,j]) }
+\NormalTok{  \}}
+\NormalTok{  ran}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{the-probability-function}{%
+\subsubsection{The Probability
+function}\label{the-probability-function}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{knitr}\SpecialCharTok{::}\NormalTok{opts\_chunk}\SpecialCharTok{$}\FunctionTok{set}\NormalTok{(}\AttributeTok{tidy =} \ConstantTok{TRUE}\NormalTok{, }\AttributeTok{out.width =} \DecValTok{60}\NormalTok{)}
+\DocumentationTok{\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\# Probability function \#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#}
+\CommentTok{\# The Probs function that updates the transition probabilities }
+\CommentTok{\# of every cycle is shown below.}
+\NormalTok{Probs }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(M\_it, my\_Probs) \{ }
+  \CommentTok{\# M\_it:    health state occupied by individual i at cycle t (character variable)}
+  \CommentTok{\# my mod:}
+  \CommentTok{\# my\_Probs: Transition matrix from our Markov cohort model}
+  
+\NormalTok{  m\_P\_it }\OtherTok{\textless{}{-}} \FunctionTok{matrix}\NormalTok{(}\ConstantTok{NA}\NormalTok{, n\_s, n\_i)     }\CommentTok{\# create vector of state transition probabilities}
+  \FunctionTok{rownames}\NormalTok{(m\_P\_it) }\OtherTok{\textless{}{-}}\NormalTok{ v\_n            }\CommentTok{\# assign names to the vector}
+  
+  \DocumentationTok{\#\# update the v\_p with the appropriate probabilities   }
+  
+  \CommentTok{\# remind that v\_n are the vector names of health states.}
+  \CommentTok{\# This goes eventually within a loop or a lapply func over all health states}
+\NormalTok{  m\_P\_it[,M\_it }\SpecialCharTok{==}\NormalTok{ v\_n[}\DecValTok{1}\NormalTok{]]   }\OtherTok{\textless{}{-}} 
+    \FunctionTok{lapply}\NormalTok{(}\AttributeTok{X =}\NormalTok{ v\_n, }\ControlFlowTok{function}\NormalTok{(x) }\FunctionTok{trans\_prb}\NormalTok{(}\AttributeTok{P =}\NormalTok{ my\_Probs,}\AttributeTok{state1 =}\NormalTok{ v\_n[}\DecValTok{1}\NormalTok{], }\AttributeTok{state2 =}\NormalTok{ x)) }\SpecialCharTok{\%\textgreater{}\%} 
+    \FunctionTok{unlist}\NormalTok{()}
+\NormalTok{  m\_P\_it[,M\_it }\SpecialCharTok{==}\NormalTok{ v\_n[}\DecValTok{2}\NormalTok{]]   }\OtherTok{\textless{}{-}} 
+    \FunctionTok{lapply}\NormalTok{(}\AttributeTok{X =}\NormalTok{ v\_n, }\ControlFlowTok{function}\NormalTok{(x) }\FunctionTok{trans\_prb}\NormalTok{(}\AttributeTok{P =}\NormalTok{ my\_Probs,}\AttributeTok{state1 =}\NormalTok{ v\_n[}\DecValTok{2}\NormalTok{], }\AttributeTok{state2 =}\NormalTok{ x)) }\SpecialCharTok{\%\textgreater{}\%} 
+    \FunctionTok{unlist}\NormalTok{() }
+\NormalTok{  m\_P\_it[,M\_it }\SpecialCharTok{==}\NormalTok{ v\_n[}\DecValTok{3}\NormalTok{]]   }\OtherTok{\textless{}{-}} 
+    \FunctionTok{lapply}\NormalTok{(}\AttributeTok{X =}\NormalTok{ v\_n, }\ControlFlowTok{function}\NormalTok{(x) }\FunctionTok{trans\_prb}\NormalTok{(}\AttributeTok{P =}\NormalTok{ my\_Probs,}\AttributeTok{state1 =}\NormalTok{ v\_n[}\DecValTok{3}\NormalTok{], }\AttributeTok{state2 =}\NormalTok{ x)) }\SpecialCharTok{\%\textgreater{}\%} 
+    \FunctionTok{unlist}\NormalTok{() }
+\NormalTok{  m\_P\_it[,M\_it }\SpecialCharTok{==}\NormalTok{ v\_n[}\DecValTok{4}\NormalTok{]]   }\OtherTok{\textless{}{-}} 
+    \FunctionTok{lapply}\NormalTok{(}\AttributeTok{X =}\NormalTok{ v\_n, }\ControlFlowTok{function}\NormalTok{(x) }\FunctionTok{trans\_prb}\NormalTok{(}\AttributeTok{P =}\NormalTok{ my\_Probs,}\AttributeTok{state1 =}\NormalTok{ v\_n[}\DecValTok{4}\NormalTok{], }\AttributeTok{state2 =}\NormalTok{ x)) }\SpecialCharTok{\%\textgreater{}\%} 
+    \FunctionTok{unlist}\NormalTok{() }
+\NormalTok{  m\_P\_it[,M\_it }\SpecialCharTok{==}\NormalTok{ v\_n[}\DecValTok{5}\NormalTok{]]   }\OtherTok{\textless{}{-}} 
+    \FunctionTok{lapply}\NormalTok{(}\AttributeTok{X =}\NormalTok{ v\_n, }\ControlFlowTok{function}\NormalTok{(x) }\FunctionTok{trans\_prb}\NormalTok{(}\AttributeTok{P =}\NormalTok{ my\_Probs,}\AttributeTok{state1 =}\NormalTok{ v\_n[}\DecValTok{5}\NormalTok{], }\AttributeTok{state2 =}\NormalTok{ x)) }\SpecialCharTok{\%\textgreater{}\%} 
+    \FunctionTok{unlist}\NormalTok{() }
+\NormalTok{  m\_P\_it[,M\_it }\SpecialCharTok{==}\NormalTok{ v\_n[}\DecValTok{6}\NormalTok{]]   }\OtherTok{\textless{}{-}} 
+    \FunctionTok{lapply}\NormalTok{(}\AttributeTok{X =}\NormalTok{ v\_n, }\ControlFlowTok{function}\NormalTok{(x) }\FunctionTok{trans\_prb}\NormalTok{(}\AttributeTok{P =}\NormalTok{ my\_Probs,}\AttributeTok{state1 =}\NormalTok{ v\_n[}\DecValTok{6}\NormalTok{], }\AttributeTok{state2 =}\NormalTok{ x)) }\SpecialCharTok{\%\textgreater{}\%} 
+    \FunctionTok{unlist}\NormalTok{() }
+\NormalTok{  m\_P\_it[,M\_it }\SpecialCharTok{==}\NormalTok{ v\_n[}\DecValTok{7}\NormalTok{]]   }\OtherTok{\textless{}{-}} 
+    \FunctionTok{lapply}\NormalTok{(}\AttributeTok{X =}\NormalTok{ v\_n, }\ControlFlowTok{function}\NormalTok{(x) }\FunctionTok{trans\_prb}\NormalTok{(}\AttributeTok{P =}\NormalTok{ my\_Probs,}\AttributeTok{state1 =}\NormalTok{ v\_n[}\DecValTok{7}\NormalTok{], }\AttributeTok{state2 =}\NormalTok{ x)) }\SpecialCharTok{\%\textgreater{}\%} 
+    \FunctionTok{unlist}\NormalTok{() }
+\NormalTok{  m\_P\_it[,M\_it }\SpecialCharTok{==}\NormalTok{ v\_n[}\DecValTok{8}\NormalTok{]]   }\OtherTok{\textless{}{-}} 
+    \FunctionTok{lapply}\NormalTok{(}\AttributeTok{X =}\NormalTok{ v\_n, }\ControlFlowTok{function}\NormalTok{(x) }\FunctionTok{trans\_prb}\NormalTok{(}\AttributeTok{P =}\NormalTok{ my\_Probs,}\AttributeTok{state1 =}\NormalTok{ v\_n[}\DecValTok{8}\NormalTok{], }\AttributeTok{state2 =}\NormalTok{ x)) }\SpecialCharTok{\%\textgreater{}\%} 
+    \FunctionTok{unlist}\NormalTok{() }
+\NormalTok{  m\_P\_it[,M\_it }\SpecialCharTok{==}\NormalTok{ v\_n[}\DecValTok{9}\NormalTok{]]   }\OtherTok{\textless{}{-}} 
+    \FunctionTok{lapply}\NormalTok{(}\AttributeTok{X =}\NormalTok{ v\_n, }\ControlFlowTok{function}\NormalTok{(x) }\FunctionTok{trans\_prb}\NormalTok{(}\AttributeTok{P =}\NormalTok{ my\_Probs,}\AttributeTok{state1 =}\NormalTok{ v\_n[}\DecValTok{9}\NormalTok{], }\AttributeTok{state2 =}\NormalTok{ x)) }\SpecialCharTok{\%\textgreater{}\%} 
+    \FunctionTok{unlist}\NormalTok{() }
+\NormalTok{  m\_P\_it[,M\_it }\SpecialCharTok{==}\NormalTok{ v\_n[}\DecValTok{10}\NormalTok{]]  }\OtherTok{\textless{}{-}} 
+    \FunctionTok{lapply}\NormalTok{(}\AttributeTok{X =}\NormalTok{ v\_n, }\ControlFlowTok{function}\NormalTok{(x) }\FunctionTok{trans\_prb}\NormalTok{(}\AttributeTok{P =}\NormalTok{ my\_Probs,}\AttributeTok{state1 =}\NormalTok{ v\_n[}\DecValTok{10}\NormalTok{], }\AttributeTok{state2 =}\NormalTok{ x)) }\SpecialCharTok{\%\textgreater{}\%} 
+    \FunctionTok{unlist}\NormalTok{() }
+\NormalTok{  m\_P\_it[,M\_it }\SpecialCharTok{==}\NormalTok{ v\_n[}\DecValTok{11}\NormalTok{]]  }\OtherTok{\textless{}{-}} 
+    \FunctionTok{lapply}\NormalTok{(}\AttributeTok{X =}\NormalTok{ v\_n, }\ControlFlowTok{function}\NormalTok{(x) }\FunctionTok{trans\_prb}\NormalTok{(}\AttributeTok{P =}\NormalTok{ my\_Probs,}\AttributeTok{state1 =}\NormalTok{ v\_n[}\DecValTok{11}\NormalTok{], }\AttributeTok{state2 =}\NormalTok{ x)) }\SpecialCharTok{\%\textgreater{}\%} 
+    \FunctionTok{unlist}\NormalTok{()}
+\NormalTok{  m\_P\_it[,M\_it }\SpecialCharTok{==}\NormalTok{ v\_n[}\DecValTok{12}\NormalTok{]]  }\OtherTok{\textless{}{-}} 
+    \FunctionTok{lapply}\NormalTok{(}\AttributeTok{X =}\NormalTok{ v\_n, }\ControlFlowTok{function}\NormalTok{(x) }\FunctionTok{trans\_prb}\NormalTok{(}\AttributeTok{P =}\NormalTok{ my\_Probs,}\AttributeTok{state1 =}\NormalTok{ v\_n[}\DecValTok{12}\NormalTok{], }\AttributeTok{state2 =}\NormalTok{ x)) }\SpecialCharTok{\%\textgreater{}\%} 
+    \FunctionTok{unlist}\NormalTok{() }
+  \FunctionTok{ifelse}\NormalTok{(}\FunctionTok{colSums}\NormalTok{(m\_P\_it) }\SpecialCharTok{\textgreater{}=}  \CommentTok{\# return the transition probabilities or produce an error}
+\NormalTok{           .}\DecValTok{991}\NormalTok{, }\FunctionTok{return}\NormalTok{(}\FunctionTok{t}\NormalTok{(m\_P\_it)), }\FunctionTok{print}\NormalTok{(}\StringTok{"Probabilities do not sum to 1"}\NormalTok{)) }
+\NormalTok{\}       }
+\DocumentationTok{\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{the-costs-function}{%
+\subsubsection{The Costs function:}\label{the-costs-function}}
+
+For testing purpose I implement a very simple cost function, that is I
+apply the same cost for all disease stages:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\DocumentationTok{\#\#\# Costs function The Costs function estimates the costs at every cycle.}
+\NormalTok{Costs }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(M\_it, cost\_Vec, }\AttributeTok{Trt =} \ConstantTok{FALSE}\NormalTok{) \{}
+    \CommentTok{\# my mode with costs taken from our Markov cohort model:}
+\NormalTok{    c\_it }\OtherTok{\textless{}{-}} \DecValTok{0}  \CommentTok{\# by default the cost for everyone is zero}
+\NormalTok{    c\_it[M\_it }\SpecialCharTok{==} \StringTok{"H"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ cost\_Vec[}\DecValTok{1}\NormalTok{]  }\CommentTok{\# update the cost }
+\NormalTok{    c\_it[M\_it }\SpecialCharTok{==} \StringTok{"Survival"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ cost\_Vec[}\DecValTok{2}\NormalTok{]  }\CommentTok{\# update the cost }
+\NormalTok{    c\_it[M\_it }\SpecialCharTok{==} \StringTok{"HR.HPV.infection"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ cost\_Vec[}\DecValTok{3}\NormalTok{]  }\CommentTok{\# update the cost }
+\NormalTok{    c\_it[M\_it }\SpecialCharTok{==} \StringTok{"CIN1"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ cost\_Vec[}\DecValTok{4}\NormalTok{] }\SpecialCharTok{+}\NormalTok{ c\_Trt }\SpecialCharTok{*}\NormalTok{ Trt  }\CommentTok{\# update the cost }
+\NormalTok{    c\_it[M\_it }\SpecialCharTok{==} \StringTok{"CIN2"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ cost\_Vec[}\DecValTok{5}\NormalTok{] }\SpecialCharTok{+}\NormalTok{ c\_Trt }\SpecialCharTok{*}\NormalTok{ Trt  }\CommentTok{\# update the cost }
+\NormalTok{    c\_it[M\_it }\SpecialCharTok{==} \StringTok{"CIN3"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ cost\_Vec[}\DecValTok{6}\NormalTok{] }\SpecialCharTok{+}\NormalTok{ c\_Trt }\SpecialCharTok{*}\NormalTok{ Trt  }\CommentTok{\# update the cost }
+\NormalTok{    c\_it[M\_it }\SpecialCharTok{==} \StringTok{"FIGO.I"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ cost\_Vec[}\DecValTok{7}\NormalTok{] }\SpecialCharTok{+}\NormalTok{ c\_Trt }\SpecialCharTok{*}\NormalTok{ Trt  }\CommentTok{\# update the cost }
+\NormalTok{    c\_it[M\_it }\SpecialCharTok{==} \StringTok{"FIGO.II"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ cost\_Vec[}\DecValTok{8}\NormalTok{] }\SpecialCharTok{+}\NormalTok{ c\_Trt }\SpecialCharTok{*}\NormalTok{ Trt  }\CommentTok{\# update the cost }
+\NormalTok{    c\_it[M\_it }\SpecialCharTok{==} \StringTok{"FIGO.III"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ cost\_Vec[}\DecValTok{9}\NormalTok{] }\SpecialCharTok{+}\NormalTok{ c\_Trt }\SpecialCharTok{*}\NormalTok{ Trt  }\CommentTok{\# update the cost }
+\NormalTok{    c\_it[M\_it }\SpecialCharTok{==} \StringTok{"FIGO.IV"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ cost\_Vec[}\DecValTok{10}\NormalTok{] }\SpecialCharTok{+}\NormalTok{ c\_Trt }\SpecialCharTok{*}\NormalTok{ Trt  }\CommentTok{\# update the cost }
+\NormalTok{    c\_it[M\_it }\SpecialCharTok{==} \StringTok{"CC\_Death"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ cost\_Vec[}\DecValTok{11}\NormalTok{]  }\CommentTok{\# update the cost }
+\NormalTok{    c\_it[M\_it }\SpecialCharTok{==} \StringTok{"Other.Death"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ cost\_Vec[}\DecValTok{12}\NormalTok{]  }\CommentTok{\# update the cost }
+
+    \FunctionTok{return}\NormalTok{(c\_it)  }\CommentTok{\# return the costs}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{the-qalys-function}{%
+\subsubsection{The QALYs function:}\label{the-qalys-function}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\DocumentationTok{\#\#\# Health outcome function The Effs function to update the utilities at every}
+\DocumentationTok{\#\#\# cycle.}
+\NormalTok{Effs }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(M\_it, }\AttributeTok{Trt =} \ConstantTok{FALSE}\NormalTok{, }\AttributeTok{cl =} \DecValTok{1}\NormalTok{) \{}
+    \DocumentationTok{\#\# M\_it: health state occupied by individual i at cycle t (character}
+    \DocumentationTok{\#\# variable) Trt: is the individual treated? (default is FALSE) cl: cycle}
+    \DocumentationTok{\#\# length (default is 1)}
+
+    \CommentTok{\# My cervix model mod:}
+\NormalTok{    u\_it }\OtherTok{\textless{}{-}} \DecValTok{0}  \CommentTok{\# by default the utility for everyone is zero}
+    \CommentTok{\# I assume healthy/infected and survival have the same utility:}
+\NormalTok{    u\_it[M\_it }\SpecialCharTok{==} \StringTok{"H"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ u\_H  }\CommentTok{\# update the utility if healthy}
+\NormalTok{    u\_it[M\_it }\SpecialCharTok{==} \StringTok{"HR.HPV.infection"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ u\_H  }\CommentTok{\# update the utility if infected}
+\NormalTok{    u\_it[M\_it }\SpecialCharTok{==} \StringTok{"Survival"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ u\_H  }\CommentTok{\# update the utility if Survived}
+    \CommentTok{\# \_again, for testing purpose I assume all CIN states have the same utility}
+\NormalTok{    u\_it[M\_it }\SpecialCharTok{==} \StringTok{"CIN1"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ Trt }\SpecialCharTok{*}\NormalTok{ u\_Trt }\SpecialCharTok{+}\NormalTok{ (}\DecValTok{1} \SpecialCharTok{{-}}\NormalTok{ Trt) }\SpecialCharTok{*}\NormalTok{ u\_S1  }\CommentTok{\# update the utility}
+    \CommentTok{\# if sick conditional on treatment}
+\NormalTok{    u\_it[M\_it }\SpecialCharTok{==} \StringTok{"CIN2"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ Trt }\SpecialCharTok{*}\NormalTok{ u\_Trt }\SpecialCharTok{+}\NormalTok{ (}\DecValTok{1} \SpecialCharTok{{-}}\NormalTok{ Trt) }\SpecialCharTok{*}\NormalTok{ u\_S1  }\CommentTok{\# update the utility }
+    \CommentTok{\# if sick conditional on treatment}
+\NormalTok{    u\_it[M\_it }\SpecialCharTok{==} \StringTok{"CIN3"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ Trt }\SpecialCharTok{*}\NormalTok{ u\_Trt }\SpecialCharTok{+}\NormalTok{ (}\DecValTok{1} \SpecialCharTok{{-}}\NormalTok{ Trt) }\SpecialCharTok{*}\NormalTok{ u\_S1  }\CommentTok{\# update the utility }
+    \CommentTok{\# if sick conditional on treatment for testing I assume all FIGO states}
+    \CommentTok{\# have the same utility:}
+\NormalTok{    u\_it[M\_it }\SpecialCharTok{==} \StringTok{"FIGO.I"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ u\_S2  }\CommentTok{\# update the utility if sicker}
+\NormalTok{    u\_it[M\_it }\SpecialCharTok{==} \StringTok{"FIGO.II"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ u\_S2  }\CommentTok{\# update the utility if sicker}
+\NormalTok{    u\_it[M\_it }\SpecialCharTok{==} \StringTok{"FIGO.III"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ u\_S2  }\CommentTok{\# update the utility if sicker}
+\NormalTok{    u\_it[M\_it }\SpecialCharTok{==} \StringTok{"FIGO.IV"}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ u\_S2  }\CommentTok{\# update the utility if sicker}
+\NormalTok{    u\_it[M\_it }\SpecialCharTok{==} \StringTok{"CC\_Death"}\NormalTok{] }\OtherTok{\textless{}{-}} \DecValTok{0}  \CommentTok{\# update the utility if dead}
+\NormalTok{    u\_it[M\_it }\SpecialCharTok{==} \StringTok{"Other.Death"}\NormalTok{] }\OtherTok{\textless{}{-}} \DecValTok{0}  \CommentTok{\# update the utility if dead}
+
+\NormalTok{    QALYs }\OtherTok{\textless{}{-}}\NormalTok{ u\_it }\SpecialCharTok{*}\NormalTok{ cl  }\CommentTok{\# calculate the QALYs during cycle t}
+    \FunctionTok{return}\NormalTok{(QALYs)  }\CommentTok{\# return the QALYs}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{the-the-main-microsimulation-function-microsim}{%
+\subsubsection{\texorpdfstring{The the main microsimulation function,
+\texttt{MicroSim}}{The the main microsimulation function, MicroSim}}\label{the-the-main-microsimulation-function-microsim}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{MicroSim }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(v\_M\_1, n\_i, n\_t, v\_n, d\_c, d\_e, }\AttributeTok{TR\_out =} \ConstantTok{TRUE}\NormalTok{, }
+                     \AttributeTok{TS\_out =} \ConstantTok{TRUE}\NormalTok{, }\AttributeTok{Trt =} \ConstantTok{FALSE}\NormalTok{, }\AttributeTok{seed =} \DecValTok{1}\NormalTok{, Pmatrix) \{}
+  \CommentTok{\#Arguments:}
+  \CommentTok{\# v\_M\_1:   vector of initial states for individuals}
+  \CommentTok{\# n\_i:     number of individuals}
+  \CommentTok{\# n\_t:     total number of cycles to run the model}
+  \CommentTok{\# v\_n:     vector of health state names}
+  \CommentTok{\# d\_c:     discount rate for costs}
+  \CommentTok{\# d\_e:     discount rate for health outcome (QALYs)}
+  \CommentTok{\# TR\_out:  should the output include a Microsimulation trace? }
+  \CommentTok{\#          (default is TRUE)}
+  \CommentTok{\# TS\_out:  should the output include a matrix of transitions between states? }
+  \CommentTok{\#          (default is TRUE)}
+  \CommentTok{\# Trt:     are the n.i individuals receiving treatment? (scalar with a Boolean}
+  \CommentTok{\#          value, default is FALSE)}
+  \CommentTok{\# seed:    starting seed number for random number generator (default is 1)}
+  \CommentTok{\# Makes use of:}
+  \CommentTok{\# Probs:   function for the estimation of transition probabilities}
+  \CommentTok{\# Costs:   function for the estimation of cost state vamatrix: Matrix of }
+  \CommentTok{\# tranistion probabilities for each sim cycle.}
+  \CommentTok{\# Effs:    function for the estimation of state specific health outcomes (QALYs)}
+  \CommentTok{\# Pmatrix: Matrix of transition probabilities for each sim cycle.}
+  
+\NormalTok{  v\_dwc }\OtherTok{\textless{}{-}} \DecValTok{1} \SpecialCharTok{/}\NormalTok{ (}\DecValTok{1} \SpecialCharTok{+}\NormalTok{ d\_c) }\SpecialCharTok{\^{}}\NormalTok{ (}\DecValTok{0}\SpecialCharTok{:}\NormalTok{n\_t)   }\CommentTok{\# calculate the cost discount weight based}
+  \CommentTok{\# on the discount rate d\_c }
+  
+\NormalTok{  v\_dwe }\OtherTok{\textless{}{-}} \DecValTok{1} \SpecialCharTok{/}\NormalTok{ (}\DecValTok{1} \SpecialCharTok{+}\NormalTok{ d\_e) }\SpecialCharTok{\^{}}\NormalTok{ (}\DecValTok{0}\SpecialCharTok{:}\NormalTok{n\_t)   }\CommentTok{\# calculate the QALY discount weight based }
+  \CommentTok{\# on the discount rate d.e}
+  
+  \CommentTok{\# Create the matrix capturing the state name/costs/health outcomes }
+  \CommentTok{\# for all individuals at each time point:}
+\NormalTok{  m\_M }\OtherTok{\textless{}{-}}\NormalTok{ m\_C }\OtherTok{\textless{}{-}}\NormalTok{ m\_E }\OtherTok{\textless{}{-}}  \FunctionTok{matrix}\NormalTok{(}\AttributeTok{nrow =}\NormalTok{ n\_i, }\AttributeTok{ncol =}\NormalTok{ n\_t }\SpecialCharTok{+} \DecValTok{1}\NormalTok{, }
+                               \AttributeTok{dimnames =} \FunctionTok{list}\NormalTok{(}\FunctionTok{paste}\NormalTok{(}\StringTok{"ind"}\NormalTok{, }\DecValTok{1}\SpecialCharTok{:}\NormalTok{n\_i, }\AttributeTok{sep =} \StringTok{" "}\NormalTok{), }
+                                               \FunctionTok{paste}\NormalTok{(}\StringTok{"cycle"}\NormalTok{, }\DecValTok{0}\SpecialCharTok{:}\NormalTok{n\_t, }\AttributeTok{sep =} \StringTok{" "}\NormalTok{)))  }
+  
+\NormalTok{  m\_M[, }\DecValTok{1}\NormalTok{] }\OtherTok{\textless{}{-}}\NormalTok{ v\_M\_1                  }\CommentTok{\# indicate the initial health state   }
+  
+  \FunctionTok{set.seed}\NormalTok{(seed)                     }\CommentTok{\# set the seed for every individual for the}
+                                     \CommentTok{\# random number generator}
+  
+\NormalTok{  m\_C[, }\DecValTok{1}\NormalTok{] }\OtherTok{\textless{}{-}} \FunctionTok{Costs}\NormalTok{(}\AttributeTok{M\_it =}\NormalTok{ m\_M[, }\DecValTok{1}\NormalTok{], }\CommentTok{\# estimate costs per individual for the }
+                    \AttributeTok{cost\_Vec =}       \CommentTok{\# initial health state}
+\NormalTok{                      cost\_Vec,}
+\NormalTok{                    Trt)             }
+\NormalTok{  m\_E[, }\DecValTok{1}\NormalTok{] }\OtherTok{\textless{}{-}} \FunctionTok{Effs}\NormalTok{ (m\_M[, }\DecValTok{1}\NormalTok{], Trt)   }\CommentTok{\# estimate QALYs per individual for the }
+                                     \CommentTok{\# initial health state  }
+  
+  \DocumentationTok{\#\#\#\#\#\# run over all the cycles \#\#\#\#\#\#\#\#\#\# }
+  \ControlFlowTok{for}\NormalTok{ (t }\ControlFlowTok{in} \DecValTok{1}\SpecialCharTok{:}\NormalTok{n\_t) \{}
+    \CommentTok{\# here I need to choose my transition matrix according to the cycle n\_t:}
+    \ControlFlowTok{if}\NormalTok{ (cycle\_period }\SpecialCharTok{==} \StringTok{"1yr"}\NormalTok{)\{}
+\NormalTok{      age\_in\_loop }\OtherTok{\textless{}{-}}\NormalTok{ t }\SpecialCharTok{+} \DecValTok{9} \CommentTok{\# because our age intervals start at 10 years old}
+      \CommentTok{\#age\_in\_loop \textless{}{-}  28 \# because our age intervals start at 10 years old}
+\NormalTok{      my\_age\_prob\_matrix }\OtherTok{\textless{}{-}}\NormalTok{ my\_Probs }\SpecialCharTok{\%\textgreater{}\%} 
+\NormalTok{        dplyr}\SpecialCharTok{::}\FunctionTok{filter}\NormalTok{(Lower }\SpecialCharTok{\textless{}=}\NormalTok{ age\_in\_loop }\SpecialCharTok{\&}\NormalTok{ Larger }\SpecialCharTok{\textgreater{}=}\NormalTok{ age\_in\_loop) }
+\NormalTok{    \}}
+    \CommentTok{\# Add colnames and update \textasciigrave{}v\_n\textasciigrave{}:}
+    \FunctionTok{rownames}\NormalTok{(my\_age\_prob\_matrix) }\OtherTok{\textless{}{-}}\NormalTok{ v\_n }\OtherTok{\textless{}\textless{}{-}} 
+\NormalTok{      my\_age\_prob\_matrix }\SpecialCharTok{\%\textgreater{}\%}
+\NormalTok{      dplyr}\SpecialCharTok{::}\FunctionTok{select}\NormalTok{(}\SpecialCharTok{{-}}\FunctionTok{c}\NormalTok{(Age.group, Lower, Larger)) }\SpecialCharTok{\%\textgreater{}\%} 
+      \FunctionTok{colnames}\NormalTok{()}
+    
+    \CommentTok{\# update/correct n\_s (\textless{}\textless{}{-} let change variable from inside a function):}
+\NormalTok{    n\_s  }\OtherTok{\textless{}\textless{}{-}} \FunctionTok{length}\NormalTok{(v\_n)  }
+    
+    \CommentTok{\# Extract the transition probabilities of each individuals at cycle t}
+    \CommentTok{\# given the individual current state and the corresponding }
+    \CommentTok{\# transition probability matrix that depends on age:}
+\NormalTok{    m\_P }\OtherTok{\textless{}{-}} \FunctionTok{Probs}\NormalTok{(}\AttributeTok{M\_it =}\NormalTok{  m\_M[, t], }\AttributeTok{my\_Probs =}\NormalTok{ my\_age\_prob\_matrix)}
+    
+\NormalTok{    m\_M[, t }\SpecialCharTok{+} \DecValTok{1}\NormalTok{] }\OtherTok{\textless{}{-}} \FunctionTok{samplev}\NormalTok{(}\AttributeTok{probs =}\NormalTok{ m\_P, }\AttributeTok{m =} \DecValTok{1}\NormalTok{)  }\CommentTok{\# sample the next health state }
+    \CommentTok{\# and store that state in }
+    \CommentTok{\# matrix m\_M }
+    
+\NormalTok{    m\_C[, t }\SpecialCharTok{+} \DecValTok{1}\NormalTok{] }\OtherTok{\textless{}{-}}                    \CommentTok{\# estimate costs per individual}
+      \FunctionTok{Costs}\NormalTok{(}\AttributeTok{M\_it =}\NormalTok{ m\_M[, t }\SpecialCharTok{+} \DecValTok{1}\NormalTok{],       }\CommentTok{\# during cycle t + 1 }
+            \AttributeTok{cost\_Vec =}\NormalTok{ cost\_Vec, Trt)  }\CommentTok{\# conditional on treatment}
+                                          
+                                          
+\NormalTok{    m\_E[, t }\SpecialCharTok{+} \DecValTok{1}\NormalTok{] }\OtherTok{\textless{}{-}}             \CommentTok{\# estimate QALYs per individual}
+      \FunctionTok{Effs}\NormalTok{( m\_M[, t }\SpecialCharTok{+} \DecValTok{1}\NormalTok{], Trt)  }\CommentTok{\# during cycle t + 1 conditional on treatment}
+                                  
+    
+    \FunctionTok{cat}\NormalTok{(}\StringTok{\textquotesingle{}}\SpecialCharTok{\textbackslash{}r}\StringTok{\textquotesingle{}}\NormalTok{, }\FunctionTok{paste}\NormalTok{(}\FunctionTok{round}\NormalTok{(t}\SpecialCharTok{/}\NormalTok{n\_t }\SpecialCharTok{*} \DecValTok{100}\NormalTok{), }\StringTok{"\% done"}\NormalTok{, }\AttributeTok{sep =} \StringTok{" "}\NormalTok{)) }\CommentTok{\# display the }
+                                                              \CommentTok{\# progress of }
+                                                              \CommentTok{\# the simulation}
+\NormalTok{  \} }\CommentTok{\# close the loop for the time points }
+  \DocumentationTok{\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#}
+ 
+   
+\NormalTok{  tc }\OtherTok{\textless{}{-}}\NormalTok{ m\_C }\SpecialCharTok{\%*\%}\NormalTok{ v\_dwc       }\CommentTok{\# total (discounted) cost per individual}
+\NormalTok{  te }\OtherTok{\textless{}{-}}\NormalTok{ m\_E }\SpecialCharTok{\%*\%}\NormalTok{ v\_dwe       }\CommentTok{\# total (discounted) QALYs per individual }
+  
+\NormalTok{  tc\_hat }\OtherTok{\textless{}{-}} \FunctionTok{mean}\NormalTok{(tc)        }\CommentTok{\# average (discounted) cost }
+\NormalTok{  te\_hat }\OtherTok{\textless{}{-}} \FunctionTok{mean}\NormalTok{(te)        }\CommentTok{\# average (discounted) QALYs}
+  
+  \ControlFlowTok{if}\NormalTok{ (TS\_out }\SpecialCharTok{==} \ConstantTok{TRUE}\NormalTok{) \{  }\CommentTok{\# create a matrix of transitions across states}
+\NormalTok{    TS }\OtherTok{\textless{}{-}} \FunctionTok{paste}\NormalTok{(m\_M, }\FunctionTok{cbind}\NormalTok{(m\_M[, }\SpecialCharTok{{-}}\DecValTok{1}\NormalTok{], }\ConstantTok{NA}\NormalTok{), }\AttributeTok{sep =} \StringTok{"{-}\textgreater{}"}\NormalTok{) }\CommentTok{\# transitions from one   }
+    \CommentTok{\# state to the other}
+    
+\NormalTok{    TS }\OtherTok{\textless{}{-}} \FunctionTok{matrix}\NormalTok{(TS, }\AttributeTok{nrow =}\NormalTok{ n\_i)}
+    \FunctionTok{rownames}\NormalTok{(TS) }\OtherTok{\textless{}{-}} \FunctionTok{paste}\NormalTok{(}\StringTok{"Ind"}\NormalTok{,   }\DecValTok{1}\SpecialCharTok{:}\NormalTok{n\_i, }\AttributeTok{sep =} \StringTok{" "}\NormalTok{)   }\CommentTok{\# name the rows }
+    \FunctionTok{colnames}\NormalTok{(TS) }\OtherTok{\textless{}{-}} \FunctionTok{paste}\NormalTok{(}\StringTok{"Cycle"}\NormalTok{, }\DecValTok{0}\SpecialCharTok{:}\NormalTok{n\_t, }\AttributeTok{sep =} \StringTok{" "}\NormalTok{)   }\CommentTok{\# name the columns }
+\NormalTok{  \} }\ControlFlowTok{else}\NormalTok{ \{}
+\NormalTok{    TS }\OtherTok{\textless{}{-}} \ConstantTok{NULL}
+\NormalTok{  \}}
+  
+  \ControlFlowTok{if}\NormalTok{ (TR\_out }\SpecialCharTok{==} \ConstantTok{TRUE}\NormalTok{) \{}
+\NormalTok{    TR }\OtherTok{\textless{}{-}} \FunctionTok{t}\NormalTok{(}\FunctionTok{apply}\NormalTok{(m\_M, }\DecValTok{2}\NormalTok{, }
+                  \ControlFlowTok{function}\NormalTok{(x) }\FunctionTok{table}\NormalTok{(}\FunctionTok{factor}\NormalTok{(x, }\AttributeTok{levels =}\NormalTok{ v\_n, }\AttributeTok{ordered =} \ConstantTok{TRUE}\NormalTok{))))}
+    \CommentTok{\#TR \textless{}{-} TR / n\_i                                   \# create a distribution }
+    \CommentTok{\# trace}
+    
+    \FunctionTok{rownames}\NormalTok{(TR) }\OtherTok{\textless{}{-}} \FunctionTok{paste}\NormalTok{(}\StringTok{"Cycle"}\NormalTok{, }\DecValTok{0}\SpecialCharTok{:}\NormalTok{n\_t, }\AttributeTok{sep =} \StringTok{" "}\NormalTok{) }\CommentTok{\# name the rows }
+    \FunctionTok{colnames}\NormalTok{(TR) }\OtherTok{\textless{}{-}}\NormalTok{ v\_n                              }\CommentTok{\# name the columns }
+\NormalTok{  \} }\ControlFlowTok{else}\NormalTok{ \{}
+\NormalTok{    TR }\OtherTok{\textless{}{-}} \ConstantTok{NULL}
+\NormalTok{  \}}
+\NormalTok{  results }\OtherTok{\textless{}{-}} \FunctionTok{list}\NormalTok{(}\AttributeTok{m\_M =}\NormalTok{ m\_M, }\AttributeTok{m\_C =}\NormalTok{ m\_C, }\AttributeTok{m\_E =}\NormalTok{ m\_E, }\AttributeTok{tc =}\NormalTok{ tc, }\AttributeTok{te =}\NormalTok{ te, }
+                  \AttributeTok{tc\_hat =}\NormalTok{ tc\_hat, }\AttributeTok{te\_hat =}\NormalTok{ te\_hat, }
+                  \AttributeTok{TS =}\NormalTok{ TS, }\AttributeTok{TR =}\NormalTok{ TR)                  }\CommentTok{\# store the results from }
+                                                     \CommentTok{\# the simulation in a list}
+  
+  \FunctionTok{return}\NormalTok{(results)  }\CommentTok{\# return the results}
+\NormalTok{\}  }\CommentTok{\# end of the MicroSim function  }
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{test-simulation}{%
+\subsection{Test simulation}\label{test-simulation}}
+
+\hypertarget{perform-cost-effectiveness-analysis}{%
+\subsubsection{Perform cost-effectiveness
+analysis:}\label{perform-cost-effectiveness-analysis}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\DocumentationTok{\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\# Cost{-}effectiveness analysis \#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#}
+\CommentTok{\# store the mean costs (and MCSE) of each strategy in a new variable C (vector costs)}
+\NormalTok{v\_C  }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(sim\_no\_trt}\SpecialCharTok{$}\NormalTok{tc\_hat, sim\_trt}\SpecialCharTok{$}\NormalTok{tc\_hat) }
+\NormalTok{sd\_C }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\FunctionTok{sd}\NormalTok{(sim\_no\_trt}\SpecialCharTok{$}\NormalTok{tc), }\FunctionTok{sd}\NormalTok{(sim\_trt}\SpecialCharTok{$}\NormalTok{tc)) }\SpecialCharTok{/} \FunctionTok{sqrt}\NormalTok{(n\_i)}
+\CommentTok{\# store the mean QALYs (and MCSE) of each strategy in a new variable E (vector effects)}
+\NormalTok{v\_E  }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(sim\_no\_trt}\SpecialCharTok{$}\NormalTok{te\_hat, sim\_trt}\SpecialCharTok{$}\NormalTok{te\_hat)}
+\NormalTok{sd\_E }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\FunctionTok{sd}\NormalTok{(sim\_no\_trt}\SpecialCharTok{$}\NormalTok{te), }\FunctionTok{sd}\NormalTok{(sim\_trt}\SpecialCharTok{$}\NormalTok{te)) }\SpecialCharTok{/} \FunctionTok{sqrt}\NormalTok{(n\_i)}
+
+\NormalTok{delta\_C }\OtherTok{\textless{}{-}}\NormalTok{ v\_C[}\DecValTok{2}\NormalTok{] }\SpecialCharTok{{-}}\NormalTok{ v\_C[}\DecValTok{1}\NormalTok{]                   }\CommentTok{\# calculate incremental costs}
+\NormalTok{delta\_E }\OtherTok{\textless{}{-}}\NormalTok{ v\_E[}\DecValTok{2}\NormalTok{] }\SpecialCharTok{{-}}\NormalTok{ v\_E[}\DecValTok{1}\NormalTok{]                   }\CommentTok{\# calculate incremental QALYs}
+\CommentTok{\# Monte Carlo Squared Error (MCSE) of incremental costs:}
+\NormalTok{sd\_delta\_E }\OtherTok{\textless{}{-}} \FunctionTok{sd}\NormalTok{(sim\_trt}\SpecialCharTok{$}\NormalTok{te }\SpecialCharTok{{-}}\NormalTok{ sim\_no\_trt}\SpecialCharTok{$}\NormalTok{te) }\SpecialCharTok{/} \FunctionTok{sqrt}\NormalTok{(n\_i) }
+\CommentTok{\# Monte Carlo Squared Error (MCSE) of incremental QALYs:}
+\NormalTok{sd\_delta\_C }\OtherTok{\textless{}{-}} \FunctionTok{sd}\NormalTok{(sim\_trt}\SpecialCharTok{$}\NormalTok{tc }\SpecialCharTok{{-}}\NormalTok{ sim\_no\_trt}\SpecialCharTok{$}\NormalTok{tc) }\SpecialCharTok{/} \FunctionTok{sqrt}\NormalTok{(n\_i) }
+\NormalTok{ICER    }\OtherTok{\textless{}{-}}\NormalTok{ delta\_C }\SpecialCharTok{/}\NormalTok{ delta\_E                 }\CommentTok{\# calculate the ICER}
+\NormalTok{results }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(delta\_C, delta\_E, ICER)         }\CommentTok{\# store the values in a new variable}
+
+
+\CommentTok{\# Create full incremental cost{-}effectiveness analysis table}
+\NormalTok{table\_micro }\OtherTok{\textless{}{-}} \FunctionTok{data.frame}\NormalTok{(}
+  \FunctionTok{c}\NormalTok{(}\FunctionTok{round}\NormalTok{(v\_C, }\DecValTok{0}\NormalTok{),  }\StringTok{""}\NormalTok{),           }\CommentTok{\# costs per arm}
+  \FunctionTok{c}\NormalTok{(}\FunctionTok{round}\NormalTok{(sd\_C, }\DecValTok{0}\NormalTok{), }\StringTok{""}\NormalTok{),           }\CommentTok{\# MCSE for costs}
+  \FunctionTok{c}\NormalTok{(}\FunctionTok{round}\NormalTok{(v\_E, }\DecValTok{3}\NormalTok{),  }\StringTok{""}\NormalTok{),           }\CommentTok{\# health outcomes per arm}
+  \FunctionTok{c}\NormalTok{(}\FunctionTok{round}\NormalTok{(sd\_E, }\DecValTok{3}\NormalTok{), }\StringTok{""}\NormalTok{),           }\CommentTok{\# MCSE for health outcomes}
+  \FunctionTok{c}\NormalTok{(}\StringTok{""}\NormalTok{, }\FunctionTok{round}\NormalTok{(delta\_C, }\DecValTok{0}\NormalTok{),   }\StringTok{""}\NormalTok{),  }\CommentTok{\# incremental costs}
+  \FunctionTok{c}\NormalTok{(}\StringTok{""}\NormalTok{, }\FunctionTok{round}\NormalTok{(sd\_delta\_C, }\DecValTok{0}\NormalTok{),}\StringTok{""}\NormalTok{),  }\CommentTok{\# MCSE for incremental costs}
+  \FunctionTok{c}\NormalTok{(}\StringTok{""}\NormalTok{, }\FunctionTok{round}\NormalTok{(delta\_E, }\DecValTok{3}\NormalTok{),   }\StringTok{""}\NormalTok{),  }\CommentTok{\# incremental QALYs }
+  \FunctionTok{c}\NormalTok{(}\StringTok{""}\NormalTok{, }\FunctionTok{round}\NormalTok{(sd\_delta\_E, }\DecValTok{3}\NormalTok{),}\StringTok{""}\NormalTok{),  }\CommentTok{\# MCSE for health outcomes (QALYs) gained}
+  \FunctionTok{c}\NormalTok{(}\StringTok{""}\NormalTok{, }\FunctionTok{round}\NormalTok{(ICER, }\DecValTok{0}\NormalTok{),      }\StringTok{""}\NormalTok{)   }\CommentTok{\# ICER}
+\NormalTok{)}
+\CommentTok{\# name the rows:}
+\FunctionTok{rownames}\NormalTok{(table\_micro) }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(v\_Trt, }\StringTok{"* are MCSE values"}\NormalTok{)  }
+\CommentTok{\# name the columns:}
+\FunctionTok{colnames}\NormalTok{(table\_micro) }\OtherTok{\textless{}{-}}  
+  \FunctionTok{c}\NormalTok{(}\StringTok{"Costs"}\NormalTok{, }\StringTok{"*"}\NormalTok{,  }\StringTok{"QALYs"}\NormalTok{, }\StringTok{"*"}\NormalTok{, }\StringTok{"Incremental Costs"}\NormalTok{,}
+    \StringTok{"*"}\NormalTok{, }\StringTok{"QALYs Gained"}\NormalTok{, }\StringTok{"*"}\NormalTok{, }\StringTok{"ICER"}\NormalTok{)}
+\NormalTok{table\_micro  }\CommentTok{\# print the table }
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##                   Costs  *  QALYs     * Incremental Costs  * QALYs Gained     *
+## No Treatment       3554 14 29.651 0.006                                        
+## Treatment         18977 79 29.906 0.006             15423 68        0.255 0.001
+## * are MCSE values                                                              
+##                    ICER
+## No Treatment           
+## Treatment         60533
+## * are MCSE values
+\end{verbatim}
+
+\hypertarget{potting-some-simulation-curves}{%
+\subsubsection{Potting some simulation
+curves}\label{potting-some-simulation-curves}}
+
+\includegraphics[width=\textwidth]{Cervix_MicroSim_NOTEBOOK_files/figure-latex/plot curves-1}
+\includegraphics[width=\textwidth]{Cervix_MicroSim_NOTEBOOK_files/figure-latex/plot curves-2}
+\includegraphics[width=\textwidth]{Cervix_MicroSim_NOTEBOOK_files/figure-latex/plot curves-3}
+\includegraphics[width=\textwidth]{Cervix_MicroSim_NOTEBOOK_files/figure-latex/plot curves-4}
+\includegraphics[width=\textwidth]{Cervix_MicroSim_NOTEBOOK_files/figure-latex/plot curves-5}
+
+\end{document}

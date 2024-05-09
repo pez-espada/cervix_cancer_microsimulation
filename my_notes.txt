@@ -1,0 +1,17 @@
+################################################################################
+# Transition probabilities (per cycle)
+p.HD    <- 0.005               # probability to die when healthy
+p.HS1   <- 0.15          	     # probability to become sick when healthy
+p.S1H   <- 0.5           	     # probability to become healthy when sick
+p.S1S2  <- 0.105         	     # probability to become sicker when sick
+rr.S1   <- 3             	     # rate ratio of death when sick vs healthy
+rr.S2   <- 10            	     # rate ratio of death when sicker vs healthy 
+r.HD    <- -log(1 - p.HD) 	   # rate of death when healthy 
+r.S1D   <- rr.S1 * r.HD  	     # rate of death when sick
+r.S2D   <- rr.S2 * r.HD  	     # rate of death when sicker
+p.S1D   <- 1 - exp(- r.S1D)    # probability to die when sick
+p.S2D   <- 1 - exp(- r.S2D)    # probability to die when sicker
+
+################################################################################
+
+v.n   <- c("H","S1","S2","D") 
