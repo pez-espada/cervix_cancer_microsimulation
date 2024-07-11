@@ -1,0 +1,1424 @@
+--
+title: "Cervix Microsimulation Model Follow-Up Document"
+author: "Carlos J. Dommar D'Lima"
+_output: pdf_document # commented out
+output:
+  html_document: 
+    theme: cerulean
+    toc: true
+date: "2024-04-05"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This document details the progression of the development of microsimulation models for cervical cancer built upon the currently existing models Markov cohort models in the group.
+
+## R options for Microsimulation
+
+There are a different ways one can build and implement microsimulation models based in existing libraries and dedicated platforms (such as ABMs, in Repast, Netlogo, etc.). However I aim to use R as much as possible or make it R-user friendly. For this regard there is several ways to proceed:
+
+-   Build everything from scratch
+-   Leverage existing coded libraries/packages
+
+<!-- This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>. -->
+
+<!-- When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:-->
+
+### Existing code/packages for micorsimulation using R (that I am aware of, so far)
+
+-   [Krijkamp et al (2018)](https://journals.sagepub.com/doi/abs/10.1177/0272989X18754513)
+-   [Clements et al (2018?) `microsimulation` R package](https://cran.r-project.org/web/packages/microsimulation/index.html)
+-   [Tikka's et al (2021) `Sima` R open-source simulation framework](https://microsimulation.pub/articles/00240)
+
+## Krijkamp et al microsimulation code (2018)
+
+Among the reasons Krijkamps's code is a good start for implementing microsimulation models i R rather than start from scratch are the
+
+a)  the documentation is good;
+
+b)  the code for the simple case Health-Sick-Sicker-Death model is also simple and concise; the code seems to be maintained in a [git repository](https://github.com/DARTH-git/Microsimulation-tutorial) and it is part of a larger open source set of tools of a group called Decision Analysis in R for Technologies in Health - [DARTH] (<http://darthworkgroup.com/>) with [repositories](https://github.com/DARTH-git) of a number of tools that can be useful such [cohort modeling](https://github.com/DARTH-git/Cohort-modeling-tutorial), and a decision-analytic modeling coding [framework] (<https://github.com/DARTH-git/darthpack>);
+
+c)  Educational
+
+Some possible drawbacks include slow code and difficulties in scaling up; as the model complexity increases, the code may become less clean and readable. Adopting an Object-Oriented (OO) approach would likely be a better long-term solution for production code. In this scenario, exploring `Sima` would be worthwhile.
+
+<!-- You can also embed plots, for example: -->
+
+<!-- ```{r pressure, echo=FALSE} -->
+
+<!-- plot(pressure) -->
+
+<!-- ``` -->
+
+<!-- Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot. -->
+
+### Krijkamp implementation for a Cervix model with 12 cancer-related states and 15 age-dependent transition matrices.
+
+The idea is to build on the simple [sick-sicker](https://github.com/DARTH-git/Microsimulation-tutorial) model introduced by Krijkamp et al. The initial step is to incorporate the model framework of the Markov cohort cervix model which has 12 mutually exclusive cancer-related states.
+
+```{r, preamble, echo=FALSE, results='hide', message=FALSE}
+################################################################################
+# This code is a modified version of the original code from:
+# [https://github.com/DARTH-git/Microsimulation-tutorial] (Krijkamp et al 2018 Sick-Sicker model)
+# Modifications by: Carlos Dommar D'Lima - carlos.dommar@gmail.com
+# This code extended the "sick-sicker" model of the original authors to a
+# multi-state cervix cancer model
+################################################################################
+
+# ensure a library is installed and loaded and i case it isn't then installed 
+# and loaded
+ensure_library <- function(...) {
+  # Capture the package names
+  packages <- as.character(substitute(list(...)))[-1]
+  
+  # Loop through each package name
+  for (package in packages) {
+    # Remove any surrounding quotes
+    package <- gsub("\"", "", package)
+    
+    # Check if the package is installed
+    if (!require(package, character.only = TRUE)) {
+      # If not installed, install the package
+      install.packages(package, dependencies = TRUE)
+      # After installation, load the package
+      library(package, character.only = TRUE)
+    }
+  }
+}
+
+
+library(tidyverse)
+rm(list = ls())
+
+# Define the base directory and subdirectory components
+base_dir <- "Q:/my_Q_docs"
+project_dir <- "Cervix_MicroSim/CervixMicroSim_Carlos/carlos__Krijkamp_ver/data"
+filename <- "probs.rds"
+#filename <- "probs2.rds #this have probabilities way larger than 1 (error) 
+#filename <- "probs3.rds #this have probabilities way larger than 1 (error)
+# Construct the full path using file.path() with line continuation
+rds_file <- file.path(base_dir, project_dir, filename)
+
+# Read the RDS file using the constructed path
+my_Probs <- readRDS(rds_file)
+
+# choose, as a test, only one of the 15 age-related transition matrices,
+my_Probs <- # transition matrix (for all sim cycles) 
+  my_Probs %>%
+  #dplyr::filter(Age.group == "25-29") %>% # choose one for test
+  as_tibble() # I need a tibble to use 'rename' function down there:
+
+# tidying up a bit the transition matrix:
+my_Probs <- my_Probs %>% dplyr::rename("H" = "Well")
+# Rename the 'old_name' column to 'new_name'
+
+my_Probs <- my_Probs %>% as.data.frame() # convert back to data.frame (no needed?)
+
+###############################################################
+# Function to extract and convert numbers from factor levels
+extract_numbers <- function(range_factor) {
+  range_string <- as.character(range_factor)
+  numbers <- as.numeric(unlist(strsplit(range_string, "-")))
+  return(numbers)
+}
+###############################################################
+
+# before apply the function, convert Age.group from factor to character
+# my_Probs$Age.group <- as.character(my_Probs$Age.group)
+# Apply the function to the Range column and create new columns
+my_Probs$Lower  <- sapply(my_Probs$Age.group, function(x) extract_numbers(x)[1])
+my_Probs$Larger <- sapply(my_Probs$Age.group, function(x) extract_numbers(x)[2])
+
+#rownames(my_Probs) <- 
+#  my_Probs %>% 
+#  colnames() %>% 
+#  tail(-1)
+
+#my_rownames <- 
+#  my_Probs %>% 
+#  colnames() %>% 
+#  tail(-1)
+#rm(my_probs)  # no needed any longer
+
+# for feeding the microsimulation function with aged-based multiple transition 
+# matrices, they need a bit previous prep:
+# so I going to make a list with elements containing a transition matrix 
+# and pass it to the microsimulation function 
+#age_interv <-  # list with all age intervals
+#  my_Probs %>%
+#  select(Age.group) %>% unique()
+#list_matrices <- list()
+#for (age in age_interv$Age.group)
+#{
+#  #print(age)
+#  #rownames(my_Probs[my_Probs$Age.group==age]) <-
+#    
+#  my_Probs %>% filter(Age.group == age) %>% head() %>% print()
+#  #list_matrices <- c(list_matrices, my_Probs %>% filter(Age.group == age))
+#}
+
+```
+
+```{r, my_Probs, echo=TRUE, results='markup', message=FALSE, include=FALSE}
+library("printr")
+my_Probs %>%
+  head()
+knitr::kable(my_Probs)
+```
+
+### Model parameters:
+
+```{r, model parameters}
+n_i   <- 10^6                 # number of simulated individuals
+n_t   <- 74                   # time horizon, 75 cycles (it starts from 0)
+
+# cycle_period can go from one month to one year. that is
+# I think a sensible way is to offer the following frequencies, different to
+# this then just set it monthly (work in progress):
+cycle_period <- "1mth"
+cycle_period <- "2mth"
+cycle_period <- "3mth"
+cycle_period <- "4mth"
+cycle_period <- "6mth"
+cycle_period <- "1yr" # i.e. 12mth
+
+if (cycle_period == "1mth"){
+  n_t <- n_t * 12
+} else if (cycle_period == "6mth") {
+  n_t <- n_t * 2
+} else if (cycle_period == "1yr") {
+  n_t <- n_t * 1
+}
+
+v_n <- rownames(my_Probs)
+
+n_s   <- length(v_n)                # the number of health states
+v_M_1 <- rep("H", n_i)              # everyone begins in the healthy state 
+#v_M_1 <- rep("Well", n_i)           # everyone begins in the healthy state 
+d_c   <- d_e <- 0.03                # equal discounting of costs and QALYs by 3%
+v_Trt <-
+  c("No Treatment", "Treatment")    # store the strategy names
+
+################################################################################
+# Cost and utility inputs 
+c_H     <- 2000                # cost of remaining one cycle healthy
+c_S1    <- 4000                # cost of remaining one cycle sick 
+c_S2    <- 15000               # cost of remaining one cycle sicker
+c_Trt   <- 12000               # cost of treatment (per cycle)
+
+u_H     <- 1                   # utility when healthy 
+u_S1    <- 0.75                # utility when sick 
+u_S2    <- 0.5                 # utility when sicker 
+u_Trt   <- 0.95                # utility when sick(er) and being treated
+
+# From our Markov cervix model (CC's natural history?):
+cost_Vec = c(0, 39.54, 288.91, 1552.27, 1552.27, 
+             5759.81, 12903.63, 23032.41, 35323.14, 0, 0, 0)
+```
+
+
+## The Functions:
+```{r, functions, include=FALSE}
+#### For extracting the probabilities of transitions given the transition matrix:
+########### Probably the following function is not needed ######################
+#' Extract transition probability from Transition Matrix
+#'
+#' @param P 
+#' @param state1 
+#' @param state2 
+#'
+#' @return a numeric scalar corresponding to the asked probability of transition
+#' @export
+#'
+#' @examples
+#' trans_prb(P = my_Probs, state1 = "Well", state2 = "HR.HPV.infection") 
+#' trans_prb(P = my_Probs, state1 = "CIN1", state2 = "CIN2") 
+trans_prb <- function(P, state1, state2) {
+  # If the matrix of transition, P, is given:
+  # the probability of an individual to go to state 'state2' the next time
+  # step given the individual is currently in state 'state1' is computed by:
+  tryCatch(
+    transition_prob <- P %>%  
+      filter(row.names(P) %in% c(state1)) %>% # filter state1 row
+      dplyr::select(all_of(state2)) %>%   # select state2 column
+      as.numeric(),
+    error = function(e){
+      message("An error occurred:\n", e)
+      print("Remember the valid states are:")
+      P %>% rownames() %>% print()
+    },
+    warning = function(w){
+      message("A warning occured:\n", w)
+    }
+  )
+  return(transition_prob)
+}
+```
+
+### The Sampling function:
+
+[Krijkamp et al (2018)](https://journals.sagepub.com/doi/abs/10.1177/0272989X18754513) developed a sampling function called `samplev()` by modifying and generating random numbers for multinomial variables from the `Hmisc` R package. The `samplev()` function randomly draws the individuals' state vector at $t+1$. `samplev()` takes as argument `probs` and `m`. 
+
+* `probs` is a matrix of dimensions `n_i x n_s` (number of individuals times number of health-states in the model). Each element $\text{probs} = p_{ij}$ represents the probability of the individual $i$ transitioning to health-state $j$  at $t+1$, given their current state at $t$ as described in the appropriate transition matrix.
+
+* `m=1`in the model.
+
+To progress the evolution of states for individuals, we need to both sample random numbers and make transition selections based on these numbers. The procedure is as follows:
+
+-   **Random Number Sampling**: When an individual needs to make a state transition, a random number between 0 and 1 (uniform distribution) is generated. This random number is then compared to the cumulative probabilities of all possible transitions from the current state.
+
+-   **Transition Selection**: The transition with a cumulative probability range that encompasses the generated random number is selected. This means that transitions with higher probabilities have a larger range within the 0-1 interval, making them more likely to be chosen.
+
+
+### Cumulative Probabilities and Binning:
+`samplv()` performs the following steps:
+
+1.  **Calculate Cumulative Probabilities**: For each state, the individual transition probabilities are summed sequentially to create a series of cumulative probabilities. For example, if there are three transitions (A, B, and C) with probabilities 0.3, 0.4, and 0.3 respectively, their cumulative probabilities would be:  
+
+-   Transition A: 0.3
+-   Transition B: 0.3 + 0.4 = 0.7
+-   Transition C: 0.7 + 0.3 = 1.0 (this sum must always be 1)
+
+2.  **Binning the Range (0-1)**: The range between 0 and 1 is conceptually divided into bins based on these cumulative probabilities. In the example:
+
+-   Transition A: 0 - 0.3 (first 30% of the range)
+-   Transition B: 0.3 - 0.7 (next 40% of the range)
+-   Transition C: 0.7 - 1.0 (last 30% of the range)
+
+3.  **Selecting the Transition**:
+
+3.1 **Sample a Random Number**:  a random number between 0 and 1 is generated.
+
+3.2 **Identify the Winning Bin**: This random number is then compared to the binned ranges. The transition whose cumulative probability range encompasses the random number is chosen as the next state.
+
+This method ensures that the transitions reflect the specified probabilities, allowing for accurate state evolution in the model.
+```{r, sampling function}
+# efficient implementation of the rMultinom() function of the Hmisc package #### 
+samplev <- function (probs, m) {
+  d <- dim(probs) # i.e. number of individuals times number of states: n_i x n_s
+  n <- d[1]       # number of individuals n_s
+  k <- d[2]       # number of states
+  lev <- dimnames(probs)[[2]] # vector with  names of health states
+  if (!length(lev)) # checks if `lev` vector (states names) is empty 
+                    # or has length 0 
+    lev <- 1:k # if empty (evaluates to `TRUE`), it assigns numeric state labels
+               # (1:k) to `lev`
+  ran <- 
+    matrix(lev[1], ncol = m, nrow = n) # create array n_s x m (m=1) 
+                                       # consisting in of health-state stored in
+                                       # `lev[1]`, "H" in our case.
+                                            
+  
+  ##############################################################################
+  ########## Creating the matrix of cumulative distributions U #################
+  U <- t(probs)    # transpose probs from (`n_i*n_s`) to (`n_s*n_i`)
+  for(i in 2:k) {  
+    # This loop fills U with the cumulative probabilities of each individual
+    # across all its possible transitions (`v_s`or `lev` within thus function).
+    # That is each column of `U` represents the cumulative distribution for each
+    # individual across its corresponding transitions. 
+    # The last element of each column must sum 1 (or close enough:)
+    U[i, ] <- U[i, ] + U[i - 1, ]
+  }
+  if (any((U[k, ] - 1) > 1e-04))
+    stop("error in multinom: probabilities do not sum to 1")
+  ##############################################################################
+  ##############################################################################
+  
+  ### Random sampling, binning, and moving states: 
+  for (j in 1:m) {
+    un <- rep(runif(n), rep(k, n)) # repeat `runif(n)` `rep(k,n)`times
+                                   # this create a numeric of `n_i x n_s` that 
+                                   # sample  an uniformed distributed number 
+                                   # between 0 and 1. The generated random number
+                                   # repeats itself `n_s` times and then another 
+                                   # rand unif number is drawn. This process is 
+                                   # carried out `n_i` times. NOTE: every time
+                                   # runif() is run it produces a new random sample
+                                   # i.e. it does not seem dependent on the seed
+    
+    # here's where we choose the individuals' next states:
+    ran[, j] <- lev[1 + colSums(un > U)]
+   #print(ran[,j]) 
+  }
+  ran
+}
+```
+
+### The Probability function
+
+```{r, probability function}
+knitr::opts_chunk$set(tidy = TRUE, out.width = 60)
+######################### Probability function #################################
+# The Probs function that updates the transition probabilities of every cycle:
+Probs <- function(M_it, my_Probs) { 
+  # M_it:  health state occupied by individual i at cycle t (character variable)
+  # my mod:
+  # my_Probs: Transition matrix from our Markov cohort model
+  
+  m_P_it <- matrix(NA, n_s, n_i) # create vector of state transition probabilities
+  rownames(m_P_it) <- v_n        # assign names to the vector
+  
+  # update the `v_p` with the appropriate probabilities   
+  # remind that `v_n` is the vector with the names of health states.
+  # This goes eventually within a loop or a lapply func over all health states
+  
+  #for (i  in length(v_n)) {
+  #  m_P_it[,M_it == v_n[i]]   <- 
+  #    lapply(X = v_n, function(x) trans_prb(P = my_Probs,state1 = v_n[i], state2 = x)) %>% 
+  #    unlist()
+  #}
+  
+  for (i in 1:length(v_n)) {
+    m_P_it[,M_it == v_n[i]]   <- 
+      lapply(X = v_n, function(x) trans_prb(P = my_Probs,state1 = v_n[i], state2 = x)) %>% 
+      unlist()
+  }
+  
+  ifelse(colSums(m_P_it) >=  # return the transition probabilities or produce an error
+           .991, return(t(m_P_it)), print("Probabilities do not sum to 1")) 
+}       
+################################################################################
+```
+
+### The Costs function:
+For testing purpose I implement a very simple cost function, that is I apply the same cost for all disease stages:
+
+```{r, costs function, tidy=TRUE}
+### Costs function
+# The Costs function estimates the costs at every cycle.
+Costs <- function (M_it, cost_Vec, Trt = FALSE) {
+  # my mode with costs taken from our Markov cohort model:
+  c_it <- 0    # by default the cost for everyone is zero
+  c_it[M_it == "H"]  <- cost_Vec[1]                        # update the cost 
+  c_it[M_it == "Survival"]  <- cost_Vec[2]                 # update the cost 
+  c_it[M_it == "HR.HPV.infection"]  <- cost_Vec[3]         # update the cost 
+  c_it[M_it == "CIN1"]   <- cost_Vec[4]   + c_Trt * Trt    # update the cost 
+  c_it[M_it == "CIN2"]   <- cost_Vec[5]   + c_Trt * Trt    # update the cost 
+  c_it[M_it == "CIN3"]   <- cost_Vec[6]   + c_Trt * Trt    # update the cost 
+  c_it[M_it == "FIGO.I"] <- cost_Vec[7]   + c_Trt * Trt    # update the cost 
+  c_it[M_it == "FIGO.II"] <- cost_Vec[8]  + c_Trt * Trt    # update the cost 
+  c_it[M_it == "FIGO.III"] <- cost_Vec[9] + c_Trt * Trt    # update the cost 
+  c_it[M_it == "FIGO.IV"] <- cost_Vec[10] + c_Trt * Trt    # update the cost 
+  c_it[M_it == "CC_Death"]     <- cost_Vec[11]             # update the cost 
+  c_it[M_it == "Other.Death"]  <- cost_Vec[12]             # update the cost 
+  
+  return(c_it)              		                           # return the costs
+}
+```
+
+### The QALYs function:
+
+```{r, qalys function, tidy=TRUE}
+### Health outcome function 
+# The Effs function to update the utilities at every cycle.
+Effs <- function (M_it, Trt = FALSE, cl = 1) {
+  ## M_it: health state occupied by individual i at cycle t (character variable)
+  ## Trt:  is the individual treated? (default is FALSE) 
+  ## cl:   cycle length (default is 1)
+ 
+  # Carlos' cervix model mod:
+  u_it <- 0                      # by default the utility for everyone is zero
+  # I assume healthy/infected and survival have the same utility:
+  u_it[M_it == "H"]                 <- u_H      # update the utility if healthy
+  u_it[M_it == "HR.HPV.infection"]  <- u_H      # update the utility if infected
+  u_it[M_it == "Survival"]          <- u_H      # update the utility if Survived
+  #_again, for testing purpose I assume all CIN states have the same utility
+  u_it[M_it == "CIN1"] <- Trt * u_Trt + (1 - Trt) * u_S1  # update the utility
+  # if sick conditional on treatment
+  u_it[M_it == "CIN2"] <- Trt * u_Trt + (1 - Trt) * u_S1  # update the utility 
+  # if sick conditional on treatment
+  u_it[M_it == "CIN3"] <- Trt * u_Trt + (1 - Trt) * u_S1  # update the utility 
+  # if sick conditional on treatment
+  # for testing I assume all FIGO states have the same utility:
+  u_it[M_it == "FIGO.I"]  <- u_S2     # update the utility if sicker
+  u_it[M_it == "FIGO.II"]  <- u_S2    # update the utility if sicker
+  u_it[M_it == "FIGO.III"] <- u_S2    # update the utility if sicker
+  u_it[M_it == "FIGO.IV"]  <- u_S2    # update the utility if sicker
+  u_it[M_it == "CC_Death"]    <- 0    # update the utility if dead
+  u_it[M_it == "Other.Death"] <- 0    # update the utility if dead
+  
+  QALYs <-  u_it * cl            # calculate the QALYs during cycle t
+  return(QALYs)                  # return the QALYs
+}
+```
+
+### Functions related with cycle length, periods, time resolution
+```{r, time period related functions, echo=TRUE}
+age_factor <- function(my_period) {
+  # it receives a string with the period of the cycle, and it can be:
+  #  - "1mth"
+  #  - "3mth"
+  #  - "4mth"
+  #  - "6mth"
+  #  - "1yr" # i.e. 12 months
+  # and it gives back an age factor for scaling cycle period.
+  if (my_period == "1yr") {
+    my_factor <- 1
+  } else if (my_period == "6mth") {
+    my_factor <- 2
+  } else if (my_period == "4mth") {
+    my_factor <- 3
+  } else if (my_period == "3mth") {
+    my_factor <- 4
+  } else if (my_period == "1mth") {
+    my_factor <- 12
+  } else {print("Cycle period can only be: '1yr', '6mth','4mth', '3mth' and '12mth'")}
+  return(my_factor)
+}
+
+############################################
+convert_matrix_to_propper_transition <- 
+  function(my_age_prob_matrix, cycle_period) {
+    
+    ensure_library(c("expm", "pracma", "ctmcd"))
+    
+    trans_matrix <- my_age_prob_matrix %>% 
+      select(-c("Age.group", "Lower", "Larger")) %>% 
+      as.matrix()
+    # referenece: https://rpubs.com/crossxwill/transition_matrix
+    ## method 1: (not working atm)
+    #ensure_library(expm)
+    #TM.exp  <- expm::expm((1 / age_factor(cycle_period))) * log(trans_matrix) 
+    
+    #method 2 ;
+    ensure_library(pracma)
+    TM_pracma <- pracma::rootm(trans_matrix, p=age_factor(cycle_period), kmax = 20, tol = 1e-10)
+    round(TM_pracma$B, 5)
+  
+    # regularization with the `ctmcd` package, The code below uses the 
+    # quasi-optimization of the generator (QOG) approach from 
+    # Kreinin and Sidelnikova (2001).:
+    ensure_library("ctmcd")
+  TM_qo <- ctmcd::gm(TM_pracma$B, te=1, method = "QO") 
+     
+  }
+```
+
+
+
+### The the main microsimulation function, `MicroSim`
+This is a modified version of [Krijkamp et al (2018)](https://journals.sagepub.com/doi/abs/10.1177/0272989X18754513) where I have extended the number of individual states to 12 and have included age-dependent transition matrices.
+
+```{r MicroSim function, tidy=TRUE}
+MicroSim <- function(v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE, 
+                     TS_out = TRUE, Trt = FALSE, seed = 1, Pmatrix) {
+  #Arguments:
+  # v_M_1:   vector of initial states for individuals
+  # n_i:     number of individuals
+  # n_t:     total number of cycles to run the model
+  # v_n:     vector of health state names
+  # d_c:     discount rate for costs
+  # d_e:     discount rate for health outcome (QALYs)
+  # TR_out:  should the output include a Microsimulation trace? 
+  #          (default is TRUE)
+  # TS_out:  should the output include a matrix of transitions between states? 
+  #          (default is TRUE)
+  # Trt:     are the n.i individuals receiving treatment? (scalar with a Boolean
+  #          value, default is FALSE)
+  # seed:    starting seed number for random number generator (default is 1)
+  # Makes use of:
+  # Probs:   function for the estimation of transition probabilities
+  # Costs:   function for the estimation of cost state vamatrix: Matrix of 
+  # tranistion probabilities for each sim cycle.
+  # Effs:    function for the estimation of state specific health outcomes (QALYs)
+  # Pmatrix: Matrix of transition probabilities for each sim cycle.
+  
+  v_dwc <- 1 / (1 + d_c) ^ (0:n_t)   # calculate the cost discount weight based
+                                     # on the discount rate d_c 
+  
+  v_dwe <- 1 / (1 + d_e) ^ (0:n_t)   # calculate the QALY discount weight based 
+                                     # on the discount rate d.e
+  
+  # Create the matrix capturing the state name/costs/health outcomes 
+  # for all individuals at each time point:
+  m_M <- m_C <- m_E <-  matrix(nrow = n_i, ncol = n_t + 1, 
+                               dimnames = list(paste("ind", 1:n_i, sep = " "), 
+                                               paste("cycle", 0:n_t, sep = " ")))  
+  
+  m_M[, 1] <- v_M_1                  # indicate the initial health state   
+  
+  set.seed(seed)                     # set the seed for every individual for the
+                                     # random number generator
+  
+  m_C[, 1] <- Costs(M_it = m_M[, 1], # estimate costs per individual for the 
+                    cost_Vec =       # initial health state
+                      cost_Vec,
+                    Trt)             
+  m_E[, 1] <- Effs (m_M[, 1], Trt)   # estimate QALYs per individual for the 
+                                     # initial health state  
+  
+  ###### run over all the cycles ########## 
+  for (t in 1:n_t) {
+    # here I choose my transition matrix according to the cycle n_t:
+    # because our age intervals start at 10 years old
+    age_in_loop <- t + 10*age_factor(cycle_period)
+    # choose corresponding transition matrix according current age:
+    my_age_prob_matrix <- my_Probs %>% 
+      dplyr::filter(Lower <= 
+                      (age_in_loop / age_factor(cycle_period)) &
+                      Larger >= (age_in_loop / age_factor(cycle_period)) %>%
+                      floor()) 
+    
+    # Add colnames and update `v_n`:
+    rownames(my_age_prob_matrix) <- v_n <<- 
+      my_age_prob_matrix %>%
+      dplyr::select(-c(Age.group, Lower, Larger)) %>% 
+      colnames()
+    
+    # check what's the cycle period and modify transitions accordingly:
+    my_age_prob_matrix <- 
+      convert_matrix_to_propper_transition(my_age_prob_matrix = my_age_prob_matrix, 
+                                           cycle_period = cycle_period)
+    
+    
+    # update/correct n_s (<<- let change variable from inside a function):
+    n_s  <<- length(v_n)  
+    
+    # Extract the transition probabilities of each individuals at cycle t
+    # given the individual current state and the corresponding 
+    # transition probability matrix that depends on age:
+    m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
+    
+    m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
+                                                 # and store that state in  
+                                                 # matrix m_M 
+    
+    m_C[, t + 1] <-                              # estimate costs per individual
+      Costs(M_it = m_M[, t + 1],                 # during cycle t + 1 
+            cost_Vec = cost_Vec, Trt)            # conditional on treatment
+                                          
+                                          
+    m_E[, t + 1] <-                              # estimate QALYs per individual
+      Effs( m_M[, t + 1], Trt)                   # during cycle t + 1
+                                                 # conditional on treatment
+                                  
+    
+    cat('\r', paste(round(t/n_t * 100),          # display the 
+                    "% done", sep = " "))        # progress of 
+                                                 # the simulation                    
+                                                              
+  } # close the loop for the time points 
+  ######################################
+ 
+   
+  tc <- m_C %*% v_dwc       # total (discounted) cost per individual
+  te <- m_E %*% v_dwe       # total (discounted) QALYs per individual 
+  
+  tc_hat <- mean(tc)        # average (discounted) cost 
+  te_hat <- mean(te)        # average (discounted) QALYs
+  
+  if (TS_out == TRUE) {  # create a matrix of transitions across states
+    TS <- paste(m_M, cbind(m_M[, -1], NA), sep = "->") # transitions from one   
+    # state to the other
+    
+    TS <- matrix(TS, nrow = n_i)
+    rownames(TS) <- paste("Ind",   1:n_i, sep = " ")   # name the rows 
+    colnames(TS) <- paste("Cycle", 0:n_t, sep = " ")   # name the columns 
+  } else {
+    TS <- NULL
+  }
+  
+  if (TR_out == TRUE) {
+    TR <- t(apply(m_M, 2, 
+                  function(x) table(factor(x, levels = v_n, ordered = TRUE))))
+    #TR <- TR / n_i                                   # create a distribution 
+    # trace
+    
+    rownames(TR) <- paste("Cycle", 0:n_t, sep = " ") # name the rows 
+    colnames(TR) <- v_n                              # name the columns 
+  } else {
+    TR <- NULL
+  }
+  
+  # if TS_out == TRUE we can then compute the number of new cases for each type
+  # of cancer state per time (cycle). A new case of cancer state X in time t
+  # is defined as an individual transition to this state X provided the
+  # individual was not in that state X a time t-1.
+  # NOTE that the TR output display individual transitions at each cycle t
+  # that are going to occur at t + 1. That is, "XX->YY" in cycle t meant that the
+  # corresponding individual is in state "XX" in t and is transiting to state
+  # "YY" in t + 1.
+  # A characater with all transitions:
+   transitions <- 
+     TS %>% 
+     as_tibble() %>% 
+     pivot_longer(everything(), names_to = "column") %>% 
+     distinct(value) %>%
+     unique() %>% 
+     as.list() %>%
+     unlist()
+   
+  if(TS_out == TRUE){
+    Tot_Trans_per_t <- t(apply(TS, 2, 
+                  function(x) table(factor(x, levels = transitions, ordered = TRUE))))
+    # trace
+    rownames(Tot_Trans_per_t) <- paste("Cycle", 0:n_t, sep = " ") # name the rows 
+    #colnames(TR) <- v_n                              # name the columns 
+  } else {
+    Tot_Trans_per_t <- NULL
+  }
+  
+  results <- list(m_M = m_M, m_C = m_C, m_E = m_E, tc = tc, te = te, 
+                  tc_hat = tc_hat, te_hat = te_hat, 
+                  TS = TS, TR = TR, 
+                  Tot_Trans_per_t = Tot_Trans_per_t) # store the results from 
+                                                     # the simulation in a list
+  
+  return(results)  # return the results
+}  # end of the MicroSim function  
+```
+
+## Test simulation
+
+```{r, perform simulation, tidy=TRUE, echo=FALSE, include=FALSE}
+########################## Run the simulation ##################################
+## START SIMULATION
+p = Sys.time()
+# run for no treatment
+sim_no_trt  <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = FALSE)
+# run for treatment
+sim_trt     <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = TRUE)  
+comp.time = Sys.time() - p
+comp.time %>% print()
+```
+
+### Perform cost-effectiveness analysis:
+
+```{r, cost-efectiveness, tidy=TRUE}
+###################### Cost-effectiveness analysis #############################
+# store the mean costs (and MCSE) of each strategy in a new variable C (vector costs)
+v_C  <- c(sim_no_trt$tc_hat, sim_trt$tc_hat) 
+sd_C <- c(sd(sim_no_trt$tc), sd(sim_trt$tc)) / sqrt(n_i)
+# store the mean QALYs (and MCSE) of each strategy in a new variable E (vector effects)
+v_E  <- c(sim_no_trt$te_hat, sim_trt$te_hat)
+sd_E <- c(sd(sim_no_trt$te), sd(sim_trt$te)) / sqrt(n_i)
+
+delta_C <- v_C[2] - v_C[1]                   # calculate incremental costs
+delta_E <- v_E[2] - v_E[1]                   # calculate incremental QALYs
+# Monte Carlo Squared Error (MCSE) of incremental costs:
+sd_delta_E <- sd(sim_trt$te - sim_no_trt$te) / sqrt(n_i) 
+# Monte Carlo Squared Error (MCSE) of incremental QALYs:
+sd_delta_C <- sd(sim_trt$tc - sim_no_trt$tc) / sqrt(n_i) 
+ICER    <- delta_C / delta_E                 # calculate the ICER
+results <- c(delta_C, delta_E, ICER)         # store the values in a new variable
+
+
+# Create full incremental cost-effectiveness analysis table
+table_micro <- data.frame(
+  c(round(v_C, 0),  ""),           # costs per arm
+  c(round(sd_C, 0), ""),           # MCSE for costs
+  c(round(v_E, 3),  ""),           # health outcomes per arm
+  c(round(sd_E, 3), ""),           # MCSE for health outcomes
+  c("", round(delta_C, 0),   ""),  # incremental costs
+  c("", round(sd_delta_C, 0),""),  # MCSE for incremental costs
+  c("", round(delta_E, 3),   ""),  # incremental QALYs 
+  c("", round(sd_delta_E, 3),""),  # MCSE for health outcomes (QALYs) gained
+  c("", round(ICER, 0),      "")   # ICER
+)
+# name the rows:
+rownames(table_micro) <- c(v_Trt, "* are MCSE values")  
+# name the columns:
+colnames(table_micro) <-  
+  c("Costs", "*",  "QALYs", "*", "Incremental Costs",
+    "*", "QALYs Gained", "*", "ICER")
+table_micro  # print the table 
+```
+### Computing incidence:
+Incidence = (Number of new cases) / (Population size) x (Time period)
+
+```{r new cases, echo=FALSE}
+# function to compute (total) new cases of a state across the cycles:
+new_cases <- function(state) {
+  # it receives a string with the desired health-related state
+  # it gives back a tibble with age and new cases of that state at that age.
+  # note that new cases are computed as all transitions going to that state
+  # and  coming from a different stage
+  
+  # columns that containst `state`:
+  col_set <- sim_no_trt$Tot_Trans_per_t %>% 
+    as_tibble() %>% 
+    select(contains(state)) %>%
+    colnames() #%>%
+  
+  # columns with transitions to `state`: `xx->state`with `xx!=state`
+  new_col_set <- NULL
+  for (i in 1:length(col_set)) {
+    #print(col_set[i])
+    if ((stringr::str_split(string = col_set[i], pattern = "->") %>% 
+         unlist() %>% .[2]) == state &&
+        (stringr::str_split(string = col_set[i], pattern = "->") %>% 
+         unlist() %>% .[1]) != state)
+    {
+      #print (col_set[i])
+      new_col_set <- append(new_col_set, col_set[i])
+    } 
+  }
+  
+  # select columns with new_cases of `state`:
+  new_cases <- sim_no_trt$Tot_Trans_per_t %>%
+    as_tibble() %>%
+    dplyr::select(one_of(new_col_set)) %>%
+    dplyr::mutate(total_new_cases = rowSums(.)) %>%
+    dplyr::select(-everything(), total_new_cases) %>%
+    #dplyr::mutate(age = row_number() + 9)
+    dplyr::mutate(age = row_number() + 10)
+  
+  return(new_cases)
+}
+####
+new_cases_2 <- function(state1, state2){
+  # this function recieives two strings with the names of a state as named in the 
+  # vector state `v_n` and it gives back a df with two columns: age and number of
+  # new transitions in that age.
+  transition_cases <- 
+    sim_no_trt$Tot_Trans_per_t %>% 
+    as_tibble() %>% 
+    dplyr::select(paste0(state1,"->",state2)) %>% 
+    dplyr::mutate(age = row_number() +10)
+  return(transition_cases)
+}
+```
+
+
+
+
+
+### Plotting simulation curves
+
+```{r, plot curves, fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth'}
+## This R chunk is a plot routine (not part of the main program):
+library(RColorBrewer)
+# NO TREATMENT:
+# Convert matrix to data frame
+df <- as.data.frame(sim_no_trt[[9]])
+#df <- df %>% select( "HR.HPV.infection", "CIN1", "CIN2", "CIN3", "FIGO.III", "FIGO.IV", "CC_Death")
+#df <- df %>% select( "HR.HPV.infection")
+#df <- df %>% select( "CIN1", "CIN2", "CIN3")
+df <- df %>% 
+ # select( "HR.HPV.infection", "CIN1", "CIN2", "CIN3", 
+ #         "FIGO.III", "FIGO.IV", "CC_Death") %>%
+  mutate(sum_precancer = CIN1 + CIN2 + CIN3) %>%
+  mutate(sum_cancer = FIGO.I+FIGO.II+FIGO.III+FIGO.IV) %>%
+  #select("HR.HPV.infection", sum_precancer)
+  select("HR.HPV.infection","sum_precancer", "sum_cancer")
+
+# Add an index column
+df$index <- seq_len(nrow(df))
+
+# Reshape data into long format
+df_long <- df %>%
+  gather(key = "variable", value = "value", -index)
+
+## custom breaks and labels for x-axis:
+#custom_breaks  <- my_Probs %>% 
+#  select(Lower) %>% 
+#  unique() %>% 
+#  as.list() %>% 
+#  .[[1]]
+#custom_breaks <- custom_breaks + 10 # age stars at 10 years
+
+#custom_breaks <- my_Probs %>%
+#  dplyr::select(Lower, Larger) %>%
+#  unlist() %>% 
+#  sort() %>%
+#  unique() 
+
+# Plot
+ggplot(df_long, aes(x = index, y = value, color = variable)) +
+  geom_line(linewidth=1.0) +
+  labs(title = "Line Plot of Matrix Columns. NO TREATMENT", x = "Index", y = "Value") #+
+#  scale_x_continuous(breaks = custom_breaks)
+
+
+
+################################################################################
+df <- as.data.frame(sim_no_trt[[9]])
+df <- df %>% 
+ # select( "HR.HPV.infection", "CIN1", "CIN2", "CIN3", 
+ #         "FIGO.III", "FIGO.IV", "CC_Death") %>%
+  mutate(sum_precancer = CIN1 + CIN2 + CIN3) %>%
+  mutate(sum_cancer = FIGO.I+FIGO.II+FIGO.III+FIGO.IV) %>%
+  #select("HR.HPV.infection", sum_precancer)
+  select("sum_precancer", "sum_cancer", "CC_Death")
+#df <- df * 10^5
+
+#df$Age <- df$index + 8
+# Add an index column
+df$index <- seq_len(nrow(df))
+
+# add age
+df <- df %>%
+  dplyr::mutate(Age = index + 8)
+
+## Reshape data into long format
+#df_long <- df %>%
+#  mutate(Age = index + 8) %>%
+#  gather(key = "variable", value = "value", -index)
+#
+#
+## Plot
+#ggplot(df_long, aes(x = Age, y = value, color = variable)) +
+#  geom_line(linewidth=1.0) +
+#  labs(title = "Line Plot of Matrix Columns. NO TREATMENT", x = "Index", y = "Value") 
+
+
+ggplot(df) +
+  geom_line(aes(x = Age, y = sum_precancer, color = "sum_precancer"),
+            linewidth = 1.0) +
+  geom_line(aes(x = Age, y = sum_cancer, color = "sum_cancer"), linewidth = 1.0) +
+  geom_line(aes(x = Age, y = CC_Death, color = "CC_Death"), linewidth = 1.0) +
+  labs(title = "Line Plot of Matrix Columns. NO TREATMENT",
+       x = "Age", y = "Value", color = "Variable") +
+  scale_color_manual(values = c(sum_precancer = "blue", 
+                                sum_cancer = "red", 
+                                CC_Death = "green"))
+
+
+
+
+################################################################################
+df <- as.data.frame(sim_no_trt[[9]])
+df$index <- seq_len(nrow(df))
+
+# add age
+df <- df %>%
+  dplyr::mutate( Age = index+8 )
+
+ggplot(df) +
+  #geom_line(aes(x = Age, y = H, color = "H"), linewidth = 1.0) +
+  #geom_line(aes(x = Age, y = HR.HPV.infection, color = "Infected"), linewidth = 1.0) +
+  geom_line(aes(x = Age, y = CIN1, color = "CIN1"), linewidth = 1.0) +
+  geom_line(aes(x = Age, y = CIN2, color = "CIN2"), linewidth = 1.0) +
+  geom_line(aes(x = Age, y = CIN3, color = "CIN3"), linewidth = 1.0) +
+  geom_line(aes(x = Age, y = FIGO.I, color = "FIGO.I"), linewidth = 1.0) +
+  geom_line(aes(x = Age, y = FIGO.II, color = "FIGO.II"), linewidth = 1.0) +
+  geom_line(aes(x = Age, y = FIGO.III, color = "FIGO.III"), linewidth = 1.0) +
+  geom_line(aes(x = Age, y = FIGO.IV, color = "FIGO.IV"), linewidth = 1.0) +
+  geom_line(aes(x = Age, y = CC_Death, color = "CC_Death"), linewidth = 1.0) +
+  labs(title = "Line Plot of Matrix Columns. WITH NO TREATMENT", x = "Age", y = "Value") +
+  scale_x_continuous(breaks = c(10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80),
+                     labels = c(10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80))
+
+
+################################################################################
+# WITH TREATMET:
+# Convert matrix to data frame
+df <- as.data.frame(sim_trt[[9]])
+
+# Add an index column
+df$index <- seq_len(nrow(df))
+
+# add age
+df <- df %>%
+  dplyr::mutate( Age = index+8 )
+
+# Reshape data into long format
+df_long <- df %>%
+  mutate(Age = index + 8) %>%
+  gather(key = "variable", value = "value", -index)
+
+# Plot
+ggplot(df_long, aes(x = index, y = value, color = variable)) +
+  geom_line(linewidth=1.0) +
+  labs(title = "Line Plot of Matrix Columns.WITH TREATMENT", x = "Index", y = "Value")
+
+
+
+################################################################################
+df <- as.data.frame(sim_trt[[9]])
+#df <- df %>% 
+# # select( "HR.HPV.infection", "CIN1", "CIN2", "CIN3", 
+# #         "FIGO.III", "FIGO.IV", "CC_Death") %>%
+#  mutate(sum_precancer = CIN1 + CIN2 + CIN3) %>%
+#  mutate(sum_cancer = FIGO.I+FIGO.II+FIGO.III+FIGO.IV) %>%
+#  #select("HR.HPV.infection", sum_precancer)
+#  select("sum_precancer", "sum_cancer", "CC_Death")
+#df <- df * 10^5
+
+#df$Age <- df$index + 8
+# Add an index column
+df$index <- seq_len(nrow(df))
+
+# add age
+df <- df %>%
+  dplyr::mutate( Age = index+8 )
+
+## Reshape data into long format
+#df_long <- df %>%
+#  mutate(Age = index + 8) %>%
+#  gather(key = "variable", value = "value", -index)
+#
+#
+## Plot
+#ggplot(df_long, aes(x = Age, y = value, color = variable)) +
+#  geom_line(linewidth=1.0) +
+#  labs(title = "Line Plot of Matrix Columns. NO TREATMENT", x = "Index", y = "Value") 
+
+ggplot(df) +
+  #geom_line(aes(x = Age, y = H, color = "H"), linewidth = 1.0) +
+  #geom_line(aes(x = Age, y = HR.HPV.infection, color = "Infected"), linewidth = 1.0) +
+  geom_line(aes(x = Age, y = CIN1, color = "CIN1"), linewidth = 1.0) +
+  geom_line(aes(x = Age, y = CIN2, color = "CIN2"), linewidth = 1.0) +
+  geom_line(aes(x = Age, y = CIN3, color = "CIN3"), linewidth = 1.0) +
+  geom_line(aes(x = Age, y = FIGO.I, color = "FIGO.I"), linewidth = 1.0) +
+  geom_line(aes(x = Age, y = FIGO.II, color = "FIGO.II"), linewidth = 1.0) +
+  geom_line(aes(x = Age, y = FIGO.III, color = "FIGO.III"), linewidth = 1.0) +
+  geom_line(aes(x = Age, y = FIGO.IV, color = "FIGO.IV"), linewidth = 1.0) +
+  geom_line(aes(x = Age, y = CC_Death, color = "CC_Death"), linewidth = 1.0) +
+  labs(title = "Line Plot of Matrix Columns. WITH TREATMENT", x = "Age", y = "Value") +
+  scale_x_continuous(breaks = c(10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80),
+                     labels = c(10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80))
+
+
+```
+
+
+### Comparing microsimulation with Markov cohort simulations.
+Given the output of a Markov cohort model with a 12-state structure and 15 age-dependent transition matrices, I proceeded to compare both simulations. I did this by aggregating individuals from the microsimulation and comparing the results with the corresponding cohort model outcomes.
+
+```{r, loading markov result, fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth'}
+if (!require("readxl")) install.packages("readxl")
+library(readxl)
+# This R chunk is a plot routine (not part of the main program):
+
+#markov <- read_excel("Q:/my_Q_docs/Cervix_MicroSim/CervixMicroSim_Carlos/carlos__Krijkamp_ver/data/Screening_Markov_20221026.xlsx", sheet = "Strategy_A")
+#
+## data wrangling to extract results from this excel file.
+#
+## extract CIN columns:
+#CIN_df <- markov %>% 
+#  select(grep("CIN", names(.)))
+#
+## extracting only no intervention row (first row)
+#CIN_no_interv <- 
+#  CIN_df %>%
+#  slice_head(n = 1)
+## or CNI_no_interv <- CIN_df[1,]
+#
+#  # Convert from wide to long format
+#CIN_no_interv <- pivot_longer(CIN_no_interv,
+#                             cols = starts_with("n"),
+#                             names_to = "age_group",
+#                             values_to = "value")
+#
+#CIN_no_interv <- CIN_no_interv %>%
+#    mutate(age_group = factor(age_group))
+#
+## Print the long format data
+#print(CIN_no_interv)
+#
+#
+#CIN1_df <- 
+#  CIN_no_interv %>% filter(str_detect(age_group, "CIN1"))
+#
+#ggplot(data =  CIN1_df, aes(x = age_group, y = value)) +
+#  geom_bar()
+
+if (!require("readxl")) install.packages("readxl")
+library(readxl)
+markov <-
+  readxl::read_excel("Q:/my_Q_docs/Cervix_MicroSim/CervixMicroSim_Carlos/carlos__Krijkamp_ver/data/Sortida_NoIntervencio.xlsx", sheet = "NH")
+
+# Reshape the data into long format
+markov_long_data <- markov %>%
+  pivot_longer(cols = c(HR.HPV.infection, CIN1, CIN2, CIN3, FIGO.I, FIGO.II,
+                        #FIGO.III, FIGO.IV, Survival, CC_Death, Other.Death),
+                        FIGO.III, FIGO.IV, Survival, CC_Death),
+               names_to = "Health state",
+               values_to = "value")
+
+# Plot the data
+ggplot(markov_long_data, aes(x = age, y = value, color = `Health state`)) +
+  geom_line(size=1, alpha=0.7) +
+  labs(x = "Age", y = "Value", color = "Health state") +
+  ggtitle(expression(paste("Markov cohort simulation for ", 10^6, " individuals"))) + 
+  theme_minimal()  # Optional: customize the theme
+
+################################################################################
+# Comparing with the microsimulation with 10^6 individuals, once again I say:
+micro_df <- as.data.frame(sim_no_trt[[9]])
+
+#df$Age <- df$index + 8
+# Add an index column
+micro_df$index <- seq_len(nrow(micro_df))
+
+# add age 
+micro_df <- micro_df %>%
+  dplyr::mutate( age = index + 9) 
+
+
+ggplot(micro_df) +
+  #geom_line(aes(x = age, y = H, color = "H"), linewidth = 1.0) +
+  geom_line(aes(x = age, y = HR.HPV.infection, color = "Infected"), linewidth = 1.0, alpha=0.7) +
+  geom_line(aes(x = age, y = CIN1, color = "CIN1"), linewidth = 1.0) +
+  geom_line(aes(x = age, y = CIN2, color = "CIN2"), linewidth = 1.0) +
+  geom_line(aes(x = age, y = CIN3, color = "CIN3"), linewidth = 1.0) +
+  geom_line(aes(x = age, y = FIGO.I, color = "FIGO.I"), linewidth = 1.0) +
+  geom_line(aes(x = age, y = FIGO.II, color = "FIGO.II"), linewidth = 1.0) +
+  geom_line(aes(x = age, y = FIGO.III, color = "FIGO.III"), linewidth = 1.0) +
+  geom_line(aes(x = age, y = FIGO.IV, color = "FIGO.IV"), linewidth = 1.0) +
+  geom_line(aes(x = age, y = Survival, color = "Infected"), linewidth = 1.0) +
+  geom_line(aes(x = age, y = CC_Death, color = "CC_Death"), linewidth = 1.0) +
+  #geom_line(aes(x = Age, y = CC_Death, color = "Other.Death"), linewidth = 1.0) +
+  labs(title = "Line Plot of Matrix Columns. No intervention", x = "Age", y = "Value") +
+  ggtitle(expression(paste("Microsimulation for ", 10^6, " individuals"))) + 
+  scale_x_continuous(breaks =
+                       c(10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80),
+                     labels =
+                       c(10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80)) + 
+  theme_minimal()
+
+###
+################################################################################
+# to make both markov df and microsim df comparable I made:
+micro_df <- micro_df %>% as_tibble()
+#micro_df <- micro_df %>% rename(age = Age)
+
+# column bind `micro_df` and `markov` by the `age`column:
+merged_df <- left_join(micro_df, markov, by = 'age')
+
+# get rid of NAs
+merged_df <- merged_df %>% na.omit()
+################################################################################
+
+################################################################################
+# compare them:
+# Reshape the data into long format:
+long_merged_data <- merged_df %>%
+  pivot_longer(cols = c(#HR.HPV.infection.x, HR.HPV.infection.y, 
+                        CIN1.x, CIN1.y, 
+                        CIN2.x, CIN2.y, 
+                        CIN3.x, CIN3.y, 
+                        FIGO.I.x,FIGO.I.y,  
+                        FIGO.II.x, FIGO.II.y,
+                        #FIGO.III, FIGO.IV, Survival, CC_Death, Other.Death),
+                        FIGO.III.x, FIGO.III.y, FIGO.IV.x, FIGO.IV.y,
+                        Survival.x, Survival.y, 
+                        CC_Death.y, CC_Death.y),
+               names_to = "Health state",
+               values_to = "value")
+
+# Plot the data
+ggplot(long_merged_data, aes(x = age, y = value, color = `Health state`)) +
+  geom_line(size=1, alpha=0.7) +
+  labs(x = "Age", y = "Value", color = "Health state") +
+  ggtitle(expression(paste("Markov cohort vs  Microsimulation for ", 10^6, " individuals"))) + 
+  theme_minimal()  # Optional: customize the theme
+
+################################################################################
+```
+
+### New cases
+Now I compare the new cases of some microsimulation model states to the ones coming from the Markov cohort model with the same probabilistic structure. In the microsimulation a new case of particular health-state at particular time $t$ is defined as an individual transition to that state provided the individual was in any different state in the previous time $t-1$.
+
+```{r plot new cases, fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth'}
+## This R chunk is a plot routine (not part of the main program):
+markov_new_cases <- 
+  readxl::read_excel(path = "data/Sortida_NoIntervencio.xlsx", sheet = "Cases") 
+
+markov_new_cases <- markov_new_cases %>% dplyr::rename(age=Age)
+
+# Reshape the data into long format
+long_data_markov_nc <- markov_new_cases %>%
+  pivot_longer(cols = c( `Newcases CIN-I`, `Newcases CIN-II`, `Newcases CIN-III`,
+                         `Newcases CC`),
+               names_to = "Health state",
+               values_to = "value")
+
+# Plot the data
+ggplot(long_data_markov_nc, aes(x = age, y = value, color = `Health state`)) +
+  geom_line(size=1, alpha=0.7) +
+  labs(x = "Age", y = "number", color = "Health state") +
+  ggtitle(expression(paste("Markov cohort new cases simulation for ", 10^6, " individuals"))) + 
+  theme_minimal()  # Optional: customize the theme
+
+
+################################################################################
+# new cases from microsimulation:
+df_CIN1_nc <- new_cases("CIN1") %>% dplyr:: rename(`new cases CIN1` = total_new_cases)
+df_CIN2_nc <- new_cases("CIN2") %>% dplyr:: rename(`new cases CIN2` = total_new_cases) %>% select(-age)
+df_CIN3_nc <- new_cases("CIN3") %>% dplyr:: rename(`new cases CIN3` = total_new_cases) %>% select(-age)
+df_FIGO1_nc <- new_cases("FIGO.I") %>% dplyr:: rename(`new cases FIGO1` = total_new_cases) %>% select(-age)
+df_FIGO2_nc <- new_cases("FIGO.II") %>% dplyr:: rename(`new cases FIGO2` = total_new_cases) %>% select(-age)
+df_FIGO3_nc <- new_cases("FIGO.III") %>% dplyr:: rename(`new cases FIGO3` = total_new_cases) %>% select(-age)
+df_FIGO4_nc <- new_cases("FIGO.IV") %>% dplyr:: rename(`new cases FIGO4` = total_new_cases) %>% select(-age)
+
+df_microsim_new_cases <- dplyr::bind_cols(df_CIN1_nc, df_CIN2_nc, df_CIN3_nc, 
+                                          df_FIGO1_nc, df_FIGO2_nc, 
+                                          df_FIGO3_nc, df_FIGO4_nc) %>%
+  dplyr::mutate(`new cases cancer`= `new cases FIGO1` +
+                  `new cases FIGO2` +
+                  `new cases FIGO3` +
+                  `new cases FIGO4`)
+rm(df_CIN1_nc, df_CIN2_nc, df_CIN3_nc, df_FIGO1_nc, df_FIGO2_nc, 
+   df_FIGO3_nc, df_FIGO4_nc)
+                                          
+# Reshape the data into long format
+long_data_microsim_nc <- df_microsim_new_cases %>%
+  pivot_longer(cols = c( "new cases CIN1", "new cases CIN2", "new cases CIN3", "new cases cancer"),
+               names_to = "Health state",
+               values_to = "value")
+
+# Plot the data
+ggplot(long_data_microsim_nc, aes(x = age, y = value, color = `Health state`)) +
+  geom_line(size=1, alpha=0.7) +
+  labs(x = "Age", y = "Number", color = "Health state") +
+  #ggtitle(expression(paste("Microsimulation new cases for "), 10^6, (" individuals"))) + 
+  ggtitle(paste("Microsimulation new cases, number of individuals: ", n_i)) + 
+  # labs(title = element_text(lineheight = 1)) +
+  theme_minimal()  # Optional: customize the theme
+```
+
+
+
+```{r, compare new cases II, loading markov result, fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth'}
+## This R chunk is a plot routine (not part of the main program):
+new_markov_CIN1_cases <- long_data_markov_nc %>%
+  dplyr::filter(`Health state` == "Newcases CIN-I") %>%
+  dplyr::select(-Step) %>%
+  dplyr::mutate(`Health state` = "new CIN1 Markov")
+
+#new_markov_CIN1_cases %>% head()
+
+#long_data_microsim_nc %>% head()
+new_microsim_CIN1_cases <-
+  long_data_microsim_nc %>%
+  dplyr::filter(`Health state` == "new cases CIN1") %>%
+  dplyr:: select(age, `Health state`, value) %>%
+  dplyr::mutate(`Health state` = "new CIN1 MicroSim" )
+
+comparison_new_CIN1 <- 
+  dplyr::bind_rows(new_markov_CIN1_cases, new_microsim_CIN1_cases)
+
+# plot 
+ggplot(comparison_new_CIN1, aes(x = age, y = value, color = `Health state`)) +
+  geom_line(size=1, alpha=0.7) +
+  labs(x = "Age", y = "Number", color = "Health state") +
+  ggtitle(paste("New cases CIN1: Markov vs MicroSim, number of individuals: ", n_i)) + 
+  #labs(title = element_text(lineheight = 1)) +
+  theme_minimal()  # Optional: customize the theme
+
+##
+# for CIN2:
+new_markov_CIN2_cases <- long_data_markov_nc %>%
+  dplyr::filter(`Health state` == "Newcases CIN-II") %>%
+  dplyr::select(-Step) %>%
+  dplyr::mutate(`Health state` = "new CIN2 Markov")
+
+#new_markov_CIN2_cases %>% head()
+new_microsim_CIN2_cases <-
+  long_data_microsim_nc %>%
+  dplyr::filter(`Health state` == "new cases CIN2") %>%
+  dplyr:: select(age, `Health state`, value) %>%
+  dplyr::mutate(`Health state` = "new CIN2 MicroSim" )
+
+comparison_new_CIN2 <- 
+  dplyr::bind_rows(new_markov_CIN2_cases, new_microsim_CIN2_cases)
+
+# plot 
+ggplot(comparison_new_CIN2, aes(x = age, y = value, color = `Health state`)) +
+  geom_line(size=1, alpha=0.7) +
+  labs(x = "Age", y = "Number", color = "Health state") +
+  ggtitle(paste("New cases CIN2: Markov vs MicroSim, number of individuals: ", n_i)) + 
+  #labs(title = element_text(lineheight = 1)) +
+  theme_minimal()  # Optional: customize the theme
+
+##
+# for CIN3:
+new_markov_CIN3_cases <- long_data_markov_nc %>%
+  dplyr::filter(`Health state` == "Newcases CIN-III") %>%
+  dplyr::select(-Step) %>%
+  dplyr::mutate(`Health state` = "new CIN3 Markov")
+
+#new_markov_CIN2_cases %>% head()
+new_microsim_CIN3_cases <-
+  long_data_microsim_nc %>%
+  dplyr::filter(`Health state` == "new cases CIN3") %>%
+  dplyr:: select(age, `Health state`, value) %>%
+  dplyr::mutate(`Health state` = "new CIN3 MicroSim" )
+
+comparison_new_CIN3 <- 
+  dplyr::bind_rows(new_markov_CIN3_cases, new_microsim_CIN3_cases)
+
+# plot 
+ggplot(comparison_new_CIN3, aes(x = age, y = value, color = `Health state`)) +
+  geom_line(size=1, alpha=0.7) +
+  labs(x = "Age", y = "Number", color = "Health state") +
+  ggtitle(paste("New cases CIN3: Markov vs MicroSim, number of individuals: ", n_i)) + 
+  #labs(title = element_text(lineheight = 1)) +
+  theme_minimal()  # Optional: customize the theme
+
+##
+# for new cancer:
+#long_data_markov_nc %>% select(`Health state`) %>% unique()
+new_markov_cancer_cases <- long_data_markov_nc %>%
+  dplyr::filter(`Health state` == "Newcases CC") %>%
+  dplyr::select(-Step) %>%
+  dplyr::mutate(`Health state` = "new cancer Markov")
+
+new_microsim_cancer_cases <-
+  long_data_microsim_nc %>%
+  dplyr::filter(`Health state` == "new cases cancer") %>%
+  dplyr:: select(age, `Health state`, value) %>%
+  dplyr::mutate(`Health state` = "new cancer MicroSim" )
+
+comparison_new_cancer <- 
+  dplyr::bind_rows(new_markov_cancer_cases, new_microsim_cancer_cases)
+
+# plot 
+ggplot(comparison_new_cancer, aes(x = age, y = value, color = `Health state`)) +
+  geom_line(size=1, alpha=0.7) +
+  labs(x = "Age", y = "Number", color = "Health state") +
+  ggtitle(paste("New cancer cases: Markov vs MicroSim, number of individuals: ", n_i)) + 
+  #labs(title = element_text(lineheight = 1)) +
+  theme_minimal()  # Optional: customize the theme
+```
+
+
+
+
+ Ploting new cases of `CIN1`as only individual transitions of the type `HR.HPV.infection->CIN1`, i.e. only transitions coming from infections and nothing more. Similarly newcases of `CIN2` are the only transitions of the type `CIN1->CIN2`, new cases of `CIN3`are `CIN2->CIN3` and new cancers are only transitions `CIN3->FIGO-I`
+ 
+```{r compare new cases III,  fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth'}
+
+## This R chunk is a plot routine (not part of the main program):
+
+# new cases from microsimulation:
+df_CIN1_nc_2   <- new_cases_2(state1 = "HR.HPV.infection", state2 = "CIN1") 
+
+df_CIN2_nc_2   <- new_cases_2(state1 = "CIN1", state2 = "CIN2") %>% 
+  dplyr::select(-age)
+
+df_CIN3_nc_2   <- new_cases_2(state1 = "CIN2", state2 = "CIN3") %>%
+  dplyr::select(-age)
+
+df_cancer_nc_2 <- new_cases_2(state1 = "CIN3", state2 = "FIGO.I") %>%
+  dplyr::select(-age)
+
+df_microsim_new_cases_2 <- dplyr::bind_cols(df_CIN1_nc_2, df_CIN2_nc_2, 
+                                            df_CIN3_nc_2, df_cancer_nc_2)
+rm(df_CIN1_nc_2, df_CIN2_nc_2, df_CIN3_nc_2, df_cancer_nc_2)
+
+# Reshape the data into long format
+long_data_microsim_nc_2 <- df_microsim_new_cases_2 %>%
+  pivot_longer(cols = c( "HR.HPV.infection->CIN1", "CIN1->CIN2", "CIN2->CIN3", 
+                         "CIN3->FIGO.I"),
+               names_to = "Health state",
+               values_to = "value")
+
+# Plot the data
+ggplot(long_data_microsim_nc_2, aes(x = age, y = value, color = `Health state`)) +
+  geom_line(size=1, alpha=0.7) +
+  labs(x = "Age", y = "Number", color = "Health state") +
+  #ggtitle(expression(paste("Microsimulation new cases for "), 10^6, (" individuals"))) + 
+  ggtitle(paste("Microsimulation new cases (computation B), number of individuals: ", n_i)) + 
+  # labs(title = element_text(lineheight = 1)) +
+  theme_minimal()  # Optional: customize the theme
+#####
+#####
+#####
+
+# for CIN3:
+#long_data_microsim_nc %>% head()
+new_microsim_CIN1_cases_2 <-
+  long_data_microsim_nc_2 %>%
+  dplyr::filter(`Health state` == "HR.HPV.infection->CIN1") %>%
+  dplyr:: select(age, `Health state`, value) %>%
+  dplyr::mutate(`Health state` = "new CIN1 MicroSim (comp. B)" )
+
+comparison_new_CIN1_2 <- 
+  dplyr::bind_rows(new_markov_CIN1_cases, new_microsim_CIN1_cases_2)
+
+# plot 
+ggplot(comparison_new_CIN1_2, aes(x = age, y = value, color = `Health state`)) +
+  geom_line(size=1, alpha=0.7) +
+  labs(x = "Age", y = "Number", color = "Health state") +
+  ggtitle(paste("New cases CIN1: Markov vs MicroSim (comp. B), number of individuals: ", n_i)) + 
+  #labs(title = element_text(lineheight = 1)) +
+  theme_minimal()  # 
+
+####
+# for CIN2:
+new_microsim_CIN2_cases_2 <-
+  long_data_microsim_nc_2 %>%
+  dplyr::filter(`Health state` == "CIN1->CIN2") %>%
+  dplyr:: select(age, `Health state`, value) %>%
+  dplyr::mutate(`Health state` = "new CIN2 MicroSim (comp. B)" )
+
+comparison_new_CIN2_2 <- 
+  dplyr::bind_rows(new_markov_CIN2_cases, new_microsim_CIN2_cases_2)
+
+# plot 
+ggplot(comparison_new_CIN2_2, aes(x = age, y = value, color = `Health state`)) +
+  geom_line(size=1, alpha=0.7) +
+  labs(x = "Age", y = "Number", color = "Health state") +
+  ggtitle(paste("New cases CIN2: Markov vs MicroSim (comp. B), number of individuals: ", n_i)) + 
+  #labs(title = element_text(lineheight = 1)) +
+  theme_minimal()  # 
+
+####
+# for CIN3:
+new_microsim_CIN3_cases_2 <-
+  long_data_microsim_nc_2 %>%
+  dplyr::filter(`Health state` == "CIN2->CIN3") %>%
+  dplyr:: select(age, `Health state`, value) %>%
+  dplyr::mutate(`Health state` = "new CIN3 MicroSim (comp. B)" )
+
+comparison_new_CIN3_2 <- 
+  dplyr::bind_rows(new_markov_CIN3_cases, new_microsim_CIN3_cases_2)
+
+# plot 
+ggplot(comparison_new_CIN3_2, aes(x = age, y = value, color = `Health state`)) +
+  geom_line(size=1, alpha=0.7) +
+  labs(x = "Age", y = "Number", color = "Health state") +
+  ggtitle(paste("New cases CIN3: Markov vs MicroSim (comp. B), number of individuals: ", n_i)) + 
+  #labs(title = element_text(lineheight = 1)) +
+  theme_minimal()  # 
+
+####
+# for cancer:
+new_microsim_cancer_cases_2 <-
+  long_data_microsim_nc_2 %>%
+  dplyr::filter(`Health state` == "CIN3->FIGO.I") %>%
+  dplyr:: select(age, `Health state`, value) %>%
+  dplyr::mutate(`Health state` = "new cancer MicroSim (comp. B)" )
+
+comparison_new_cancer_2 <- 
+  dplyr::bind_rows(new_markov_cancer_cases, new_microsim_cancer_cases_2)
+
+# plot 
+ggplot(comparison_new_cancer_2, aes(x = age, y = value, color = `Health state`)) +
+  geom_line(size=1, alpha=0.7) +
+  labs(x = "Age", y = "Number", color = "Health state") +
+  ggtitle(paste("New cases cancer: Markov vs MicroSim (comp. B), number of individuals: ", n_i)) + 
+  #labs(title = element_text(lineheight = 1)) +
+  theme_minimal()  # 
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

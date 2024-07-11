@@ -1,0 +1,8 @@
+Package: CervixMicroSim
+Title: An implementation of a microsimulation model for investigating the cost-effectiveness of both screening and vaccination on synthetic cohorts  build from individuals with particular charateristics
+Version: 0.1.0
+Author: Carlos J. Dommar D'Lima
+Maintainer: Your Name <carlos.dommar@gmail.com>
+Description: This package implements a microsimulation model to study the cost-effectiveness of both screening and vaccination on synthetic chohrst made out individuals.
+License: What license it uses (e.g., MIT, GPL-3)
+RoxygenNote: 7.3.1
