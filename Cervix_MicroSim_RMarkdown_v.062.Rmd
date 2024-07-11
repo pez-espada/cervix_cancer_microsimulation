@@ -525,7 +525,7 @@ The symptom function simply account for the individuals that being in a cancer r
 ensure_library("dplyr", "tidyverse", "purrr")
 
 #prob to develop symptoms at FIGO.I-II-III-IV states
-figoSymProb <- c(0.22, 0.23, 0.66, 0.9) 
+figoSymProb <- c(0.11, 0.23, 0.66, 0.9) 
 # prob to heal after been diagnosed from FIGO.I-II-III-IV:
 screeProbs <- c(0,0,1,1,1,0.9688,0.9066,0.7064,0.3986,0,0,0)
 symptom_prob_vec <- figoSymProb
