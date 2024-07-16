@@ -898,18 +898,18 @@ comp.time %>% print()
 ```{r, cost-efectiveness, tidy=TRUE}
 ###################### Cost-effectiveness analysis #############################
 # store the mean costs (and MCSE) of each strategy in a new variable C (vector costs)
-v_C  <- c(sim_no_trt$tc_hat, sim_trt$tc_hat) 
-sd_C <- c(sd(sim_no_trt$tc), sd(sim_trt$tc)) / sqrt(n_i)
+v_C  <- c(sim_no_trt$tc_hat_disc, sim_trt$tc_hat_disc) 
+sd_C <- c(sd(sim_no_trt$tc_disc), sd(sim_trt$tc_disc)) / sqrt(n_i)
 # store the mean QALYs (and MCSE) of each strategy in a new variable E (vector effects)
-v_E  <- c(sim_no_trt$te_hat, sim_trt$te_hat)
-sd_E <- c(sd(sim_no_trt$te), sd(sim_trt$te)) / sqrt(n_i)
+v_E  <- c(sim_no_trt$te_hat_disc, sim_trt$te_hat_disc)
+sd_E <- c(sd(sim_no_trt$te_disc), sd(sim_trt$te_disc)) / sqrt(n_i)
 
 delta_C <- v_C[2] - v_C[1]                   # calculate incremental costs
 delta_E <- v_E[2] - v_E[1]                   # calculate incremental QALYs
 # Monte Carlo Squared Error (MCSE) of incremental costs:
 sd_delta_E <- sd(sim_trt$te - sim_no_trt$te) / sqrt(n_i) 
 # Monte Carlo Squared Error (MCSE) of incremental QALYs:
-sd_delta_C <- sd(sim_trt$tc - sim_no_trt$tc) / sqrt(n_i) 
+sd_delta_C <- sd(sim_trt$tc_disc - sim_no_trt$tc_disc) / sqrt(n_i) 
 ICER    <- delta_C / delta_E                 # calculate the ICER
 results <- c(delta_C, delta_E, ICER)         # store the values in a new variable
 
@@ -1549,8 +1549,8 @@ for (i in 1:n_simulations) {
 }
 
 ## Check the structure of the results
-#str(simulation_results)
-saveRDS(simulation_results, "simulation_results_nsim_20.rds")
+##str(simulation_results)
+#saveRDS(simulation_results, "simulation_results_nsim_20.rds")
 ################################################################################
 
 
