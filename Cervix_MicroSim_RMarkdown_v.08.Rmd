@@ -115,8 +115,8 @@ knitr::kable(my_Probs)
 ### Model parameters:
 
 ```{r, model parameters}
-n_i <- 10^6                 # number of simulated individuals
-n_t <- 75                   # time horizon, 75 cycles (it starts from 1)
+n_i <- 10^5                 # number of simulated individuals
+n_t <- 25                   # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
 ### (THIS IS WORK IN PROGRESS):
@@ -640,7 +640,12 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
   # assumed that all individuals who develop symptoms will visit a doctor. This 
   # event incurs a one-time, lifetime cost (applicable only once, upon diagnosis).
   #symptomatics <- data.frame()
+  
+  # Initialize an empty list to store results from each simulation
+  all_results <- list()
+  
   for(sim in 1:numb_of_sims){
+    print(paste("Simulation number: ", sim))
     
     symptomatics <-
       data.frame(ID = integer(), TimeStep = integer(), 
@@ -685,9 +690,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
     
     # new code:
     stored_list <- list()
-    ###################### run over all the cycles ############################# 
+    ######################## run over all the cycles ############################# 
     for (t in 1:(n_t)) {
-      ##########################################################################
+      ############################################################################
       # Select the transition matrix based on the cycle `n_t`:
       # Since our age intervals start at 10 years old,
       # `age_in_loop` is calculated as `t + 10 * age_factor(cycle_period)`.
@@ -708,7 +713,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
         my_age_prob_matrix %>%
         dplyr::select(-c(Age.group, Lower, Larger)) %>% 
         colnames()
-      ##########################################################################
+      ############################################################################
       
       ## Check what's the cycle period and modify transitions accordingly:
       #my_age_prob_matrix <- 
@@ -717,7 +722,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       # update/correct n_s (<<- let change variable from inside a function):
       n_s  <<- length(v_n)  
       
-      ########################################################################## 
+      ############################################################################ 
       #new code:
       new_entries <- diagnose_column(m_M[, t], t)
       
@@ -732,10 +737,10 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       ## Debugging: 
       ## Ensure M_it has no NA values
       #m_M[is.na(m_M)] <- "H"  # Or any other default state that makes sense
-      ########################################################################## 
+      ############################################################################ 
       
       
-      ##########################################################################    
+      ############################################################################    
       # Extract the transition probabilities of each individuals at cycle t
       # given the individual current state and the corresponding 
       # transition probability matrix that depends on age:
@@ -746,7 +751,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
       # and store that state in  
       # matrix m_M 
-      ##########################################################################    
+      ############################################################################    
       
       
       # m_M[, t + 1] <- update_column(m_M[, t], new_entries)
@@ -757,7 +762,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       m_M[, t + 1] <- ifelse(next_col == "Survival", "Survival", m_M[, t + 1])
       
       
-      ##########################################################################    
+      ############################################################################    
       ## costs per CC diagnose at time t + 1.
       m_C[, t ] <-                              # estimate costs per individual
         Costs_per_Cancer_Diag(M_it = m_M[, t],  # during cycle t + 1
@@ -770,13 +775,13 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       m_E[, t + 1] <-                              # estimate QALYs per individual
         Effs( m_M[, t + 1], Trt, 
               utilityCoefs = utilityCoefs)                   # during cycle t + 1
-      ###########################################################################    
+      ############################################################################    
       
       # conditional on treatment
       cat('\r', paste(round(t/n_t * 100),          # display the 
                       "% done", sep = " "))        # progress of  the simulation                    
     }  
-    ###################### close loop for cycles ############################### 
+    ######################## close loop for cycles ############################### 
     
     # Combine stored entries into a single data frame
     symptomatics <- bind_rows(stored_list)
@@ -857,34 +862,43 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
     
     rm(m_M, m_C, m_E)
     # Store the results from the simulation in a list
-    results <- list(strategy=strategy, 
-                    numb_of_sims = numb_of_sims,
+    results <- list(strategy,
                     sim_numb = sim_numb, 
                     #m_M = m_M, 
                     #m_C = m_C, 
                     #m_E = m_E, 
-                    tc_disc = tc_disc, 
-                    tc_undisc = tc_undisc,
-                    te_disc = te_disc,
-                    te_undisc = te_undisc,
+                    #tc_disc = tc_disc, 
+                    #tc_undisc = tc_undisc,
+                    #te_disc = te_disc,
+                    #te_undisc = te_undisc,
                     tc_hat_disc = tc_hat_disc,
                     tc_hat_undisc = tc_hat_undisc,
                     te_hat_disc = te_hat_undisc, 
                     te_hat_disc = te_hat_undisc, 
-                    #TS = TS, 
+                    #TS = TS,
                     TR = TR, 
-                    Tot_Trans_per_t = Tot_Trans_per_t, 
-                    symptomatics = symptomatics,
+                    #Tot_Trans_per_t = Tot_Trans_per_t, 
+                    #symptomatics = symptomatics,
                     new_CIN1 = new_CIN1,
                     new_CIN2 = new_CIN2,
                     new_CIN3 = new_CIN3,
-                    new_Cancer = new_Cancer
-    )        
+                    new_Cancer = new_Cancer)        
     
+    #return(results)  # return the results
+    all_results[[sim]] <- results  # Store results in the list
     
-    return(results)  # return the results
-  }
-}  # end of the MicroSim function  
+    # Clear large matrices from memory if not needed anymore
+    #rm(m_M, m_C, m_E)
+    
+  }  # end of the MicroSim function  
+  
+  # Combine all simulation results into a single data frame
+  final_df <- bind_rows(all_results)
+  
+  return(final_df)
+  
+  
+} # end of `numb_of_sims` loop
 ```
 
 
@@ -895,7 +909,11 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
 ## START SIMULATION
 p = Sys.time()
 # run for no treatment
-sim_no_trt  <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = FALSE)
+#sim_no_trt  <- MicroSim(v_M_1, n_i, n_t, v_n, d_c=d_c, d_e, Trt = FALSE)
+sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 3, 
+                        v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
+                        d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
+                        Trt = FALSE, sim_numb = 1, seed = 1, Pmatrix = Pmatrix)
 # run for treatment
 sim_trt     <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = TRUE)  
 comp.time = Sys.time() - p

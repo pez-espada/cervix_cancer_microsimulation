@@ -1,5 +1,4 @@
 ---
-
 title: "Cervix Microsimulation Model Follow-Up Document"
 author: "Carlos J. Dommar D'Lima"
 output:
@@ -59,6 +58,8 @@ The idea is to build on the simple [sick-sicker](https://github.com/DARTH-git/Mi
 rm(list = ls())
 library(tidyverse)
 
+################################################################################
+# version 3 (previous versions in the older script versions)
 # Ensure necessary libraries are loaded
 ensure_library <- function(...) {
   pkgs <- unlist(list(...))
@@ -114,8 +115,8 @@ knitr::kable(my_Probs)
 ### Model parameters:
 
 ```{r, model parameters}
-n_i <- 10^5                 # number of simulated individuals
-n_t <- 25                   # time horizon, 75 cycles (it starts from 1)
+n_i <- 10^6                 # number of simulated individuals
+n_t <- 75                   # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
 ### (THIS IS WORK IN PROGRESS):
@@ -146,7 +147,17 @@ v_Trt <-
   c("No Treatment", "Treatment")    # store the strategy names
 ################################################################################
 
-# Cost and utility inputs 
+# Cost and utility inputs (to be modified..)
+c_H     <- 2000                # cost of remaining one cycle healthy
+c_S1    <- 4000                # cost of remaining one cycle sick 
+c_S2    <- 15000               # cost of remaining one cycle sicker
+c_Trt   <- 12000               # cost of treatment (per cycle)
+
+u_H     <- 1                   # utility when healthy 
+u_S1    <- 0.75                # utility when sick 
+u_S2    <- 0.5                 # utility when sicker 
+u_Trt   <- 0.95                # utility when sick(er) and being treated
+
 # From our Markov cervix model (CC's natural history?):
 cost_Vec = c(0, 39.54, 288.91, 1552.27, 1552.27, 
              5759.81, 12903.63, 23032.41, 35323.14, 0, 0, 0)
@@ -305,6 +316,7 @@ Probs <- function(M_it, my_Probs) {
       m_P_it[, state_mask] <- lapply(X = v_n, function(x) trans_prb(P = my_Probs, state1 = v_n[i], state2 = x)) %>%
         unlist()
     } else {
+      ## Diagnostic message
       ## Debugging:
       #cat("State", v_n[i], "is not present in M_it at this time step\n")
     }
@@ -349,7 +361,7 @@ Costs_per_Cancer_Diag <- function (M_it, cost_Vec, symptomatics, time_iteration,
     
     c_it[symptomatics %>% filter(DiagnosedState == "FIGO.IV" & TimeStep == time_iteration) %>% 
            select(ID) %>% as.list() %>% unlist()] <- cost_Vec[which(v_n %in% "FIGO.IV")]
-  }
+    }
   return(c_it)              		                           # return the costs
 }
 ```
@@ -593,25 +605,29 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t){
 This is a modified version of [Krijkamp et al (2018)](https://journals.sagepub.com/doi/abs/10.1177/0272989X18754513) where I have extended the number of individual states to 12 and have included age-dependent transition matrices.
 
 ```{r MicroSim function, tidy=TRUE}
-MicroSim <- function(v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE, 
+# Mod: incorporate loop over simulations:
+MicroSim <- function(strategy="natural_history", numb_of_sims = 1, 
+                     v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE, 
                      TS_out = TRUE, Trt = FALSE, sim_numb = 1, seed = 1, Pmatrix) {
   ## Debuging:
   #TR_out = TRUE; TS_out = TRUE; Trt = FALSE; seed = 1
   
   #Arguments:
-  # v_M_1:   vector of initial states for individuals
-  # n_i:     number of individuals
-  # n_t:     total number of cycles to run the model
-  # v_n:     vector of health state names
-  # d_c:     discount rate for costs
-  # d_e:     discount rate for health outcome (QALYs)
-  # TR_out:  should the output include a Microsimulation trace? 
-  #          (default is TRUE)
-  # TS_out:  should the output include a matrix of transitions between states? 
-  #          (default is TRUE)
-  # Trt:     are the n.i individuals receiving treatment? (scalar with a Boolean
-  #          value, default is FALSE)
-  # seed:    starting seed number for random number generator (default is 1)
+  # strategy:     strategy name, "natural_history" by default,
+  #numb_of sims:  number of simulations, 1 by default
+  # v_M_1:        vector of initial states for individuals
+  # n_i:          number of individuals
+  # n_t:          total number of cycles to run the model
+  # v_n:          vector of health state names
+  # d_c:          discount rate for costs
+  # d_e:          discount rate for health outcome (QALYs)
+  # TR_out:       should the output include a Microsimulation trace? 
+  #               (default is TRUE)
+  # TS_out:       should the output include a matrix of transitions between states? 
+  #               (default is TRUE)
+  # Trt:          are the n.i individuals receiving treatment? (scalar with a Boolean
+  #               value, default is FALSE)
+  # seed:         starting seed number for random number generator (default is 1)
   # Makes use of:
   # Probs:   function for the estimation of transition probabilities
   # Costs:   function for the estimation of cost state vamatrix: Matrix of 
@@ -624,257 +640,250 @@ MicroSim <- function(v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE,
   # assumed that all individuals who develop symptoms will visit a doctor. This 
   # event incurs a one-time, lifetime cost (applicable only once, upon diagnosis).
   #symptomatics <- data.frame()
-  symptomatics <-
-    data.frame(ID = integer(), TimeStep = integer(), 
-               DiagnosedState = character(), 
-               RecoveredFromState = logical(), stringsAsFactors = FALSE)
-  
-  v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   # calculate the cost discount weight based
-                                         # on the discount rate d_c 
-  print(length(v_dwc))
-  
-  v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   # calculate the QALY discount weight based 
-                                         # on the discount rate d.e
-  
-  # Create the matrix capturing the state name/costs/health outcomes 
-  # for all individuals at each time point:
-  m_M <- m_C <- m_E <-  matrix(nrow = n_i, ncol = (n_t + 1), 
-                               dimnames = list( 1:n_i, 
-                                                paste0("cycle_", 1:(n_t + 1), sep = "")))  
-  
-  m_M[, 1] <- v_M_1                  # indicate the initial health state   
-  
-  set.seed(seed)                     # set the seed for every individual for the
-                                     # random number generator
-  
-  m_C[, 1] <- Costs_per_Cancer_Diag(M_it = m_M[, 1], # estimate costs per individual for the 
-                                    symptomatics = symptomatics,
-                                    time_iteration = 1,
-                                    cost_Vec =       # initial health state
-                                      cost_Vec,
-                                    Trt)             
-  ## Debugging:
-  #print(v_n) 
-  m_E[, 1] <- Effs(m_M[, 1], Trt, utilityCoefs = utilityCoefs)  # estimate QALYs
-                                                                # per individual 
-                                                                # for the initial
-                                                                # health state  
-  
-  # new code:
-  stored_list <- list()
-  ######################## run over all the cycles ############################# 
-  for (t in 1:(n_t)) {
-    ############################################################################
-    # Select the transition matrix based on the cycle `n_t`:
-    # Since our age intervals start at 10 years old,
-    # `age_in_loop` is calculated as `t + 10 * age_factor(cycle_period)`.
-    age_in_loop <- t + 10
-    # Choose corresponding transition matrix according current age:
-    ## DONT USE it for cycle_period = "1yr"
-    #my_age_prob_matrix <- my_Probs %>% 
-    #  dplyr::filter(Lower <= 
-    #                  (age_in_loop / age_factor(cycle_period)) &
-    #                  Larger >= (age_in_loop / age_factor(cycle_period)) %>%
-    #                  floor()) 
-    my_age_prob_matrix <- my_Probs %>% 
-      dplyr::filter(Lower <= age_in_loop  &
-                      Larger >= age_in_loop) 
+  for(sim in 1:numb_of_sims){
     
-    # Add colnames and update `v_n`:
-    rownames(my_age_prob_matrix) <- v_n <<- 
-      my_age_prob_matrix %>%
-      dplyr::select(-c(Age.group, Lower, Larger)) %>% 
-      colnames()
-    ############################################################################
-    
-    # update/correct n_s (<<- let change variable from inside a function):
-    n_s  <<- length(v_n)  
-    
-    ############################################################################ 
-    #new code:
-    new_entries <- diagnose_column(m_M[, t], t)
-    
-    if (!is.null(new_entries)) {
-      stored_list[[t]] <- new_entries
-    }
-    
-    if (nrow(new_entries) > 0) {
-      symptomatics <- bind_rows(symptomatics, new_entries)
-    }
-    
-    ## Debugging: 
-    ## Ensure M_it has no NA values
-    #m_M[is.na(m_M)] <- "H"  # Or any other default state that makes sense
-    ############################################################################ 
+    symptomatics <-
+      data.frame(ID = integer(), TimeStep = integer(), 
+                 DiagnosedState = character(), 
+                 RecoveredFromState = logical(), stringsAsFactors = FALSE)
     
     
-    ############################################################################    
-    # Extract the transition probabilities of each individuals at cycle t
-    # given the individual current state and the corresponding 
-    # transition probability matrix that depends on age:
+    #v_dwc <- 1 / (1 + d_c) ^ (0:n_t)   # calculate the cost discount weight based
+    v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   # calculate the cost discount weight based
+    # on the discount rate d_c 
+    print(length(v_dwc))
+    
+    #v_dwe <- 1 / (1 + d_e) ^ (0:n_t)   # calculate the QALY discount weight based 
+    v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   # calculate the QALY discount weight based 
+    # on the discount rate d.e
+    
+    # Create the matrix capturing the state name/costs/health outcomes 
+    # for all individuals at each time point:
+    #m_M <- m_C <- m_E <-  matrix(nrow = n_i, ncol = n_t + 1, 
+    m_M <- m_C <- m_E <-  matrix(nrow = n_i, ncol = (n_t + 1), 
+                                 #dimnames = list(paste("ind", 1:n_i, sep = " "), 
+                                 dimnames = list( 1:n_i, 
+                                                  paste0("cycle_", 1:(n_t + 1), sep = "")))  
+    
+    m_M[, 1] <- v_M_1                  # indicate the initial health state   
+    
+    set.seed(seed)                     # set the seed for every individual for the
+    # random number generator
+    
+    m_C[, 1] <- Costs_per_Cancer_Diag(M_it = m_M[, 1], # estimate costs per individual for the 
+                                      symptomatics = symptomatics,
+                                      time_iteration = 1,
+                                      cost_Vec =       # initial health state
+                                        cost_Vec,
+                                      Trt)             
     ## Debugging:
-    #cat("The time step is", t, "\n")
-    m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
+    #print(v_n) 
+    m_E[, 1] <- Effs(m_M[, 1], Trt, utilityCoefs = utilityCoefs)  # estimate QALYs
+    # per individual 
+    # for the initial
+    # health state  
     
-    m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
-    # and store that state in  
-    # matrix m_M 
-    ############################################################################    
+    # new code:
+    stored_list <- list()
+    ###################### run over all the cycles ############################# 
+    for (t in 1:(n_t)) {
+      ##########################################################################
+      # Select the transition matrix based on the cycle `n_t`:
+      # Since our age intervals start at 10 years old,
+      # `age_in_loop` is calculated as `t + 10 * age_factor(cycle_period)`.
+      age_in_loop <- t + 10
+      # Choose corresponding transition matrix according current age:
+      ## DONT USE it for cycle_period = "1yr"
+      #my_age_prob_matrix <- my_Probs %>% 
+      #  dplyr::filter(Lower <= 
+      #                  (age_in_loop / age_factor(cycle_period)) &
+      #                  Larger >= (age_in_loop / age_factor(cycle_period)) %>%
+      #                  floor()) 
+      my_age_prob_matrix <- my_Probs %>% 
+        dplyr::filter(Lower <= age_in_loop  &
+                        Larger >= age_in_loop) 
+      
+      # Add colnames and update `v_n`:
+      rownames(my_age_prob_matrix) <- v_n <<- 
+        my_age_prob_matrix %>%
+        dplyr::select(-c(Age.group, Lower, Larger)) %>% 
+        colnames()
+      ##########################################################################
+      
+      ## Check what's the cycle period and modify transitions accordingly:
+      #my_age_prob_matrix <- 
+      #  convert_matrix_to_proper_transition(my_age_prob_matrix = my_age_prob_matrix, 
+      #                                       cycle_period = cycle_period)
+      # update/correct n_s (<<- let change variable from inside a function):
+      n_s  <<- length(v_n)  
+      
+      ########################################################################## 
+      #new code:
+      new_entries <- diagnose_column(m_M[, t], t)
+      
+      if (!is.null(new_entries)) {
+        stored_list[[t]] <- new_entries
+      }
+      
+      if (nrow(new_entries) > 0) {
+        symptomatics <- bind_rows(symptomatics, new_entries)
+      }
+      
+      ## Debugging: 
+      ## Ensure M_it has no NA values
+      #m_M[is.na(m_M)] <- "H"  # Or any other default state that makes sense
+      ########################################################################## 
+      
+      
+      ##########################################################################    
+      # Extract the transition probabilities of each individuals at cycle t
+      # given the individual current state and the corresponding 
+      # transition probability matrix that depends on age:
+      ## Debugging:
+      #cat("The time step is", t, "\n")
+      m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
+      
+      m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
+      # and store that state in  
+      # matrix m_M 
+      ##########################################################################    
+      
+      
+      # m_M[, t + 1] <- update_column(m_M[, t], new_entries)
+      next_col <- m_M[, t + 1]
+      next_col <- update_column(m_M[, t], new_entries, next_col)
+      
+      # Ensure next_col updates are preserved after sampling
+      m_M[, t + 1] <- ifelse(next_col == "Survival", "Survival", m_M[, t + 1])
+      
+      
+      ##########################################################################    
+      ## costs per CC diagnose at time t + 1.
+      m_C[, t ] <-                              # estimate costs per individual
+        Costs_per_Cancer_Diag(M_it = m_M[, t],  # during cycle t + 1
+                              symptomatics = symptomatics,
+                              time_iteration = t,
+                              cost_Vec = cost_Vec,    # conditional on treatment
+                              Trt)            
+      
+      
+      m_E[, t + 1] <-                              # estimate QALYs per individual
+        Effs( m_M[, t + 1], Trt, 
+              utilityCoefs = utilityCoefs)                   # during cycle t + 1
+      ###########################################################################    
+      
+      # conditional on treatment
+      cat('\r', paste(round(t/n_t * 100),          # display the 
+                      "% done", sep = " "))        # progress of  the simulation                    
+    }  
+    ###################### close loop for cycles ############################### 
     
+    # Combine stored entries into a single data frame
+    symptomatics <- bind_rows(stored_list)
+    tc_disc <- m_C[,1:n_t] %*% v_dwc       # total (discounted) cost per individual
+    te_disc <- m_E[,1:n_t] %*% v_dwe       # total (discounted) QALYs per individual 
     
-    # m_M[, t + 1] <- update_column(m_M[, t], new_entries)
-    next_col <- m_M[, t + 1]
-    next_col <- update_column(m_M[, t], new_entries, next_col)
+    tc_undisc <- m_C[,1:n_t] %*% rep(1, n_t)       # total (discounted) cost per individual
+    te_undisc <- m_E[,1:n_t] %*% rep(1, n_t)       # total (discounted) QALYs per individual 
     
-    # Ensure next_col updates are preserved after sampling
-    m_M[, t + 1] <- ifelse(next_col == "Survival", "Survival", m_M[, t + 1])
+    tc_hat_disc <- mean(tc_disc)        # average (discounted) cost 
+    te_hat_disc <- mean(te_disc)        # average (discounted) QALYs
+    tc_hat_undisc <- mean(tc_undisc)        # average (discounted) cost 
+    te_hat_undisc <- mean(te_undisc)        # average (discounted) QALYs
     
+    if (TS_out == TRUE) {  # create a matrix of transitions across states
+      TS <- paste(m_M, cbind(m_M[, -1], NA), sep = "->") # transitions from one   
+      # state to the other
+      
+      TS <- matrix(TS, nrow = n_i)
+      rownames(TS) <- paste("Ind",   1:n_i, sep = " ")   # name the rows 
+      #colnames(TS) <- paste("cycle", 1:n_t, sep = " ")   # name the columns 
+      colnames(TS) <- paste0("cycle_", 1:(n_t + 1), sep = "")   # name the columns 
+    } else {
+      TS <- NULL
+    }
     
-    ############################################################################    
-    ## costs per CC diagnose at time t + 1.
-    m_C[, t] <-                              # estimate costs per individual
-      Costs_per_Cancer_Diag(M_it = m_M[, t],  # during cycle t + 1
-                            symptomatics = symptomatics,
-                            time_iteration = t,
-                            cost_Vec = cost_Vec,    # conditional on treatment
-                            Trt)            
+    if (TR_out == TRUE) {
+      TR <- t(apply(m_M, 2, 
+                    function(x) table(factor(x, levels = v_n, ordered = TRUE))))
+      #TR <- TR / n_i                                   # create a distribution 
+      # trace
+      
+      rownames(TR) <- paste("cycle", 1:(n_t + 1), sep = "_") # name the rows 
+      colnames(TR) <- v_n                              # name the columns 
+    } else {
+      TR <- NULL
+    }
     
+    # If TS_out == TRUE we can then compute the number of new cases for each type
+    # of cancer state per time (cycle). A new case of cancer state X in time t
+    # is defined as an individual transition to this state X provided the
+    # individual was not in that state X a time t-1.
+    # NOTE that the TR output display individual transitions at each cycle t
+    # that are going to occur at t + 1. That is, "XX->YY" in cycle t meant that the
+    # corresponding individual is in state "XX" in t and is transiting to state
+    # "YY" in t + 1.
+    # A character with all transitions:
+    transitions <- 
+      TS %>% 
+      as_tibble() %>% 
+      pivot_longer(everything(), names_to = "column") %>% 
+      distinct(value) %>%
+      unique() %>% 
+      as.list() %>%
+      unlist()
     
-    m_E[, t + 1] <-                              # estimate QALYs per individual
-      Effs( m_M[, t + 1], Trt, 
-            utilityCoefs = utilityCoefs)                   # during cycle t + 1
-    ############################################################################    
+    if(TS_out == TRUE){
+      Tot_Trans_per_t <- t(apply(TS, 2, 
+                                 function(x) table(factor(x, levels = transitions, ordered = TRUE))))
+      # trace
+      rownames(Tot_Trans_per_t) <- paste0("cycle_", 1:(n_t + 1), sep = "") # name the rows 
+    } else {
+      Tot_Trans_per_t <- NULL
+    }
     
-    # conditional on treatment
-    cat('\r', paste(round(t/n_t * 100),          # display the 
-                    "% done", sep = " "))        # progress of  the simulation                    
-  }  
-  ######################## close loop for cycles ############################### 
-  
-  # Combine stored entries into a single data frame
-  symptomatics <- bind_rows(stored_list)
-  tc_disc <- m_C[,1:n_t] %*% v_dwc       # total (discounted) cost per individual
-  te_disc <- m_E[,1:n_t] %*% v_dwe       # total (discounted) QALYs per individual 
-  
-  tc_undisc <- m_C[,1:n_t] %*% rep(1, n_t)       # total (discounted) cost per individual
-  te_undisc <- m_E[,1:n_t] %*% rep(1, n_t)       # total (discounted) QALYs per individual 
-  
-  tc_hat_disc <- mean(tc_disc)        # average (discounted) cost 
-  te_hat_disc <- mean(te_disc)        # average (discounted) QALYs
-  tc_hat_undisc <- mean(tc_undisc)        # average (discounted) cost 
-  te_hat_undisc <- mean(te_undisc)        # average (discounted) QALYs
-  
-  if (TS_out == TRUE) {  # create a matrix of transitions across states
-    TS <- paste(m_M, cbind(m_M[, -1], NA), sep = "->") # transitions from one   
-    # state to the other
-    
-    TS <- matrix(TS, nrow = n_i)
-    rownames(TS) <- paste("Ind",   1:n_i, sep = " ")   # name the rows 
-    #colnames(TS) <- paste("cycle", 1:n_t, sep = " ")   # name the columns 
-    colnames(TS) <- paste0("cycle_", 1:(n_t + 1), sep = "")   # name the columns 
-  } else {
-    TS <- NULL
-  }
-  
-  if (TR_out == TRUE) {
-    TR <- t(apply(m_M, 2, 
-                  function(x) table(factor(x, levels = v_n, ordered = TRUE))))
-    #TR <- TR / n_i                                   # create a distribution 
-    # trace
-    
-    rownames(TR) <- paste("cycle", 1:(n_t + 1), sep = "_") # name the rows 
-    colnames(TR) <- v_n                              # name the columns 
-  } else {
-    TR <- NULL
-  }
-  
-  # If TS_out == TRUE we can then compute the number of new cases for each type
-  # of cancer state per time (cycle). A new case of cancer state X in time t
-  # is defined as an individual transition to this state X provided the
-  # individual was not in that state X a time t-1.
-  # NOTE that the TR output display individual transitions at each cycle t
-  # that are going to occur at t + 1. That is, "XX->YY" in cycle t meant that the
-  # corresponding individual is in state "XX" in t and is transiting to state
-  # "YY" in t + 1.
-  # A character with all transitions:
-  transitions <- 
-    TS %>% 
-    as_tibble() %>% 
-    pivot_longer(everything(), names_to = "column") %>% 
-    distinct(value) %>%
-    unique() %>% 
-    as.list() %>%
-    unlist()
-  
-  if(TS_out == TRUE){
-    Tot_Trans_per_t <- t(apply(TS, 2, 
-                               function(x) table(factor(x, levels = transitions, ordered = TRUE))))
-    # trace
-    rownames(Tot_Trans_per_t) <- paste0("cycle_", 1:(n_t + 1), sep = "") # name the rows 
-  } else {
-    Tot_Trans_per_t <- NULL
-  }
-  
-  # New cases:
-  new_CIN1 <- new_cases_2(state1 = "HR.HPV.infection", state2 = "CIN1", 
-                          Tot_Trans_per_t = Tot_Trans_per_t)
-  
-  new_CIN2 <- new_cases_2(state1 = "CIN1", state2 = "CIN2", 
-                          Tot_Trans_per_t = Tot_Trans_per_t)
-    
-  new_CIN3 <- new_cases_2(state1 = "CIN2", state2 = "CIN3", 
-                          Tot_Trans_per_t = Tot_Trans_per_t)
-  
-  new_Cancer <- new_cases_2(state1 = "CIN3", state2 = "FIGO.I", 
+    # New cases:
+    new_CIN1 <- new_cases_2(state1 = "HR.HPV.infection", state2 = "CIN1", 
                             Tot_Trans_per_t = Tot_Trans_per_t)
-  
-  
-  # Before sending back, some cleaning regarding cycle `n_t+1` which is 
-  # computed but no needed as a result:
-  m_M <-m_M[, 1:n_t]
-  m_C <-m_C[, 1:n_t]
-  m_E <-m_E[, 1:n_t]
-  new_CIN1 <- new_CIN1 %>% dplyr::slice(c(1:n_t))
-  new_CIN2 <- new_CIN2 %>% dplyr::slice(c(1:n_t))
-  new_CIN3 <- new_CIN3 %>% dplyr::slice(c(1:n_t))
-  new_Cancer <- new_Cancer %>% dplyr::slice(c(1:n_t))
-  # removing no needed extra row from TR:
-  row_to_remove <- n_t + 1
-  TR <- TR[-row_to_remove, ]
-  rm(row_to_remove)
-  # removing extra column no needed in TS
-  TS <- TS[, -(n_t + 1)]
-  ## some further cleansing:
-  #rm(m_M, m_C, m_E)
-  
-  
-  #Remove large objects: 
-  #rm(m_M, m_C, m_E)
-  # Store the results from the simulation in a list
-  results <- list(sim_numb = sim_numb, 
-                  m_M = m_M, 
-                  m_C = m_C, 
-                  m_E = m_E, 
-                  tc_disc = tc_disc, 
-                  tc_undisc = tc_undisc,
-                  te_disc = te_disc,
-                  te_undisc = te_undisc,
-                  tc_hat_disc = tc_hat_disc,
-                  tc_hat_undisc = tc_hat_undisc,
-                  te_hat_disc = te_hat_undisc, 
-                  te_hat_disc = te_hat_undisc, 
-                  #TS = TS,
-                  TR = TR, 
-                  Tot_Trans_per_t = Tot_Trans_per_t, 
-                  #symptomatics = symptomatics,
-                  new_CIN1 = new_CIN1,
-                  new_CIN2 = new_CIN2,
-                  new_CIN3 = new_CIN3,
-                  new_Cancer = new_Cancer
-  )        
-  
-  
-  return(results)  # return the results
+    
+    new_CIN2 <- new_cases_2(state1 = "CIN1", state2 = "CIN2", 
+                            Tot_Trans_per_t = Tot_Trans_per_t)
+    
+    new_CIN3 <- new_cases_2(state1 = "CIN2", state2 = "CIN3", 
+                            Tot_Trans_per_t = Tot_Trans_per_t)
+    
+    new_Cancer <- new_cases_2(state1 = "CIN3", state2 = "FIGO.I", 
+                              Tot_Trans_per_t = Tot_Trans_per_t)
+    
+    rm(m_M, m_C, m_E)
+    # Store the results from the simulation in a list
+    results <- list(strategy=strategy, 
+                    numb_of_sims = numb_of_sims,
+                    sim_numb = sim_numb, 
+                    #m_M = m_M, 
+                    #m_C = m_C, 
+                    #m_E = m_E, 
+                    tc_disc = tc_disc, 
+                    tc_undisc = tc_undisc,
+                    te_disc = te_disc,
+                    te_undisc = te_undisc,
+                    tc_hat_disc = tc_hat_disc,
+                    tc_hat_undisc = tc_hat_undisc,
+                    te_hat_disc = te_hat_undisc, 
+                    te_hat_disc = te_hat_undisc, 
+                    #TS = TS, 
+                    TR = TR, 
+                    Tot_Trans_per_t = Tot_Trans_per_t, 
+                    symptomatics = symptomatics,
+                    new_CIN1 = new_CIN1,
+                    new_CIN2 = new_CIN2,
+                    new_CIN3 = new_CIN3,
+                    new_Cancer = new_Cancer
+    )        
+    
+    
+    return(results)  # return the results
+  }
 }  # end of the MicroSim function  
 ```
 
@@ -898,18 +907,18 @@ comp.time %>% print()
 ```{r, cost-efectiveness, tidy=TRUE}
 ###################### Cost-effectiveness analysis #############################
 # store the mean costs (and MCSE) of each strategy in a new variable C (vector costs)
-v_C  <- c(sim_no_trt$tc_hat_disc, sim_trt$tc_hat_disc) 
-sd_C <- c(sd(sim_no_trt$tc_disc), sd(sim_trt$tc_disc)) / sqrt(n_i)
+v_C  <- c(sim_no_trt$tc_hat, sim_trt$tc_hat) 
+sd_C <- c(sd(sim_no_trt$tc), sd(sim_trt$tc)) / sqrt(n_i)
 # store the mean QALYs (and MCSE) of each strategy in a new variable E (vector effects)
-v_E  <- c(sim_no_trt$te_hat_disc, sim_trt$te_hat_disc)
-sd_E <- c(sd(sim_no_trt$te_disc), sd(sim_trt$te_disc)) / sqrt(n_i)
+v_E  <- c(sim_no_trt$te_hat, sim_trt$te_hat)
+sd_E <- c(sd(sim_no_trt$te), sd(sim_trt$te)) / sqrt(n_i)
 
 delta_C <- v_C[2] - v_C[1]                   # calculate incremental costs
 delta_E <- v_E[2] - v_E[1]                   # calculate incremental QALYs
 # Monte Carlo Squared Error (MCSE) of incremental costs:
 sd_delta_E <- sd(sim_trt$te - sim_no_trt$te) / sqrt(n_i) 
 # Monte Carlo Squared Error (MCSE) of incremental QALYs:
-sd_delta_C <- sd(sim_trt$tc_disc - sim_no_trt$tc_disc) / sqrt(n_i) 
+sd_delta_C <- sd(sim_trt$tc - sim_no_trt$tc) / sqrt(n_i) 
 ICER    <- delta_C / delta_E                 # calculate the ICER
 results <- c(delta_C, delta_E, ICER)         # store the values in a new variable
 
@@ -1534,7 +1543,8 @@ Once the `MicroSim` function is validated we proceed to write a routine to produ
 
 ```{r multi-simulations, echo=TRUE}
 # Define the number of simulations and the seeds to use
-n_simulations <- 5 
+n_simulations <- 100
+n_simulations <- 20 
 seeds <- sample(1:10000, n_simulations, replace = FALSE)  # Generate random seeds
 
 # Initialize a list to store the results
@@ -1548,16 +1558,10 @@ for (i in 1:n_simulations) {
   simulation_results[[i]] <- result
 }
 
-# poner aquí script de Sandra "Sumarize_resultsby_Strategy 1.R", en forma de
-# función con entrada n_simulations y simulation_results
-
-
-## Check the structure of the results
-##str(simulation_results)
-#saveRDS(simulation_results, "simulation_results_nsim_20.rds")
+# Check the structure of the results
+str(simulation_results)
+saveRDS(simulation_results, "simulation_results.rds")
 ################################################################################
-
-
 
 
 # Produce an average of `TR`
