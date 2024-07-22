@@ -58,6 +58,9 @@ The idea is to build on the simple [sick-sicker](https://github.com/DARTH-git/Mi
 rm(list = ls())
 library(tidyverse)
 
+# Sources:
+source("./R/sumarize_results_by_Strategy_Func.R")
+
 # Ensure necessary libraries are loaded
 ensure_library <- function(...) {
   pkgs <- unlist(list(...))
@@ -900,36 +903,20 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
     
   }  # end of `numb_of_sims` loop
   
-  return(simulation_results)
+  #return(simulation_results)
+  
+  # PENDING !!!!! MONDAY 22.07.2024!!
+  # stack results
+  # poner aquí script de Sandra "Sumarize_result sby_Strategy 1.R", en forma de
+  # función con entrada n_simulations y simulation_results
+  #source("./R/Sumarize_results_by_Strategy_Func.R")
+  stacked_results <- 
+    summarize_results_by_Strategy(results_list = simulation_results, 
+                                 numb_of_sims = numb_of_sims)
+  return(stacked_results)
   
 } # end of MicroSim function
 
-# stack results
-# poner aquí script de Sandra "Sumarize_result sby_Strategy 1.R", en forma de
-# función con entrada n_simulations y simulation_results
-
-
-
-
-# PENDING !!!!! MONDAY 21.07.2024!!
-
-
-#stacked_result <- list()
-#Strategy_name<-"natural_history"
-#result[[Strategy_name]]<-list()
-#for(i in 1:numb_of_sims){
-#  # simulation_results_nsim_20[[i]]$tc_disc<-NULL
-#  # simulation_results_nsim_20[[i]]$tc_undisc<-NULL
-#  # simulation_results_nsim_20[[i]]$te_disc<-NULL
-#  # simulation_results_nsim_20[[i]]$te_undisc<-NULL
-#  simulation_results_nsim_20[[i]][["Tot_Trans_per_t"]]<-NULL
-#}
-
-
-
-
-
-# Here should be the end of the MicroSim function 
 ```
 
 
