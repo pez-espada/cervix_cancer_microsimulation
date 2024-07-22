@@ -903,9 +903,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
     
   }  # end of `numb_of_sims` loop
   
-  #return(simulation_results)
+  return(simulation_results)
   
-  # PENDING !!!!! MONDAY 22.07.2024!!
   # stack results
   # poner aquí script de Sandra "Sumarize_result sby_Strategy 1.R", en forma de
   # función con entrada n_simulations y simulation_results
@@ -930,7 +929,7 @@ p = Sys.time()
 #sim_no_trt  <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = FALSE)
 # random seeds:
 #seeds <- sample(1:10000, n_simulations, replace = FALSE)  # Generate random seeds
-sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 4, 
+sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 2, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)

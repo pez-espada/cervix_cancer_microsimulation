@@ -22,10 +22,12 @@ summarize_results_by_Strategy <- function(results_list, numb_of_sims) {
     result[[Strategy_name]][[name_level_of_sim]] <- bind_rows(lapply(seq_along(sim), function(i) {
       df <- as.data.frame(sim[[i]][[name_level_of_sim]])  # Extraemos el data frame de cada lista
       df["sim"] <- i       # Agregamos una columna con el numero de simulacion
-      # Debugging
-      rownames(df) %>% print()  
       
-      df["row_names"] <- as.numeric(rownames(df))
+      ## Debugging
+      #rownames(df) %>% print()  
+      
+      #df["row_names"] <- as.numeric(rownames(df))
+      df <- df %>% mutate(cycle=row_number())
       rownames(df)<-NULL 
       df<-df[,c("sim","row_names",colnames(df)[1:(ncol(df)-2)])]
       return(df)
