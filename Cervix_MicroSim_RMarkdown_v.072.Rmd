@@ -96,12 +96,12 @@ extract_numbers <- function(range_factor) {
 }
 ###############################################################
 
-# before apply the function, convert Age.group from factor to character
+# Before apply the function, convert Age.group from factor to character
 # my_Probs$Age.group <- as.character(my_Probs$Age.group)
 # Apply the function to the Range column and create new columns
 my_Probs$Lower  <- sapply(my_Probs$Age.group, function(x) extract_numbers(x)[1])
 my_Probs$Larger <- sapply(my_Probs$Age.group, function(x) extract_numbers(x)[2])
-# For the last cylce/iteration we need to adjust the last transition matrix:
+# For the last cycle/iteration we need to adjust the last transition matrix:
 my_Probs$Larger <- 
   ifelse(my_Probs$Larger == max(my_Probs$Larger), my_Probs$Larger + 1, my_Probs$Larger) 
 ```
@@ -278,9 +278,8 @@ samplev <- function (probs, m) {
                                    # runif() is run it produces a new random sample
                                    # i.e. it does not seem dependent on the seed
     
-    # here's where we choose the individuals' next states:
+    # Here's where we choose the individuals' next states:
     ran[, j] <- lev[1 + colSums(un > U)]
-   #print(ran[,j]) 
   }
   ran
 }
@@ -337,9 +336,6 @@ Costs_per_Cancer_Diag <- function (M_it, cost_Vec, symptomatics, time_iteration,
   c_it <- rep(0, length(M_it))
   ci_t <- 0
   if(nrow(symptomatics) > 0 ) {
-    ## Debugging:
-    #print("Yeah, nrow is larger than 0!")
-    #paste("The time step is", time_iteration) %>% print()
     c_it[symptomatics %>% filter(DiagnosedState == "FIGO.I" & TimeStep == time_iteration) %>% 
            select(ID) %>% as.list() %>% unlist()] <- cost_Vec[which(v_n %in% "FIGO.I")]
     
@@ -421,7 +417,7 @@ convert_matrix_to_proper_transition <-
     trans_matrix <- my_age_prob_matrix %>% 
       select(-c("Age.group", "Lower", "Larger")) %>% 
       as.matrix()
-    # referenece: https://rpubs.com/crossxwill/transition_matrix
+    # Referenece: https://rpubs.com/crossxwill/transition_matrix
     ## method 1: (not working atm)
     #ensure_library(expm)
     #TM.exp  <- expm::expm((1 / age_factor(cycle_period))) * log(trans_matrix) 
@@ -434,7 +430,7 @@ convert_matrix_to_proper_transition <-
     
     round(TM_pracma$B, 5)
   
-    # regularization with the `ctmcd` package, The code below uses the 
+    # Regularization with the `ctmcd` package, The code below uses the 
     # quasi-optimization of the generator (QOG) approach from 
     # Kreinin and Sidelnikova (2001).:
     ensure_library("ctmcd")
@@ -468,7 +464,6 @@ stored_list <- vector("list", n_t)
 # Initialize a global vector to store all diagnosed individuals
 global_diagnosed <- integer()
 
-# version 3 (previous version not displayed in this script version)
 # Function receives a column with current state of `n_i`individuals and gives
 # a dataframe with `ID, TimeStep`, `state`, and `RecoveredFromState` 
 diagnose_column <- function(col, time_step) {
@@ -573,7 +568,7 @@ new_cases <- function(state) {
 }
 ####
 new_cases_2 <- function(state1, state2, Tot_Trans_per_t){
-  # this function receives two strings with the names of a state as named in the 
+  # This function receives two strings with the names of a state as named in the 
   # vector state `v_n` and it gives back a df with two columns: age and number of
   # new transitions in that age.
   transition_cases <- 
@@ -592,15 +587,13 @@ This is a modified version of [Krijkamp et al (2018)](https://journals.sagepub.c
 
 ```{r MicroSim function, tidy=TRUE}
 # Mod: incorporate loop over simulations:
+# This version stacks solution of simulations but produces a list with stacked elements
 MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
                      v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE, 
                      TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix) 
 {
   
-  #seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
   
-  #simulation_results <- list()
-  #simulation_results <- vector("list", numb_of_sims)
   seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
   {
     #simulation_results <- vector("list", numb_of_sims)
@@ -650,11 +643,11 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
                    RecoveredFromState = logical(), stringsAsFactors = FALSE)
       
       v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   # calculate the cost discount weight based
-      # on the discount rate d_c 
+                                             # on the discount rate d_c 
       print(length(v_dwc))
       
       v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   # calculate the QALY discount weight based 
-      # on the discount rate d.e
+                                             # on the discount rate d.e
       
       # Create the matrix capturing the state name/costs/health outcomes 
       # for all individuals at each time point:
@@ -662,23 +655,20 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
                                    dimnames = list( 1:n_i, 
                                                     paste0("cycle_", 1:(n_t + 1), sep = "")))  
       
-      m_M[, 1] <- v_M_1                  # indicate the initial health state   
+      m_M[, 1] <- v_M_1  # indicate the initial health state   
       
-      set.seed(seed)                     # set the seed for every individual for the
-      # random number generator
+      set.seed(seed) # set the seed for every individual for the random number generator
       
       m_C[, 1] <- Costs_per_Cancer_Diag(M_it = m_M[, 1], # estimate costs per individual for the 
                                         symptomatics = symptomatics,
                                         time_iteration = 1,
-                                        cost_Vec =       # initial health state
-                                          cost_Vec,
+                                        cost_Vec = cost_Vec, # initial health state
                                         Trt)             
-      ## Debugging:
-      #print(v_n) 
+      
       m_E[, 1] <- Effs(m_M[, 1], Trt, utilityCoefs = utilityCoefs)  # estimate QALYs
-      # per individual 
-      # for the initial
-      # health state  
+                                                                    # per individual 
+                                                                    # for the initial
+                                                                    # health state  
       
       # new code:
       stored_list <- list()
@@ -721,10 +711,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
         if (nrow(new_entries) > 0) {
           symptomatics <- bind_rows(symptomatics, new_entries)
         }
-        
-        ## Debugging: 
-        ## Ensure M_it has no NA values
-        #m_M[is.na(m_M)] <- "H"  # Or any other default state that makes sense
         ############################################################################ 
         
         
@@ -737,8 +723,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
         m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
         
         m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
-        # and store that state in  
-        # matrix m_M 
+                                                     # and store that state in  
+                                                     # matrix m_M 
         ############################################################################    
         
         
@@ -751,21 +737,23 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
         
         
         ############################################################################    
-        ## costs per CC diagnose at time t + 1.
-        m_C[, t] <-                              # estimate costs per individual
-          Costs_per_Cancer_Diag(M_it = m_M[, t],  # during cycle t + 1
+        ## Costs per CC diagnose at time t + 1.
+        
+        # Estimate costs per individual during cycle t + 1 conditional on treatment:
+        m_C[, t] <-                              
+          Costs_per_Cancer_Diag(M_it = m_M[, t],  
                                 symptomatics = symptomatics,
                                 time_iteration = t,
-                                cost_Vec = cost_Vec,    # conditional on treatment
+                                cost_Vec = cost_Vec,    
                                 Trt)            
         
         
-        m_E[, t + 1] <-                              # estimate QALYs per individual
+        m_E[, t + 1] <- # estimate QALYs per individual during cycle t + 1
           Effs( m_M[, t + 1], Trt, 
-                utilityCoefs = utilityCoefs)                   # during cycle t + 1
+                utilityCoefs = utilityCoefs)                   
         ############################################################################    
         
-        # conditional on treatment
+        # Conditional on treatment
         cat('\r', paste(round(t/n_t * 100),          # display the 
                         "% done", sep = " "))        # progress of  the simulation                    
       }  
@@ -784,13 +772,12 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       tc_hat_undisc <- mean(tc_undisc)        # average (discounted) cost 
       te_hat_undisc <- mean(te_undisc)        # average (discounted) QALYs
       
-      if (TS_out == TRUE) {  # create a matrix of transitions across states
-        TS <- paste(m_M, cbind(m_M[, -1], NA), sep = "->") # transitions from one   
-        # state to the other
+      # Create a matrix of transitions across states transitions from one state to the other:
+      if (TS_out == TRUE) {  
+        TS <- paste(m_M, cbind(m_M[, -1], NA), sep = "->")    
         
         TS <- matrix(TS, nrow = n_i)
         rownames(TS) <- paste("Ind",   1:n_i, sep = " ")   # name the rows 
-        #colnames(TS) <- paste("cycle", 1:n_t, sep = " ")   # name the columns 
         colnames(TS) <- paste0("cycle_", 1:(n_t + 1), sep = "")   # name the columns 
       } else {
         TS <- NULL
@@ -861,11 +848,11 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       new_CIN2 <- new_CIN2 %>% dplyr::slice(c(1:n_t))
       new_CIN3 <- new_CIN3 %>% dplyr::slice(c(1:n_t))
       new_Cancer <- new_Cancer %>% dplyr::slice(c(1:n_t))
-      # removing no needed extra row from TR:
+      # Removing no needed extra row from TR:
       row_to_remove <- n_t + 1
       TR <- TR[-row_to_remove, ]
       rm(row_to_remove)
-      # removing extra column no needed in TS
+      # Removing extra column no needed in TS
       TS <- TS[, -(n_t + 1)]
       
       #Remove large objects: 
@@ -929,8 +916,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
 p = Sys.time()
 # run for no treatment
 #sim_no_trt  <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = FALSE)
-# random seeds:
-#seeds <- sample(1:10000, n_simulations, replace = FALSE)  # Generate random seeds
 sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 10, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
