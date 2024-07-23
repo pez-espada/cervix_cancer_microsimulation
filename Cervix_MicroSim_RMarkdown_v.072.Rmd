@@ -58,9 +58,12 @@ The idea is to build on the simple [sick-sicker](https://github.com/DARTH-git/Mi
 rm(list = ls())
 library(tidyverse)
 
+<<<<<<< HEAD
 # Sources:
 source("./R/sumarize_results_by_Strategy_Func.R")
 
+=======
+>>>>>>> f57c6e5 (I think this commit add the version .72)
 # Ensure necessary libraries are loaded
 ensure_library <- function(...) {
   pkgs <- unlist(list(...))
@@ -468,6 +471,10 @@ stored_list <- vector("list", n_t)
 # Initialize a global vector to store all diagnosed individuals
 global_diagnosed <- integer()
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> f57c6e5 (I think this commit add the version .72)
 # version 3 (previous version not displayed in this script version)
 # Function receives a column with current state of `n_i`individuals and gives
 # a dataframe with `ID, TimeStep`, `state`, and `RecoveredFromState` 
@@ -512,6 +519,13 @@ diagnose_column <- function(col, time_step) {
   return(new_entries)
 }
 
+<<<<<<< HEAD
+=======
+
+# version 3: (previous version not displayed in this script version)
+# Function receives a column with the new entries computed by the 'diagnose_column`
+# function and gives back the updated_next column
+>>>>>>> f57c6e5 (I think this commit add the version .72)
 #################################################################################
 update_column <- function(col, new_entries, next_col) {
   if (nrow(new_entries) > 0) {
@@ -580,8 +594,12 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t){
     Tot_Trans_per_t %>% 
     as_tibble() %>% 
     dplyr::select(paste0(state1,"->",state2)) %>% 
+<<<<<<< HEAD
     dplyr::mutate(age = row_number() +10, 
                   cycle = as.numeric(row_number()))
+=======
+    dplyr::mutate(age = row_number() +10)
+>>>>>>> f57c6e5 (I think this commit add the version .72)
   return(transition_cases)
 }
 ```
@@ -594,6 +612,7 @@ This is a modified version of [Krijkamp et al (2018)](https://journals.sagepub.c
 # Mod: incorporate loop over simulations:
 MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
                      v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE, 
+<<<<<<< HEAD
                      TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix) 
 {
   
@@ -605,6 +624,16 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
   {
     #simulation_results <- vector("list", numb_of_sims)
     simulation_results <- list() 
+=======
+                     TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix) {
+  
+  #seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
+  
+    #simulation_results <- list()
+    simulation_results <- vector("list", numb_of_sims)
+    seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
+  {
+>>>>>>> f57c6e5 (I think this commit add the version .72)
     ## Debuging:
     #TR_out = TRUE; TS_out = TRUE; Trt = FALSE; seed = 1
     
@@ -828,10 +857,14 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       
       if(TS_out == TRUE){
         Tot_Trans_per_t <- t(apply(TS, 2, 
+<<<<<<< HEAD
                                    function(x) 
                                      table(factor(x, levels 
                                                   = transitions, 
                                                   ordered = TRUE))))
+=======
+                                   function(x) table(factor(x, levels = transitions, ordered = TRUE))))
+>>>>>>> f57c6e5 (I think this commit add the version .72)
         # trace
         rownames(Tot_Trans_per_t) <- paste0("cycle_", 1:(n_t + 1), sep = "") # name the rows 
       } else {
@@ -867,10 +900,19 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       rm(row_to_remove)
       # removing extra column no needed in TS
       TS <- TS[, -(n_t + 1)]
+<<<<<<< HEAD
       
       #Remove large objects: 
       #rm(m_M, m_C, m_E)
       
+=======
+      ## some further cleansing:
+      #rm(m_M, m_C, m_E)
+      
+      
+      #Remove large objects: 
+      #rm(m_M, m_C, m_E)
+>>>>>>> f57c6e5 (I think this commit add the version .72)
       # Store the results from the simulation in a list
       results <- list(sim_numb = sim, 
                       #m_M = m_M, 
@@ -883,7 +925,11 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
                       tc_hat_disc = tc_hat_disc,
                       tc_hat_undisc = tc_hat_undisc,
                       te_hat_disc = te_hat_undisc, 
+<<<<<<< HEAD
                       te_hat_undisc = te_hat_undisc, 
+=======
+                      te_hat_disc = te_hat_undisc, 
+>>>>>>> f57c6e5 (I think this commit add the version .72)
                       #TS = TS,
                       TR = TR, 
                       #Tot_Trans_per_t = Tot_Trans_per_t, 
@@ -894,6 +940,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
                       new_Cancer = new_Cancer)  
       
       
+<<<<<<< HEAD
     results$seed <- seeds[sim]
     simulation_results[sim] <- list(results)
     } # end of `n_t` loop
@@ -916,6 +963,35 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
   
 } # end of MicroSim function
 
+=======
+      #return(results)  # return the results
+    } # end of `n_t` loop
+    
+    
+    print(results$new_Cancer)
+    results$seed <- seeds[sim]
+    
+    #print(results$new_Cancer)
+    
+    
+    simulation_results[sim] <- list(results)
+    simulation_results[sim] %>% print()
+    
+    
+    #return(simulation_results)
+    }  # end of `numb_of_sims` loop
+    
+    
+    return(simulation_results)
+    
+} # end of MicroSim function
+
+# stack results
+# poner aquí script de Sandra "Sumarize_result sby_Strategy 1.R", en forma de
+# función con entrada n_simulations y simulation_results
+
+# End of the MicroSim function 
+>>>>>>> f57c6e5 (I think this commit add the version .72)
 ```
 
 
@@ -929,7 +1005,11 @@ p = Sys.time()
 #sim_no_trt  <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = FALSE)
 # random seeds:
 #seeds <- sample(1:10000, n_simulations, replace = FALSE)  # Generate random seeds
+<<<<<<< HEAD
 sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 2, 
+=======
+sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 1, 
+>>>>>>> f57c6e5 (I think this commit add the version .72)
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
