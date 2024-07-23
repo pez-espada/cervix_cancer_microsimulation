@@ -862,7 +862,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
     
     rm(m_M, m_C, m_E)
     # Store the results from the simulation in a list
-    results <- list(strategy,
+    results <- list(strategy = strategy,
                     sim_numb = sim_numb, 
                     #m_M = m_M, 
                     #m_C = m_C, 
@@ -892,6 +892,15 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
     
   }  # end of the MicroSim function  
   
+  # Convert each element to a data frame if it is not already
+  all_results <- lapply(all_results, function(x) {
+    if (!is.data.frame(x)) {
+      as.data.frame(x)
+    } else {
+      x
+    }
+  })
+  
   # Combine all simulation results into a single data frame
   final_df <- bind_rows(all_results)
   
@@ -914,8 +923,8 @@ sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 3,
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, sim_numb = 1, seed = 1, Pmatrix = Pmatrix)
-# run for treatment
-sim_trt     <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = TRUE)  
+## run for treatment
+#sim_trt     <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = TRUE)  
 comp.time = Sys.time() - p
 comp.time %>% print()
 ```
