@@ -70,8 +70,8 @@ knitr::kable(my_Probs)
 
 
 ## ----model parameters--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-n_i <- 10^5                 # number of simulated individuals
-n_t <- 35                   # time horizon, 75 cycles (it starts from 1)
+n_i <- 10^6                 # number of simulated individuals
+n_t <- 75                   # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
 ### (THIS IS WORK IN PROGRESS):
@@ -800,7 +800,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
 p = Sys.time()
 # run for no treatment
 #sim_no_trt  <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = FALSE)
-sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 10, 
+sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 40, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
@@ -808,6 +808,9 @@ sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 10,
 #sim_trt     <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = TRUE)  
 comp.time = Sys.time() - p
 comp.time %>% print()
+saveRDS(object = sim_no_trt, file = "./data/stacked_sims_40x10E6x75.rds")
+################################################################################
+
 
 
 ########################################
