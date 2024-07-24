@@ -64,7 +64,7 @@ summarize_results_by_Strategy <- function(results_list, numb_of_sims) {
   new_result<-list()
   
   for (name_level_of_sim in names_sim) {
-    new_result[[Strategy_name]][[name_level_of_sim]]<-as.matrix( result[[Strategy_name]][[name_level_of_sim]])
+    new_result[[Strategy_name]][[name_level_of_sim]]<-as.data.frame( result[[Strategy_name]][[name_level_of_sim]])
     
     
   }
