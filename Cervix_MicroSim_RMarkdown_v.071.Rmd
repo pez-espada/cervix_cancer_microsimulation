@@ -893,6 +893,9 @@ comp.time = Sys.time() - p
 comp.time %>% print()
 ```
 
+
+
+
 ### Perform cost-effectiveness analysis (this code is to be change to implement our own cost-effectiveness analysis):
 
 ```{r, cost-efectiveness, tidy=TRUE}
