@@ -1597,6 +1597,7 @@ df_microsim_new_cases_2_AVRG <- dplyr::bind_cols(df_CIN1_nc_2_AVRG, df_CIN2_nc_2
                                             df_CIN3_nc_2_AVRG, df_cancer_nc_2_AVRG)
 
 rm(df_CIN1_nc_2_AVRG, df_CIN2_nc_2_AVRG, df_CIN3_nc_2_AVRG, df_cancer_nc_2_AVRG)
+#end file!!!
 ```
 
 
