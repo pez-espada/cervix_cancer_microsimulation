@@ -3,7 +3,7 @@
 #SBATCH --job-name=R-simulation       # Job name
 #SBATCH --cpus-per-task=8             # CPUs
 #SBATCH --mem=128gb                   # Job memory request
-#SBATCH --time=24:0:0                 # Time limit
+#SBATCH --time=48:0:0                 # Time limit
 
 #Rscript -e "rmarkdown::render('~/carlos-code/cervix_cancer_microsimulation--20240617T075924Z-001/cervix_cancer_microsimulation/Cervix_MicroSim_RMarkdown_v.071.Rmd')"
 

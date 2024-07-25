@@ -593,7 +593,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
                      TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix) 
 {
   
-  
   seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
   {
     #simulation_results <- vector("list", numb_of_sims)
@@ -631,7 +630,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
     ## Initialize an empty list to store results from each simulation
     #simulation_results <- list()
     #seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
-    
     
     for(sim in 1:numb_of_sims) {
       
@@ -940,14 +938,19 @@ sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 2,
 
 ## Or should the prevalence/incidence coputed outside the MicroSim function?
 ## HERE I SHOULD IMPLEMENT THE COMPUTATION OF PREVALENCE AND INCIDENCE (?):
+## REMINDER need to work with my_probs data frame to obtain the age intevals
 prevalence_func <- function(sim_stalked_result) {
-  
   df <- sim_stalked_result[[1]]$TR %>% 
     dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
     mutate(prevalence = HR.HPV.infection / H) %>% 
     group_by(age) %>% 
     summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>% ungroup()
+  prevalence_per_age <- df
+  return(c(sim_stalked_result, prevalence_per_age))
 }
+
+prevalence_result <- prevalence_func(sim_stalked_result = sim_no_trt)  
+
 
 # run for treatment
 #sim_trt     <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = TRUE)  
