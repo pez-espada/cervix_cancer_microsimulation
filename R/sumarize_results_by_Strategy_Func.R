@@ -40,15 +40,15 @@ summarize_results_by_Strategy <- function(results_list, numb_of_sims) {
       if(name_level_of_sim!="TR"){
         df["row_names"] <- as.numeric(rownames(df))
         rownames(df)<-NULL 
-        df<-df[,c("sim","row_names",colnames(df)[1:(ncol(df)-2)])]
+        df<-df[,c("sim","row_names",colnames(df)[1:(ncol(df)-1)])]
       }else{
         rownames(df)<-NULL 
         df$cycle<-seq(1:nrow(df))
       }
       return(df)
     })) 
-  
-      
+    
+    
     #depuració
     if(sum(names(result[[Strategy_name]][[name_level_of_sim]])=="V1")>0 |
        sum( names(result[[Strategy_name]][[name_level_of_sim]])=="sim[[i]][[name_level_of_sim]]")>0) {
