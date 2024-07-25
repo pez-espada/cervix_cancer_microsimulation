@@ -918,9 +918,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
   
 } # end of MicroSim function
 
-
-
-
+## Or should the prevalence/incidence coputed outside the MicroSim function?
+## HERE I SHOULD IMPLEMENT THE COMPUTATION OF PREVALENCE AND INCIDENCE (?):
+#prevalence_func <- function(cases, )
 ```
 
 
@@ -936,6 +936,19 @@ sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 2,
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
+
+
+## Or should the prevalence/incidence coputed outside the MicroSim function?
+## HERE I SHOULD IMPLEMENT THE COMPUTATION OF PREVALENCE AND INCIDENCE (?):
+prevalence_func <- function(sim_stalked_result) {
+  
+  df <- sim_stalked_result[[1]]$TR %>% 
+    dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
+    mutate(prevalence = HR.HPV.infection / H) %>% 
+    group_by(age) %>% 
+    summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>% ungroup()
+}
+
 # run for treatment
 #sim_trt     <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = TRUE)  
 comp.time = Sys.time() - p
