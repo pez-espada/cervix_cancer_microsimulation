@@ -939,17 +939,48 @@ sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 2,
 ## Or should the prevalence/incidence coputed outside the MicroSim function?
 ## HERE I SHOULD IMPLEMENT THE COMPUTATION OF PREVALENCE AND INCIDENCE (?):
 ## REMINDER need to work with my_probs data frame to obtain the age intevals
-prevalence_func <- function(sim_stalked_result) {
+#prevalence_func <- function(sim_stalked_result) {
+#  df <- sim_stalked_result[[1]]$TR %>% 
+#    dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
+#    mutate(prevalence = HR.HPV.infection / H) %>% 
+#    group_by(age) %>% 
+#    summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>% ungroup()
+#  prevalence_per_age <- df
+#  #return(c(sim_stalked_result, prevalence_per_age))
+#  sim_stalked_result[[1]]$mean_prevalence_per_age <- df
+#  return(sim_stalked_result)
+#}
+
+
+prevalence_func <- function(sim_stalked_result, my_Probs) {
+  # Extract unique age intervals
+  age_intervals <- my_Probs %>% 
+    select(Lower, Larger) %>% 
+    unique() %>% 
+    arrange(Lower)
+  
+  # Create a vector of the breaks for the intervals
+  breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
+  
+  # Create labels for the intervals
+  labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
+  
+  # Compute prevalence and average it by age intervals
   df <- sim_stalked_result[[1]]$TR %>% 
     dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
     mutate(prevalence = HR.HPV.infection / H) %>% 
-    group_by(age) %>% 
-    summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>% ungroup()
-  prevalence_per_age <- df
-  return(c(sim_stalked_result, prevalence_per_age))
+    mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
+    group_by(age_interval) %>% 
+    summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>% 
+    ungroup()
+  
+  #return(df)
+  sim_stalked_result[[1]]$mean_prevalence_per_age_interval <- df
+  return(sim_stalked_result)
 }
 
-prevalence_result <- prevalence_func(sim_stalked_result = sim_no_trt)  
+# concatenate the prevalence to the sim result 
+prevalence_result <- prevalence_func(sim_stalked_result = sim_no_trt, my_Probs = my_Probs)  
 
 
 # run for treatment
