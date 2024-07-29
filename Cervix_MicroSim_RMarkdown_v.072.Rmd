@@ -993,7 +993,7 @@ prevalence_result <-
 # by the total of individuals who are at risk to transition to the former state
 # In our case incidence is defined by new cases of a state divide by the number
 # individuals just in the epidemiological precedent state
-incidence_func <- function(sim_stalked_result, my_Probs) { # worki in progress
+incidence_func <- function(sim_stalked_result, my_Probs) { # work in progress
   
   # Extract unique age intervals
   age_intervals <- my_Probs %>% 
