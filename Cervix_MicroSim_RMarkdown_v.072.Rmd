@@ -985,8 +985,45 @@ prevalence_func <- function(sim_stalked_result, my_Probs) {
 }
 
 # Concatenate the prevalence to the sim result 
-prevalence_result <- prevalence_func(sim_stalked_result = sim_no_trt, my_Probs = my_Probs)  
+prevalence_result <-
+  prevalence_func(sim_stalked_result = sim_no_trt, my_Probs = my_Probs)  
 
+
+# Incidence is defined by the NEW numb of individuals in state  divided 
+# by the total of individuals who are at risk to transition to the former state
+# In our case incidence is defined by new cases of a state divide by the number
+# individuals just in the epidemiological precedent state
+incidence_func <- function(sim_stalked_result, my_Probs) { # worki in progress
+  
+  # Extract unique age intervals
+  age_intervals <- my_Probs %>% 
+    select(Lower, Larger) %>% 
+    unique() %>% 
+    arrange(Lower)
+  
+  # Create a vector of the breaks for the intervals
+  breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
+  
+  # Create labels for the intervals
+  labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
+  
+  # Compute prevalence and average it by age intervals
+  df <- sim_stalked_result[[1]]$TR %>% 
+    #dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
+    dplyr::select(everything()) %>% 
+    mutate(total_alive = H + CIN1 + CIN2 +CIN3 +
+             FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
+    #mutate(prevalence = HR.HPV.infection / H) %>% 
+    mutate(prevalence = HR.HPV.infection / total_alive) %>% 
+    mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
+    group_by(age_interval) %>% 
+    summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>% 
+    ungroup()
+  
+  #return(df)
+  sim_stalked_result[[1]]$mean_prevalence_per_age_interval <- df
+  return(sim_stalked_result)
+}
 
 # run for treatment
 #sim_trt     <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = TRUE)  
