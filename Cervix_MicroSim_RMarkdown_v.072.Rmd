@@ -951,7 +951,8 @@ sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 2,
 #  return(sim_stalked_result)
 #}
 
-
+# Prevalence is defined as number of infected divided by total alive individuals
+# for that cycle/time step
 prevalence_func <- function(sim_stalked_result, my_Probs) {
   # Extract unique age intervals
   age_intervals <- my_Probs %>% 
@@ -967,8 +968,12 @@ prevalence_func <- function(sim_stalked_result, my_Probs) {
   
   # Compute prevalence and average it by age intervals
   df <- sim_stalked_result[[1]]$TR %>% 
-    dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
-    mutate(prevalence = HR.HPV.infection / H) %>% 
+    #dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
+    dplyr::select(everything()) %>% 
+    mutate(total_alive = H + CIN1 + CIN2 +CIN3 +
+             FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
+    #mutate(prevalence = HR.HPV.infection / H) %>% 
+    mutate(prevalence = HR.HPV.infection / total_alive) %>% 
     mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
     group_by(age_interval) %>% 
     summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>% 
@@ -979,7 +984,7 @@ prevalence_func <- function(sim_stalked_result, my_Probs) {
   return(sim_stalked_result)
 }
 
-# concatenate the prevalence to the sim result 
+# Concatenate the prevalence to the sim result 
 prevalence_result <- prevalence_func(sim_stalked_result = sim_no_trt, my_Probs = my_Probs)  
 
 
