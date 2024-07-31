@@ -935,10 +935,7 @@ sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 2,
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
 
-
-## Or should the prevalence/incidence coputed outside the MicroSim function?
-## HERE I SHOULD IMPLEMENT THE COMPUTATION OF PREVALENCE AND INCIDENCE (?):
-## REMINDER need to work with my_probs data frame to obtain the age intevals
+################################################################################
 #prevalence_func <- function(sim_stalked_result) {
 #  df <- sim_stalked_result[[1]]$TR %>% 
 #    dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
@@ -997,7 +994,7 @@ prevalence_result <-
 # in the time t divided by all the individuals in  the epidemiological "precedent" 
 # states at time t-1 (in the previous cycle). This is how is defined in the  the 
 # Markov model. We follow that definition to compare the micro sim and the Markov. 
-incidence_func <- function(sim_stalked_result, my_Probs) { # work in progress
+incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in progress
   
   # Extract unique age intervals
   age_intervals <- my_Probs %>% 
@@ -1011,22 +1008,36 @@ incidence_func <- function(sim_stalked_result, my_Probs) { # work in progress
   # Create labels for the intervals
   labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
   
-  # Compute prevalence and average it by age intervals
-  df <- sim_stalked_result[[1]]$TR %>% 
-    #dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
-    dplyr::select(everything()) %>% 
-    mutate(total_alive = H + CIN1 + CIN2 +CIN3 +
-             FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
-    #mutate(prevalence = HR.HPV.infection / H) %>% 
-    mutate(prevalence = HR.HPV.infection / total_alive) %>% 
-    mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
-    group_by(age_interval) %>% 
-    summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>% 
-    ungroup()
   
-  #return(df)
-  sim_stalked_result[[1]]$mean_prevalence_per_age_interval <- df
-  return(sim_stalked_result)
+  ## WORK IN PROGRESS
+  ## Incidence definition: 
+  ## I(state(n), t) = # newcases(n, t) / (state(1) + state(2) + ... + state(n-1), t-1)
+  #states_at_tminus1 <- v_n[1 : ( which(v_n == state) - 1)]
+  #sum_of_previous_states_at_tminus1 <- 
+  
+  ## Defining dfs:
+  #TR <- sim_no_trt[[1]]$TR
+  #new_State <- sim_no_trt[[1]]$state
+  #new_Stat
+  #
+  ## Compute prevalence and average it by age intervals
+  #df <- sim_stalked_result[[1]]$TR %>% 
+  #  #dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
+  #  dplyr::select(everything()) %>% 
+  #  
+  #  
+  #  mutate(total_alive = H + CIN1 + CIN2 +CIN3 +
+  #           FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
+  #  #mutate(prevalence = HR.HPV.infection / H) %>% 
+  #  mutate(prevalence = HR.HPV.infection / total_alive) %>% 
+  #  mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
+  #  group_by(age_interval) %>% 
+  #  summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>% 
+  #  ungroup()
+  
+  ##return(df)
+  #sim_stalked_result[[1]]$mean_prevalence_per_age_interval <- df
+  #return(sim_stalked_result)
 }
 
 # run for treatment
@@ -1038,10 +1049,10 @@ comp.time %>% print()
 
 ## Code for converting a .Rmd file to a plain .R script
 ```{r convert .Rmd to .R}
-library(knitr)
-# purl("your_script.Rmd", output = "your_script.R")
-# example:
-purl("Cervix_MicroSim_RMarkdown_v.072.Rmd", output = "cervix_microSim_stacked_list.R")
+#library(knitr)
+## purl("your_script.Rmd", output = "your_script.R")
+## example:
+#purl("Cervix_MicroSim_RMarkdown_v.072.Rmd", output = "cervix_microSim_stacked_list.R")
 ```
 
 ### Perform cost-effectiveness analysis (this code is to be change to implement our own cost-effectiveness analysis):

@@ -814,7 +814,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
 p = Sys.time()
 # run for no treatment
 #sim_no_trt  <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = FALSE)
-sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 40, 
+sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 100, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
@@ -871,7 +871,7 @@ prevalence_result <-
   prevalence_func(sim_stalked_result = sim_no_trt, my_Probs = my_Probs)  
 
 # save the results
-saveRDS(object = prevalence_result, file = "./data/stacked_sims_40x10E6x75.rds")
+saveRDS(object = prevalence_result, file = "./data/stacked_sims_100x10E6x75.rds")
 
 ################################################################################
 ## Incidence is defined by the NEW number of individuals in the state of interest
