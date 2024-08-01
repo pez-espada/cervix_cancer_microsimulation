@@ -996,6 +996,7 @@ prevalence_result <-
 # states at time t-1 (in the previous cycle). This is how is defined in the  the 
 # Markov model. We follow that definition to compare the micro sim and the Markov. 
 incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in progress
+  # state = "new_CIN1", "new_CIN2", etc
   
   # Extract unique age intervals
   age_intervals <- my_Probs %>% 
@@ -1008,15 +1009,16 @@ incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in prog
   
   # Create labels for the intervals
   labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
-  
-  
+ 
+   
+  ##############################################################################
   # WORK IN PROGRESS
   # Incidence definition: 
   # I(state(n), t) = # newcases(n, t) /
   # (state(1) + state(2) + ... + state(n-1), t-1)
   
   all_previous_states <- v_n[1 : ( which(v_n == state) - 1)]
-  sum_of_previous_states_at_tminus1 <- 
+  # sum_of_previous_states_at_tminus1 <- 
   
   # Defining dfs:
   TR <- sim_no_trt[[1]]$TR
@@ -1028,11 +1030,11 @@ incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in prog
     #dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
     dplyr::select(everything()) %>% 
     
-    mutate(total_alive = H + CIN1 + CIN2 +CIN3 +
-             FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
+    deplyr::mutate(total_alive = H + CIN1 + CIN2 +CIN3 +
+                     FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
     #mutate(prevalence = HR.HPV.infection / H) %>% 
-    mutate(prevalence = HR.HPV.infection / total_alive) %>% 
-    mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
+    deplyr::mutate(prevalence = HR.HPV.infection / total_alive) %>% 
+    deplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
     group_by(age_interval) %>% 
     summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>% 
     ungroup()
