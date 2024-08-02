@@ -947,7 +947,6 @@ sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 2,
 #  sim_stalked_result[[1]]$mean_prevalence_per_age <- df
 #  return(sim_stalked_result)
 #}
-
 ################################################################################
 # Prevalence is defined as number of infected divided by total alive individuals
 # for that cycle/time step
@@ -1010,7 +1009,6 @@ incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in prog
   # Create labels for the intervals
   labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
  
-   
   ##############################################################################
   # WORK IN PROGRESS
   # Incidence definition: 
@@ -1021,9 +1019,19 @@ incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in prog
   # sum_of_previous_states_at_tminus1 <- 
   
   # Defining dfs:
-  TR <- sim_no_trt[[1]]$TR
-  new_State <- sim_no_trt[[1]]$state
-  new_Stat
+  TR <- sim_stalked_result[[1]]["TR"]
+  
+  # Defining new_cases state:
+  new_state    <- paste0("new_", state)
+  new_state_df <- sim_stalked_result[[1]][new_state]
+  
+  ## Use the ensym() function to convert strings to symbols
+  library(rlang)
+  new_state <- ensym(new_state)
+  
+  # Defining new_cases state:
+  new_state    <- paste0("new_", state)
+  new_state_df <- sim_stalked_result[[1]][new_state]
   
   # Compute prevalence and average it by age intervals
   df <- sim_stalked_result[[1]]$TR %>% 
