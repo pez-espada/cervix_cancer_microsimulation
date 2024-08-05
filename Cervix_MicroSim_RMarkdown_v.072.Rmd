@@ -1019,19 +1019,34 @@ incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in prog
   # sum_of_previous_states_at_tminus1 <- 
   
   # Defining dfs:
-  TR <- sim_stalked_result[[1]]["TR"]
+  #TR <- sim_stalked_result[[1]]["TR"]
+  #TR <- sim_stalked_result[[1]]$TR
+  
+  my_incidence_df <- sim_stalked_result[[1]]$TR
   
   # Defining new_cases state:
   new_state    <- paste0("new_", state)
-  new_state_df <- sim_stalked_result[[1]][new_state]
+  new_state_df <- sim_stalked_result[[1]][new_state][[1]]
   
-  ## Use the ensym() function to convert strings to symbols
-  library(rlang)
-  new_state <- ensym(new_state)
+  my_incidence_df <- 
+    my_incidence_df %>% 
+    dplyr::left_join(new_state_df %>%
+                       dplyr::select(-c(sim.1, row_names)), 
+                     by = c("sim", "age", "cycle"))
+ 
+  ## ERROR PPLEASE CHECK FROM HERE
+  # Create the new column
+  my_incidence_df <- my_incidence_df %>%
+    mutate(new_col = get(target_column) / lag(rowSums(select(., all_of(all_previous_states))), default = NA))
   
-  # Defining new_cases state:
-  new_state    <- paste0("new_", state)
-  new_state_df <- sim_stalked_result[[1]][new_state]
+  
+  ### Use the ensym() function to convert strings to symbols
+  #library(rlang)
+  #new_state <- ensym(new_state)
+  #
+  ## Defining new_cases state:
+  #new_state    <- paste0("new_", state)
+  #new_state_df <- sim_stalked_result[[1]][new_state]
   
   # Compute prevalence and average it by age intervals
   df <- sim_stalked_result[[1]]$TR %>% 
