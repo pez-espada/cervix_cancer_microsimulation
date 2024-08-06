@@ -1034,15 +1034,21 @@ incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in prog
                        dplyr::select(-c(sim.1, row_names)), 
                      by = c("sim", "age", "cycle"))
  
-  ## ERROR PPLEASE CHECK FROM HERE
   # Find the column containing "->" and the state
-  target_column <- grep(paste0("->", state), names(my_incidence_df), value = TRUE)
+  target_column <-
+    grep(paste0("->", state), names(my_incidence_df), value = TRUE)
   
   # Create the new column
   my_incidence_df <- my_incidence_df %>%
-    mutate(new_col = get(target_column) / lag(rowSums(select(., all_of(all_previous_states))), default = NA))
+    dplyr::mutate(!!paste0("incidence_", state) := (get(target_column) /
+             dplyr::lag(rowSums(select(., all_of(all_previous_states))), 
+                 n=1, default = NA)) * 10^5 )
+  
+ 
   
   
+  
+   
   ### Use the ensym() function to convert strings to symbols
   #library(rlang)
   #new_state <- ensym(new_state)
