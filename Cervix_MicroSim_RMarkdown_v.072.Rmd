@@ -967,13 +967,13 @@ prevalence_func <- function(sim_stalked_result, my_Probs) {
   df <- sim_stalked_result[[1]]$TR %>% 
     #dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
     dplyr::select(everything()) %>% 
-    mutate(total_alive = H + CIN1 + CIN2 + CIN3 +
-             FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
-    mutate(prevalence = HR.HPV.infection / total_alive) %>% 
-    mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
-    group_by(age_interval) %>% 
-    summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>% 
-    ungroup()
+    dplyr::mutate(total_alive = H + CIN1 + CIN2 + CIN3 +
+                    FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
+    dplyr::mutate(prevalence = HR.HPV.infection / total_alive) %>% 
+    dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
+    dplyr::group_by(age_interval) %>% 
+    dplyr::summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>% 
+    dplyr::ungroup()
   
   #return(df)
   sim_stalked_result[[1]]$mean_prevalence_per_age_interval <- df
@@ -1010,7 +1010,6 @@ incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in prog
   labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
  
   ##############################################################################
-  # WORK IN PROGRESS
   # Incidence definition: 
   # I(state(n), t) = # newcases(n, t) /
   # (state(1) + state(2) + ... + state(n-1), t-1)
@@ -1044,37 +1043,35 @@ incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in prog
              dplyr::lag(rowSums(select(., all_of(all_previous_states))), 
                  n=1, default = NA)) * 10^5 )
   
- 
-  
-  
-  
-   
-  ### Use the ensym() function to convert strings to symbols
-  #library(rlang)
-  #new_state <- ensym(new_state)
-  #
-  ## Defining new_cases state:
-  #new_state    <- paste0("new_", state)
-  #new_state_df <- sim_stalked_result[[1]][new_state]
-  
-  # Compute prevalence and average it by age intervals
-  df <- sim_stalked_result[[1]]$TR %>% 
-    #dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
-    dplyr::select(everything()) %>% 
-    
-    deplyr::mutate(total_alive = H + CIN1 + CIN2 +CIN3 +
-                     FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
-    #mutate(prevalence = HR.HPV.infection / H) %>% 
-    deplyr::mutate(prevalence = HR.HPV.infection / total_alive) %>% 
-    deplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
-    group_by(age_interval) %>% 
-    summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>% 
+  library(rlang)
+  df <- my_incidence_df %>%
+    dplyr::select(everything()) %>%
+    dplyr::mutate(age_interval = 
+                    cut(age, breaks = breaks, 
+                        labels = labels, 
+                        right = FALSE)) %>%
+    group_by(age_interval) %>%
+    summarise(!!paste0("mean_incidence_", state) := 
+                mean(!!sym(paste0("incidence_", state)), na.rm = TRUE)) %>%
     ungroup()
   
-  #return(df)
-  sim_stalked_result[[1]]$mean_prevalence_per_age_interval <- df
+  sim_stalked_result[[1]]$mean_incidence_per_age_interval <- df
   return(sim_stalked_result)
+} 
+################################################################################
+  
+# computing incidences:
+incidence_states_to_compute <- c("CIN1", "CIN2", "CIN3")
+
+incidence_result <- list()
+
+for (my_state in incidence_states_to_compute) {
+  print(my_state)
+  incidence_result <- incidence_func(sim_stalked_result = prevalence_result, state = my_state, my_Probs = my_Probs)  
 }
+
+  
+
 
 # run for treatment
 #sim_trt     <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = TRUE)  
