@@ -995,8 +995,6 @@ prevalence_result <-
 # states at time t-1 (in the previous cycle). This is how is defined in the  the 
 # Markov model. We follow that definition to compare the micro sim and the Markov. 
 incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in progress
-  # state = "new_CIN1", "new_CIN2", etc
-  
   # Extract unique age intervals
   age_intervals <- my_Probs %>% 
     select(Lower, Larger) %>% 
@@ -1015,11 +1013,6 @@ incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in prog
   # (state(1) + state(2) + ... + state(n-1), t-1)
   
   all_previous_states <- v_n[1 : ( which(v_n == state) - 1)]
-  # sum_of_previous_states_at_tminus1 <- 
-
-  # Defining dfs:
-  #TR <- sim_stalked_result[[1]]["TR"]
-  #TR <- sim_stalked_result[[1]]$TR
   
   my_incidence_df <- sim_stalked_result[[1]]$TR
   
