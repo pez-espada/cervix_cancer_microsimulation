@@ -1017,7 +1017,7 @@ incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in prog
   
   all_previous_states <- v_n[1 : ( which(v_n == state) - 1)]
   # sum_of_previous_states_at_tminus1 <- 
-  
+
   # Defining dfs:
   #TR <- sim_stalked_result[[1]]["TR"]
   #TR <- sim_stalked_result[[1]]$TR
@@ -1035,6 +1035,9 @@ incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in prog
                      by = c("sim", "age", "cycle"))
  
   ## ERROR PPLEASE CHECK FROM HERE
+  # Find the column containing "->" and the state
+  target_column <- grep(paste0("->", state), names(my_incidence_df), value = TRUE)
+  
   # Create the new column
   my_incidence_df <- my_incidence_df %>%
     mutate(new_col = get(target_column) / lag(rowSums(select(., all_of(all_previous_states))), default = NA))
