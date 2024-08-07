@@ -1006,7 +1006,7 @@ incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in prog
   
   # Create labels for the intervals
   labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
- 
+  
   ##############################################################################
   # Incidence definition: 
   # I(state(n), t) = # newcases(n, t) /
@@ -1025,7 +1025,7 @@ incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in prog
     dplyr::left_join(new_state_df %>%
                        dplyr::select(-c(sim.1, row_names)), 
                      by = c("sim", "age", "cycle"))
- 
+  
   # Find the column containing "->" and the state
   target_column <-
     grep(paste0("->", state), names(my_incidence_df), value = TRUE)
@@ -1033,8 +1033,8 @@ incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in prog
   # Create the new column
   my_incidence_df <- my_incidence_df %>%
     dplyr::mutate(!!paste0("incidence_", state) := (get(target_column) /
-             dplyr::lag(rowSums(select(., all_of(all_previous_states))), 
-                 n=1, default = NA)) * 10^5 )
+                                                      dplyr::lag(rowSums(select(., all_of(all_previous_states))), 
+                                                                 n=1, default = NA)) * 10^5 )
   
   library(rlang)
   df <- my_incidence_df %>%
@@ -1048,26 +1048,27 @@ incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in prog
                 mean(!!sym(paste0("incidence_", state)), na.rm = TRUE)) %>%
     ungroup()
   
-  sim_stalked_result[[1]]$mean_incidence_per_age_interval <- df
+  
+  ##result_name <- paste0("mean_incidence_", state, "_per_age_interval")
+  sim_stalked_result[[1]][[paste0("mean_incidence_", state, "_per_age_interval")]] <- df
+  #sim_stalked_result[[1]]$mean_incidence_per_age_interval <- df
   return(sim_stalked_result)
 } 
 ################################################################################
-  
-# computing incidences:
+
+# Computing incidences:
 incidence_states_to_compute <- c("CIN1", "CIN2", "CIN3")
 
-incidence_result <- list()
+# Initialize the result with the original structure
+incidence_result <- prevalence_result
 
+# Apply the incidence function to each state and update the result structure
 for (my_state in incidence_states_to_compute) {
   print(my_state)
-  incidence_result <- incidence_func(sim_stalked_result = prevalence_result, state = my_state, my_Probs = my_Probs)  
+  incidence_result <- incidence_func(sim_stalked_result = incidence_result, state = my_state, my_Probs = my_Probs)
 }
 
-  
 
-
-# run for treatment
-#sim_trt     <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = TRUE)  
 comp.time = Sys.time() - p
 comp.time %>% print()
 ```
