@@ -117,7 +117,7 @@ knitr::kable(my_Probs)
 
 ```{r, model parameters}
 n_i <- 10^5                 # number of simulated individuals
-n_t <- 25                   # time horizon, 75 cycles (it starts from 1)
+n_t <- 75                   # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
 ### (THIS IS WORK IN PROGRESS):
@@ -935,18 +935,12 @@ sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 2,
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
 
-################################################################################
-#prevalence_func <- function(sim_stalked_result) {
-#  df <- sim_stalked_result[[1]]$TR %>% 
-#    dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
-#    mutate(prevalence = HR.HPV.infection / H) %>% 
-#    group_by(age) %>% 
-#    summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>% ungroup()
-#  prevalence_per_age <- df
-#  #return(c(sim_stalked_result, prevalence_per_age))
-#  sim_stalked_result[[1]]$mean_prevalence_per_age <- df
-#  return(sim_stalked_result)
-#}
+
+
+###################################
+## Post-simulation Computations: ##
+###################################
+
 ################################################################################
 # Prevalence is defined as number of infected divided by total alive individuals
 # for that cycle/time step
@@ -967,7 +961,7 @@ prevalence_func <- function(sim_stalked_result, my_Probs) {
   df <- sim_stalked_result[[1]]$TR %>% 
     #dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
     dplyr::select(everything()) %>% 
-    dplyr::mutate(total_alive = H + CIN1 + CIN2 + CIN3 +
+    dplyr::mutate(total_alive = H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
                     FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
     dplyr::mutate(prevalence = HR.HPV.infection / total_alive) %>% 
     dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
@@ -1064,10 +1058,98 @@ incidence_result <- prevalence_result
 
 # Apply the incidence function to each state and update the result structure
 for (my_state in incidence_states_to_compute) {
-  print(my_state)
+  #print(my_state)
   incidence_result <- incidence_func(sim_stalked_result = incidence_result, state = my_state, my_Probs = my_Probs)
 }
+################################################################################
 
+# Computing Moralities:
+# A. Cancer-related deaths at certain age (cycle) / total alive at that age (cycle)
+# B. Cancer-unrelated deaths at certain age (cycle) / total alive at that age (cycle)
+
+
+################################################################################
+# A. Cancer-related Deaths per age
+CC_mortality_func <- function(sim_stalked_result, my_Probs) {
+  # Extract unique age intervals
+  age_intervals <- my_Probs %>% 
+    select(Lower, Larger) %>% 
+    unique() %>% 
+    arrange(Lower)
+  
+  # Create a vector of the breaks for the intervals
+  breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
+  
+  # Create labels for the intervals
+  labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
+  
+  # Compute prevalence and average it by age intervals
+  df <- sim_stalked_result[[1]]$TR %>% 
+    #dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
+    dplyr::select(everything()) %>% 
+    dplyr::mutate(total_alive = H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
+                    FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
+    dplyr::mutate(CC_mortality = (CC_Death / total_alive) * 10^5) %>% 
+    dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
+    dplyr::group_by(age_interval) %>% 
+    dplyr::summarise(mean_CC_mortality = mean(CC_mortality, na.rm = TRUE)) %>% 
+    dplyr::ungroup()
+  
+  #return(df)
+  sim_stalked_result[[1]]$mean_CC_mortality <- df
+  return(sim_stalked_result)
+}
+################################################################################
+
+# Concatenate the prevalence to the sim result 
+CC_mortality_result <-
+  CC_mortality_func(sim_stalked_result = incidence_result, my_Probs = my_Probs)  
+
+# save the results
+#saveRDS(object = prevalence_result, file = "./data/stacked_sims_40x10E6x75.rds")
+ 
+
+
+################################################################################
+# B. Cancer-unrelated Mortality
+other_mortality_func <- function(sim_stalked_result, my_Probs) {
+  
+  # Extract unique age intervals
+  age_intervals <- my_Probs %>% 
+    select(Lower, Larger) %>% 
+    unique() %>% 
+    arrange(Lower)
+  
+  # Create a vector of the breaks for the intervals
+  breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
+  
+  # Create labels for the intervals
+  labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
+  
+  # Compute prevalence and average it by age intervals
+  df <- sim_stalked_result[[1]]$TR %>% 
+    #dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
+    dplyr::select(everything()) %>% 
+    dplyr::mutate(total_alive = H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
+                    FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
+    dplyr::mutate(other_mortality = (Other.Death / total_alive) * 10^5) %>% 
+    dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
+    dplyr::group_by(age_interval) %>% 
+    dplyr::summarise(mean_other_mortality = mean(other_mortality, na.rm = TRUE)) %>% 
+    dplyr::ungroup()
+  
+  #return(df)
+  sim_stalked_result[[1]]$mean_other_mortality <- df
+  return(sim_stalked_result)
+}
+################################################################################
+
+# Concatenate the prevalence to the sim result 
+other_mortality_result <-
+  other_mortality_func(sim_stalked_result = CC_mortality_result, my_Probs = my_Probs)  
+
+# save the results
+#saveRDS(object = prevalence_result, file = "./data/stacked_sims_40x10E6x75.rds")
 
 comp.time = Sys.time() - p
 comp.time %>% print()

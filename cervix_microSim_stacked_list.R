@@ -70,8 +70,8 @@ knitr::kable(my_Probs)
 
 
 ## ----model parameters-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-n_i <- 10^6                 # number of simulated individuals
-n_t <- 75                   # time horizon, 75 cycles (it starts from 1)
+n_i <- 10^5                 # number of simulated individuals
+n_t <- 25                   # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
 ### (THIS IS WORK IN PROGRESS):
@@ -814,22 +814,16 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
 p = Sys.time()
 # run for no treatment
 #sim_no_trt  <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = FALSE)
-sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 100, 
+sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 2, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
 
-#prevalence_func <- function(sim_stalked_result) {
-#  df <- sim_stalked_result[[1]]$TR %>% 
-#    dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
-#    mutate(prevalence = HR.HPV.infection / H) %>% 
-#    group_by(age) %>% 
-#    summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>% ungroup()
-#  prevalence_per_age <- df
-#  #return(c(sim_stalked_result, prevalence_per_age))
-#  sim_stalked_result[[1]]$mean_prevalence_per_age <- df
-#  return(sim_stalked_result)
-#}
+
+
+###################################
+## Post-simulation Computations: ##
+###################################
 
 ################################################################################
 # Prevalence is defined as number of infected divided by total alive individuals
@@ -851,14 +845,13 @@ prevalence_func <- function(sim_stalked_result, my_Probs) {
   df <- sim_stalked_result[[1]]$TR %>% 
     #dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
     dplyr::select(everything()) %>% 
-    mutate(total_alive = H + CIN1 + CIN2 +CIN3 +
-             FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
-    #mutate(prevalence = HR.HPV.infection / H) %>% 
-    mutate(prevalence = HR.HPV.infection / total_alive) %>% 
-    mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
-    group_by(age_interval) %>% 
-    summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>% 
-    ungroup()
+    dplyr::mutate(total_alive = H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
+                    FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
+    dplyr::mutate(prevalence = HR.HPV.infection / total_alive) %>% 
+    dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
+    dplyr::group_by(age_interval) %>% 
+    dplyr::summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>% 
+    dplyr::ungroup()
   
   #return(df)
   sim_stalked_result[[1]]$mean_prevalence_per_age_interval <- df
@@ -871,47 +864,138 @@ prevalence_result <-
   prevalence_func(sim_stalked_result = sim_no_trt, my_Probs = my_Probs)  
 
 # save the results
-saveRDS(object = prevalence_result, file = "./data/stacked_sims_100x10E6x75.rds")
+#saveRDS(object = prevalence_result, file = "./data/stacked_sims_40x10E6x75.rds")
+ 
 
 ################################################################################
-## Incidence is defined by the NEW number of individuals in the state of interest
-## in the time t divided by all the individuals in  the epidemiological "precedent" 
-## states at time t-1 (in the previous cycle). This is how is defined in the  the 
-## Markov model. We follow that definition to compare the micro sim and the Markov. 
-#incidence_func <- function(sim_stalked_result, my_Probs) { # work in progress
-#  
-#  # Extract unique age intervals
-#  age_intervals <- my_Probs %>% 
-#    select(Lower, Larger) %>% 
-#    unique() %>% 
-#    arrange(Lower)
-#  
-#  # Create a vector of the breaks for the intervals
-#  breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
-#  
-#  # Create labels for the intervals
-#  labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
-#  
-#  # Compute prevalence and average it by age intervals
-#  df <- sim_stalked_result[[1]]$TR %>% 
-#    #dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
-#    dplyr::select(everything()) %>% 
-#    mutate(total_alive = H + CIN1 + CIN2 +CIN3 +
-#             FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
-#    #mutate(prevalence = HR.HPV.infection / H) %>% 
-#    mutate(prevalence = HR.HPV.infection / total_alive) %>% 
-#    mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
-#    group_by(age_interval) %>% 
-#    summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>% 
-#    ungroup()
-#  
-#  #return(df)
-#  sim_stalked_result[[1]]$mean_prevalence_per_age_interval <- df
-#  return(sim_stalked_result)
-#}
+# Incidence is defined by the NEW number of individuals in the state of interest
+# in the time t divided by all the individuals in  the epidemiological "precedent" 
+# states at time t-1 (in the previous cycle). This is how is defined in the  the 
+# Markov model. We follow that definition to compare the micro sim and the Markov. 
+incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in progress
+  # Extract unique age intervals
+  age_intervals <- my_Probs %>% 
+    select(Lower, Larger) %>% 
+    unique() %>% 
+    arrange(Lower)
+  
+  # Create a vector of the breaks for the intervals
+  breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
+  
+  # Create labels for the intervals
+  labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
+  
+  ##############################################################################
+  # Incidence definition: 
+  # I(state(n), t) = # newcases(n, t) /
+  # (state(1) + state(2) + ... + state(n-1), t-1)
+  
+  all_previous_states <- v_n[1 : ( which(v_n == state) - 1)]
+  
+  my_incidence_df <- sim_stalked_result[[1]]$TR
+  
+  # Defining new_cases state:
+  new_state    <- paste0("new_", state)
+  new_state_df <- sim_stalked_result[[1]][new_state][[1]]
+  
+  my_incidence_df <- 
+    my_incidence_df %>% 
+    dplyr::left_join(new_state_df %>%
+                       dplyr::select(-c(sim.1, row_names)), 
+                     by = c("sim", "age", "cycle"))
+  
+  # Find the column containing "->" and the state
+  target_column <-
+    grep(paste0("->", state), names(my_incidence_df), value = TRUE)
+  
+  # Create the new column
+  my_incidence_df <- my_incidence_df %>%
+    dplyr::mutate(!!paste0("incidence_", state) := (get(target_column) /
+                                                      dplyr::lag(rowSums(select(., all_of(all_previous_states))), 
+                                                                 n=1, default = NA)) * 10^5 )
+  
+  library(rlang)
+  df <- my_incidence_df %>%
+    dplyr::select(everything()) %>%
+    dplyr::mutate(age_interval = 
+                    cut(age, breaks = breaks, 
+                        labels = labels, 
+                        right = FALSE)) %>%
+    group_by(age_interval) %>%
+    summarise(!!paste0("mean_incidence_", state) := 
+                mean(!!sym(paste0("incidence_", state)), na.rm = TRUE)) %>%
+    ungroup()
+  
+  
+  ##result_name <- paste0("mean_incidence_", state, "_per_age_interval")
+  sim_stalked_result[[1]][[paste0("mean_incidence_", state, "_per_age_interval")]] <- df
+  #sim_stalked_result[[1]]$mean_incidence_per_age_interval <- df
+  return(sim_stalked_result)
+} 
+################################################################################
 
-# run for treatment
-#sim_trt     <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = TRUE)  
+# Computing incidences:
+incidence_states_to_compute <- c("CIN1", "CIN2", "CIN3")
+
+# Initialize the result with the original structure
+incidence_result <- prevalence_result
+
+# Apply the incidence function to each state and update the result structure
+for (my_state in incidence_states_to_compute) {
+  #print(my_state)
+  incidence_result <- incidence_func(sim_stalked_result = incidence_result, state = my_state, my_Probs = my_Probs)
+}
+################################################################################
+
+# Computing Moralities:
+# A. Cancer-related deaths at certain age (cycle) / total alive at that age (cycle)
+# B. Cancer-unrelated deaths at certain age (cycle) / total alive at that age (cycle)
+
+
+################################################################################
+# Cancer-related Deaths per age
+CC_mortality_func <- function(sim_stalked_result, my_Probs) {
+  # Extract unique age intervals
+  age_intervals <- my_Probs %>% 
+    select(Lower, Larger) %>% 
+    unique() %>% 
+    arrange(Lower)
+  
+  # Create a vector of the breaks for the intervals
+  breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
+  
+  # Create labels for the intervals
+  labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
+  
+  # Compute prevalence and average it by age intervals
+  df <- sim_stalked_result[[1]]$TR %>% 
+    #dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
+    dplyr::select(everything()) %>% 
+    dplyr::mutate(total_alive = H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
+                    FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
+    dplyr::mutate(CC_mortality = CC_Death / total_alive) %>% 
+    dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
+    dplyr::group_by(age_interval) %>% 
+    dplyr::summarise(mean_CC_mortality = mean(CC_mortality, na.rm = TRUE)) %>% 
+    dplyr::ungroup()
+  
+  #return(df)
+  sim_stalked_result[[1]]$mean_CC_mortality <- df
+  return(sim_stalked_result)
+}
+################################################################################
+
+# Concatenate the prevalence to the sim result 
+prevalence_result <-
+  prevalence_func(sim_stalked_result = sim_no_trt, my_Probs = my_Probs)  
+
+# save the results
+#saveRDS(object = prevalence_result, file = "./data/stacked_sims_40x10E6x75.rds")
+ 
+
+
+
+
 comp.time = Sys.time() - p
 comp.time %>% print()
 
