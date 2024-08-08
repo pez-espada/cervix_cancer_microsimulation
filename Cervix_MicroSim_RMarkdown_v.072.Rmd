@@ -1296,9 +1296,12 @@ ggplot(long_merged_data, aes(x = age, y = value, color = `Health state`)) +
 ################################################################################
 ```
 
-### New cases
-Now I compare the new cases of some microsimulation model states to the ones coming from the Markov cohort model with the same probabilistic structure. In the microsimulation a new case of particular health-state at particular time $t$ is defined as an individual transition to that state provided the individual was in any different state in the previous time $t-1$.
 
+
+
+
+### New cases
+Now we compare the new cases of some microsimulation model states to the ones coming from the Markov cohort model with the same probabilistic structure. In the microsimulation a new case of particular health-state at particular time $t$ is defined as an individual transition to that state provided the individual was in any different state in the previous time $t-1$.
 ```{r plot new cases, fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth'}
 ## This R chunk is a plot routine (not part of the main program):
 markov_new_cases <- 
@@ -1321,8 +1324,30 @@ ggplot(long_data_markov_nc, aes(x = age, y = value, color = `Health state`)) +
   theme_minimal()  # Optional: customize the theme
 
 
+
 ################################################################################
-# new cases from microsimulation:
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+###################### FROM HERE WORK IN PROGRESS ##############################
+###################### FROM HERE WORK IN PROGRESS ##############################
+###################### FROM HERE WORK IN PROGRESS ##############################
+###################### FROM HERE WORK IN PROGRESS ##############################
+###################### FROM HERE WORK IN PROGRESS ##############################
+###################### FROM HERE WORK IN PROGRESS ##############################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+
+
+
+
+################################################################################
+## new cases from microsimulation:
 df_CIN1_nc <- new_cases("CIN1") %>% dplyr:: rename(`new cases CIN1` = total_new_cases)
 df_CIN2_nc <- new_cases("CIN2") %>% dplyr:: rename(`new cases CIN2` = total_new_cases) %>% select(-age)
 df_CIN3_nc <- new_cases("CIN3") %>% dplyr:: rename(`new cases CIN3` = total_new_cases) %>% select(-age)
@@ -1330,6 +1355,8 @@ df_FIGO1_nc <- new_cases("FIGO.I") %>% dplyr:: rename(`new cases FIGO1` = total_
 df_FIGO2_nc <- new_cases("FIGO.II") %>% dplyr:: rename(`new cases FIGO2` = total_new_cases) %>% select(-age)
 df_FIGO3_nc <- new_cases("FIGO.III") %>% dplyr:: rename(`new cases FIGO3` = total_new_cases) %>% select(-age)
 df_FIGO4_nc <- new_cases("FIGO.IV") %>% dplyr:: rename(`new cases FIGO4` = total_new_cases) %>% select(-age)
+
+
 
 df_microsim_new_cases <- dplyr::bind_cols(df_CIN1_nc, df_CIN2_nc, df_CIN3_nc, 
                                           df_FIGO1_nc, df_FIGO2_nc, 
