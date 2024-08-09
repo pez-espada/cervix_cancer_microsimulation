@@ -916,7 +916,9 @@ sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 4,
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
+```
 
+```{r, post-simulation computations, tidy=TRUE, echo=FALSE, include=FALSE, results='hide'}
 ###################################
 ## Post-simulation Computations: ##
 ###################################
@@ -949,7 +951,7 @@ mean_prevalence_func <- function(sim_stalked_result, my_Probs) {
     dplyr::summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>% 
     dplyr::ungroup()
   
-  sim_stalked_result[[1]]$mean_prevalence_per_age_interval <- df
+  sim_stalked_result[[1]]$mean_HPV_prevalence_per_age_interval <- df
   return(sim_stalked_result)
 }
 ################################################################################
@@ -1026,9 +1028,9 @@ mean_incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in
   return(sim_stalked_result)
 } 
 ################################################################################
-
+##################### HERE HERE HERE ###########################################
 # Computing incidences:
-incidence_states_to_compute <- c("CIN1", "CIN2", "CIN3")
+incidence_states_to_compute <- c("CIN1", "CIN2", "CIN3") 
 
 # Initialize the result with the original structure
 mean_incidence_result <- mean_prevalence_result
@@ -1037,6 +1039,39 @@ mean_incidence_result <- mean_prevalence_result
 for (my_state in incidence_states_to_compute) {
   #print(my_state)
   mean_incidence_result <- mean_incidence_func(sim_stalked_result = mean_incidence_result, state = my_state, my_Probs = my_Probs)
+}
+################################################################################
+
+################################################################################
+# Computing Cervix Cancer incidence:
+CC_mean_CC_incidence_func <- function(sim_stalked_result, my_Probs) {
+  # Extract unique age intervals
+  age_intervals <- my_Probs %>% 
+    select(Lower, Larger) %>% 
+    unique() %>% 
+    arrange(Lower)
+  
+  # Create a vector of the breaks for the intervals
+  breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
+  
+  # Create labels for the intervals
+  labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
+  
+  # Compute prevalence and average it by age intervals
+  df <- sim_stalked_result[[1]]$ %>% 
+    #dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
+    dplyr::select(everything()) %>% 
+    dplyr::mutate(total_alive = H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
+                    FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
+    dplyr::mutate(CC_mean_incidence = (CC_Death / total_alive) * 10^5) %>% 
+    dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
+    dplyr::group_by(age_interval) %>% 
+    dplyr::summarise(CC_mean_mortality = mean(CC_mortality, na.rm = TRUE)) %>% 
+    dplyr::ungroup()
+  
+  #return(df)
+  sim_stalked_result[[1]]$CC_mean_mortality <- df
+  return(sim_stalked_result)
 }
 ################################################################################
 
@@ -1201,7 +1236,7 @@ library(tidyr)
 library(ggplot2)
 
 # Average the specified columns by age across all simulations
-averaged_micro_sim_df <- df %>%
+averaged_micro_sim_df <- micro_sim_df %>%
   group_by(age) %>%
   summarise(across(c(CIN1, CIN2, CIN3, 
                      FIGO.I, FIGO.II, FIGO.III, FIGO.IV,
@@ -1297,404 +1332,354 @@ ggplot(long_merged_data, aes(x = age, y = value, color = `Health state`)) +
 ```
 
 
+## Incidence, prevalences and mortalities
+
+```{r incidences, prevalences, and mortalities}
+
+# Markov
+markov_CN1_incidences <- c(0.00000, 204.73492, 981.96179, 1368.24200, 3006.85782, 33.48096, 1362.96678, 459.48051, 697.84223, 794.33833, 223.00222, 246.23082, 176.02167, 126.22963, 53.70939)
+markov_CN2_incidences <- c(0.000000, 6.165629, 54.767952, 140.309815, 216.568392, 1476.306267, 1579.728160, 1298.914564, 466.596151, 637.661611, 442.298632, 304.784447, 250.953880, 165.628020, 116.925192)
+markov_CN3_incidences <- c(0.000000, 2.090325, 9.597415, 44.467676, 148.972191, 0.000000, 3.550684, 91.881726, 12.505042, 68.377446, 25.802481, 7.952667, 1.174088, 1.177840, 2.638642)
+markov_CC_incidences  <- c(0.000000, 0.000000, 0.000000, 5.520938, 8.360544, 13.282380, 22.906871, 20.825560, 15.867891, 32.483846, 8.962389, 17.681771, 11.737615, 17.354646, 14.582775)
+markov_HPV_prevalences <- c(0.000000000, 0.343480414, 0.377634762, 0.087223460, 0.307341403, 0.030196332, 0.050562845, 0.050151668, 0.082952596, 0.046644059, 0.018532077, 0.034193076, 0.016407832, 0.015039027, 0.003217326)
+markov_CC_mortality <- c(0.000000e+00, 0.000000e+00, 0.000000e+00, 2.977975e-06, 1.574920e-05, 2.715056e-05, 5.489929e-05, 7.284815e-05, 1.057494e-04, 5.076268e-05, 7.517773e-05, 4.960943e-05, 4.802468e-05, 4.210457e-05, 4.837655e-05) 
+
+# Micro im:
+microSim_CN1_incidences  <- other_mean_mortality_result[[1]]$mean_incidence_CIN1_per_age_interval
+microSim_CN2_incidences  <- other_mean_mortality_result[[1]]$mean_incidence_CIN2_per_age_interval
+microSim_CN3_incidences  <- other_mean_mortality_result[[1]]$mean_incidence_CIN3_per_age_interval
+microSim_CC_incidences   <- other_mean_mortality_result[[1]]$
+microSim_HPV_prevalences <- other_mean_mortality_result[[1]]$mean_HPV_prevalence_per_age_interval
+markov_CC_mortality      <- other_mean_mortality_result[[1]]$CC_mean_mortality
 
 
-
-### New cases
-Now we compare the new cases of some microsimulation model states to the ones coming from the Markov cohort model with the same probabilistic structure. In the microsimulation a new case of particular health-state at particular time $t$ is defined as an individual transition to that state provided the individual was in any different state in the previous time $t-1$.
-```{r plot new cases, fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth'}
-## This R chunk is a plot routine (not part of the main program):
-markov_new_cases <- 
-  readxl::read_excel(path = "data/Sortida_NoIntervencio.xlsx", sheet = "Cases") 
-
-markov_new_cases <- markov_new_cases %>% dplyr::rename(age=Age)
-
-# Reshape the data into long format
-long_data_markov_nc <- markov_new_cases %>%
-  pivot_longer(cols = c( `Newcases CIN-I`, `Newcases CIN-II`, `Newcases CIN-III`,
-                         `Newcases CC`),
-               names_to = "Health state",
-               values_to = "value")
-
-# Plot the data
-ggplot(long_data_markov_nc, aes(x = age, y = value, color = `Health state`)) +
-  geom_line(linewidth=1, alpha=0.7) +
-  labs(x = "Age", y = "number", color = "Health state") +
-  ggtitle(expression(paste("Markov cohort new cases simulation for ", 10^6, " individuals"))) + 
-  theme_minimal()  # Optional: customize the theme
-
-
-
-################################################################################
-################################################################################
-################################################################################
-################################################################################
-################################################################################
-###################### FROM HERE WORK IN PROGRESS ##############################
-###################### FROM HERE WORK IN PROGRESS ##############################
-###################### FROM HERE WORK IN PROGRESS ##############################
-###################### FROM HERE WORK IN PROGRESS ##############################
-###################### FROM HERE WORK IN PROGRESS ##############################
-###################### FROM HERE WORK IN PROGRESS ##############################
-################################################################################
-################################################################################
-################################################################################
-################################################################################
-################################################################################
-################################################################################
-
-
-
-
-################################################################################
-## new cases from microsimulation:
-df_CIN1_nc <- new_cases("CIN1") %>% dplyr:: rename(`new cases CIN1` = total_new_cases)
-df_CIN2_nc <- new_cases("CIN2") %>% dplyr:: rename(`new cases CIN2` = total_new_cases) %>% select(-age)
-df_CIN3_nc <- new_cases("CIN3") %>% dplyr:: rename(`new cases CIN3` = total_new_cases) %>% select(-age)
-df_FIGO1_nc <- new_cases("FIGO.I") %>% dplyr:: rename(`new cases FIGO1` = total_new_cases) %>% select(-age)
-df_FIGO2_nc <- new_cases("FIGO.II") %>% dplyr:: rename(`new cases FIGO2` = total_new_cases) %>% select(-age)
-df_FIGO3_nc <- new_cases("FIGO.III") %>% dplyr:: rename(`new cases FIGO3` = total_new_cases) %>% select(-age)
-df_FIGO4_nc <- new_cases("FIGO.IV") %>% dplyr:: rename(`new cases FIGO4` = total_new_cases) %>% select(-age)
-
-
-
-df_microsim_new_cases <- dplyr::bind_cols(df_CIN1_nc, df_CIN2_nc, df_CIN3_nc, 
-                                          df_FIGO1_nc, df_FIGO2_nc, 
-                                          df_FIGO3_nc, df_FIGO4_nc) %>%
-  dplyr::mutate(`new cases cancer`= `new cases FIGO1` +
-                  `new cases FIGO2` +
-                  `new cases FIGO3` +
-                  `new cases FIGO4`)
-rm(df_CIN1_nc, df_CIN2_nc, df_CIN3_nc, df_FIGO1_nc, df_FIGO2_nc, 
-   df_FIGO3_nc, df_FIGO4_nc)
-                                          
-# Reshape the data into long format
-long_data_microsim_nc <- df_microsim_new_cases %>%
-  pivot_longer(cols = c( "new cases CIN1", "new cases CIN2", "new cases CIN3", "new cases cancer"),
-               names_to = "Health state",
-               values_to = "value")
-
-# Plot the data
-ggplot(long_data_microsim_nc, aes(x = age, y = value, color = `Health state`)) +
-  geom_line(linewidth=1, alpha=0.7) +
-  labs(x = "Age", y = "Number", color = "Health state") +
-  #ggtitle(expression(paste("Microsimulation new cases for "), 10^6, (" individuals"))) + 
-  ggtitle(paste("Microsimulation new cases, number of individuals: ", n_i)) + 
-  # labs(title = element_text(lineheight = 1)) +
-  theme_minimal()  # Optional: customize the theme
-```
-
-
-
-```{r, compare new cases II, loading markov result, fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth'}
-## This R chunk is a plot routine (not part of the main program):
-new_markov_CIN1_cases <- long_data_markov_nc %>%
-  dplyr::filter(`Health state` == "Newcases CIN-I") %>%
-  dplyr::select(-Step) %>%
-  dplyr::mutate(`Health state` = "new CIN1 Markov")
-
-#new_markov_CIN1_cases %>% head()
-
-#long_data_microsim_nc %>% head()
-new_microsim_CIN1_cases <-
-  long_data_microsim_nc %>%
-  dplyr::filter(`Health state` == "new cases CIN1") %>%
-  dplyr:: select(age, `Health state`, value) %>%
-  dplyr::mutate(`Health state` = "new CIN1 MicroSim" )
-
-comparison_new_CIN1 <- 
-  dplyr::bind_rows(new_markov_CIN1_cases, new_microsim_CIN1_cases)
-
-# plot 
-ggplot(comparison_new_CIN1, aes(x = age, y = value, color = `Health state`)) +
-  geom_line(linewidth=1, alpha=0.7) +
-  labs(x = "Age", y = "Number", color = "Health state") +
-  ggtitle(paste("New cases CIN1: Markov vs MicroSim, number of individuals: ", n_i)) + 
-  #labs(title = element_text(lineheight = 1)) +
-  theme_minimal()  # Optional: customize the theme
-
-##
-# for CIN2:
-new_markov_CIN2_cases <- long_data_markov_nc %>%
-  dplyr::filter(`Health state` == "Newcases CIN-II") %>%
-  dplyr::select(-Step) %>%
-  dplyr::mutate(`Health state` = "new CIN2 Markov")
-
-#new_markov_CIN2_cases %>% head()
-new_microsim_CIN2_cases <-
-  long_data_microsim_nc %>%
-  dplyr::filter(`Health state` == "new cases CIN2") %>%
-  dplyr:: select(age, `Health state`, value) %>%
-  dplyr::mutate(`Health state` = "new CIN2 MicroSim" )
-
-comparison_new_CIN2 <- 
-  dplyr::bind_rows(new_markov_CIN2_cases, new_microsim_CIN2_cases)
-
-# plot 
-ggplot(comparison_new_CIN2, aes(x = age, y = value, color = `Health state`)) +
-  geom_line(linewidth=1, alpha=0.7) +
-  labs(x = "Age", y = "Number", color = "Health state") +
-  ggtitle(paste("New cases CIN2: Markov vs MicroSim, number of individuals: ", n_i)) + 
-  #labs(title = element_text(lineheight = 1)) +
-  theme_minimal()  # Optional: customize the theme
-
-##
-# for CIN3:
-new_markov_CIN3_cases <- long_data_markov_nc %>%
-  dplyr::filter(`Health state` == "Newcases CIN-III") %>%
-  dplyr::select(-Step) %>%
-  dplyr::mutate(`Health state` = "new CIN3 Markov")
-
-#new_markov_CIN2_cases %>% head()
-new_microsim_CIN3_cases <-
-  long_data_microsim_nc %>%
-  dplyr::filter(`Health state` == "new cases CIN3") %>%
-  dplyr:: select(age, `Health state`, value) %>%
-  dplyr::mutate(`Health state` = "new CIN3 MicroSim" )
-
-comparison_new_CIN3 <- 
-  dplyr::bind_rows(new_markov_CIN3_cases, new_microsim_CIN3_cases)
-
-# plot 
-ggplot(comparison_new_CIN3, aes(x = age, y = value, color = `Health state`)) +
-  geom_line(linewidth=1, alpha=0.7) +
-  labs(x = "Age", y = "Number", color = "Health state") +
-  ggtitle(paste("New cases CIN3: Markov vs MicroSim, number of individuals: ", n_i)) + 
-  #labs(title = element_text(lineheight = 1)) +
-  theme_minimal()  # Optional: customize the theme
-
-##
-# for new cancer:
-#long_data_markov_nc %>% select(`Health state`) %>% unique()
-new_markov_cancer_cases <- long_data_markov_nc %>%
-  dplyr::filter(`Health state` == "Newcases CC") %>%
-  dplyr::select(-Step) %>%
-  dplyr::mutate(`Health state` = "new cancer Markov")
-
-new_microsim_cancer_cases <-
-  long_data_microsim_nc %>%
-  dplyr::filter(`Health state` == "new cases cancer") %>%
-  dplyr:: select(age, `Health state`, value) %>%
-  dplyr::mutate(`Health state` = "new cancer MicroSim" )
-
-comparison_new_cancer <- 
-  dplyr::bind_rows(new_markov_cancer_cases, new_microsim_cancer_cases)
-
-# plot 
-ggplot(comparison_new_cancer, aes(x = age, y = value, color = `Health state`)) +
-  geom_line(linewidth=1, alpha=0.7) +
-  labs(x = "Age", y = "Number", color = "Health state") +
-  ggtitle(paste("New cancer cases: Markov vs MicroSim, number of individuals: ", n_i)) + 
-  #labs(title = element_text(lineheight = 1)) +
-  theme_minimal()  # Optional: customize the theme
 ```
 
 
 
 
-#### Corrected new cases:
- Here I plot new cases of `CIN1`as only individual transitions of the type `HR.HPV.infection->CIN1`, i.e. only transitions coming from infections and nothing more. Similarly new cases of `CIN2` are the only transitions of the type `CIN1->CIN2`, new cases of `CIN3`are `CIN2->CIN3` and new cancers are only transitions `CIN3->FIGO-I`
- 
-```{r compare new cases III,  fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth'}
 
-## This R chunk is a plot routine (not part of the main program):
+<!-- ### New cases -->
+<!-- Now we compare the new cases of some microsimulation model states to the ones coming from the Markov cohort model with the same probabilistic structure. In the microsimulation a new case of particular health-state at particular time $t$ is defined as an individual transition to that state provided the individual was in any different state in the previous time $t-1$. -->
+<!-- ```{r plot new cases, fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth'} -->
+<!-- ## This R chunk is a plot routine (not part of the main program): -->
+<!-- markov_new_cases <-  -->
+<!--   readxl::read_excel(path = "data/Sortida_NoIntervencio.xlsx", sheet = "Cases")  -->
 
-# new cases from microsimulation:
-#df_CIN1_nc_2  <- new_cases_2(state1 = "HR.HPV.infection", state2 = "CIN1",Tot_Trans_per_t = sim_no_trt$Tot_Trans_per_t) 
-df_CIN1_nc_2  <- sim_no_trt$new_CIN1
-  
-#df_CIN2_nc_2   <- new_cases_2(state1 = "CIN1", state2 = "CIN2") %>% 
-#  dplyr::select(-age)
-df_CIN2_nc_2   <- sim_no_trt$new_CIN2 %>% 
-  dplyr::select(-age)
+<!-- markov_new_cases <- markov_new_cases %>% dplyr::rename(age=Age) -->
 
-#df_CIN3_nc_2   <- new_cases_2(state1 = "CIN2", state2 = "CIN3") %>%
-#  dplyr::select(-age)
-df_CIN3_nc_2   <- sim_no_trt$new_CIN3 %>%
-  dplyr::select(-age)
+<!-- # Reshape the data into long format -->
+<!-- long_data_markov_nc <- markov_new_cases %>% -->
+<!--   pivot_longer(cols = c( `Newcases CIN-I`, `Newcases CIN-II`, `Newcases CIN-III`, -->
+<!--                          `Newcases CC`), -->
+<!--                names_to = "Health state", -->
+<!--                values_to = "value") -->
 
-#df_cancer_nc_2 <- new_cases_2(state1 = "CIN3", state2 = "FIGO.I") %>%
-#  dplyr::select(-age)
-df_cancer_nc_2 <- sim_no_trt$new_Cancer %>%
-  dplyr::select(-age)
-
-df_microsim_new_cases_2 <- dplyr::bind_cols(df_CIN1_nc_2, df_CIN2_nc_2, 
-                                            df_CIN3_nc_2, df_cancer_nc_2)
-rm(df_CIN1_nc_2, df_CIN2_nc_2, df_CIN3_nc_2, df_cancer_nc_2)
-
-# Reshape the data into long format
-long_data_microsim_nc_2 <- df_microsim_new_cases_2 %>%
-  pivot_longer(cols = c( "HR.HPV.infection->CIN1", "CIN1->CIN2", "CIN2->CIN3", 
-                         "CIN3->FIGO.I"),
-               names_to = "Health state",
-               values_to = "value")
-
-# Plot the data
-ggplot(long_data_microsim_nc_2, aes(x = age, y = value, color = `Health state`)) +
-  geom_line(linewidth=1, alpha=0.7) +
-  labs(x = "Age", y = "Number", color = "Health state") +
-  #ggtitle(expression(paste("Microsimulation new cases for "), 10^6, (" individuals"))) + 
-  ggtitle(paste("Microsimulation new cases (corrected), number of individuals: ", n_i)) + 
-  # labs(title = element_text(lineheight = 1)) +
-  theme_minimal()  # Optional: customize the theme
-#####
-#####
-#####
-
-# for CIN1:
-#long_data_microsim_nc %>% head()
-new_microsim_CIN1_cases_2 <-
-  long_data_microsim_nc_2 %>%
-  dplyr::filter(`Health state` == "HR.HPV.infection->CIN1") %>%
-  dplyr:: select(age, `Health state`, value) %>%
-  dplyr::mutate(`Health state` = "new CIN1 MicroSim (corrected)" )
-
-comparison_new_CIN1_2 <- 
-  dplyr::bind_rows(new_markov_CIN1_cases, new_microsim_CIN1_cases_2)
-
-# plot 
-ggplot(comparison_new_CIN1_2, aes(x = age, y = value, color = `Health state`)) +
-  geom_line(linewidth=1, alpha=0.7) +
-  labs(x = "Age", y = "Number", color = "Health state") +
-  ggtitle(paste("New cases CIN1: Markov vs MicroSim (corrected), number of individuals: ", n_i)) + 
-  #labs(title = element_text(lineheight = 1)) +
-  theme_minimal()  # 
-
-####
-# for CIN2:
-new_microsim_CIN2_cases_2 <-
-  long_data_microsim_nc_2 %>%
-  dplyr::filter(`Health state` == "CIN1->CIN2") %>%
-  dplyr:: select(age, `Health state`, value) %>%
-  dplyr::mutate(`Health state` = "new CIN2 MicroSim (corrected)" )
-
-comparison_new_CIN2_2 <- 
-  dplyr::bind_rows(new_markov_CIN2_cases, new_microsim_CIN2_cases_2)
-
-# plot 
-ggplot(comparison_new_CIN2_2, aes(x = age, y = value, color = `Health state`)) +
-  geom_line(linewidth=1, alpha=0.7) +
-  labs(x = "Age", y = "Number", color = "Health state") +
-  ggtitle(paste("New cases CIN2: Markov vs MicroSim (corrected), number of individuals: ", n_i)) + 
-  #labs(title = element_text(lineheight = 1)) +
-  theme_minimal()  # 
-
-####
-# for CIN3:
-new_microsim_CIN3_cases_2 <-
-  long_data_microsim_nc_2 %>%
-  dplyr::filter(`Health state` == "CIN2->CIN3") %>%
-  dplyr:: select(age, `Health state`, value) %>%
-  dplyr::mutate(`Health state` = "new CIN3 MicroSim (corrected)" )
-
-comparison_new_CIN3_2 <- 
-  dplyr::bind_rows(new_markov_CIN3_cases, new_microsim_CIN3_cases_2)
-
-# plot 
-ggplot(comparison_new_CIN3_2, aes(x = age, y = value, color = `Health state`)) +
-  geom_line(linewidth=1, alpha=0.7) +
-  labs(x = "Age", y = "Number", color = "Health state") +
-  
-  ggtitle(paste("New cases CIN3: Markov vs MicroSim (corrected), number of individuals: ", n_i)) + 
-  #labs(title = element_text(lineheight = 1)) +
-  theme_minimal()  # 
-
-####
-# for cancer:
-new_microsim_cancer_cases_2 <-
-  long_data_microsim_nc_2 %>%
-  dplyr::filter(`Health state` == "CIN3->FIGO.I") %>%
-  dplyr:: select(age, `Health state`, value) %>%
-  dplyr::mutate(`Health state` = "new cancer MicroSim (corrected)" )
-
-comparison_new_cancer_2 <- 
-  dplyr::bind_rows(new_markov_cancer_cases, new_microsim_cancer_cases_2)
-
-# plot 
-ggplot(comparison_new_cancer_2, aes(x = age, y = value, color = `Health state`)) +
-  geom_line(linewidth=1, alpha=0.7) +
-  labs(x = "Age", y = "Number", color = "Health state") +
-  ggtitle(paste("New cases cancer: Markov vs MicroSim (corrected), number of individuals: ", n_i)) + 
-  #labs(title = element_text(lineheight = 1)) +
-  theme_minimal()  # 
-```
-
-### Multi simulation routines
-Once the `MicroSim` function is validated we proceed to write a routine to produce ensembles of simulations with varied random seeds so we can compute statistics and perform sensitivity analysis.
-
-```{r multi-simulations, echo=TRUE}
-# Define the number of simulations and the seeds to use
-n_simulations <- 20 
-seeds <- sample(1:10000, n_simulations, replace = FALSE)  # Generate random seeds
-
-# Initialize a list to store the results
-simulation_results <- vector("list", n_simulations)
-
-# Run the simulations
-for (i in 1:n_simulations) {
-  cat("Running simulation", i, "with seed", seeds[i], "\n")
-  result <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = FALSE, seed = seeds[i])#, Pmatrix)
-  result$seed <- seeds[i]  # Add the seed to the result list
-  simulation_results[[i]] <- result
-}
-
-# poner aquí script de Sandra "Sumarize_resultsby_Strategy 1.R", en forma de
-# función con entrada n_simulations y simulation_results
+<!-- # Plot the data -->
+<!-- ggplot(long_data_markov_nc, aes(x = age, y = value, color = `Health state`)) + -->
+<!--   geom_line(linewidth=1, alpha=0.7) + -->
+<!--   labs(x = "Age", y = "number", color = "Health state") + -->
+<!--   ggtitle(expression(paste("Markov cohort new cases simulation for ", 10^6, " individuals"))) +  -->
+<!--   theme_minimal()  # Optional: customize the theme -->
 
 
-## Check the structure of the results
-##str(simulation_results)
-#saveRDS(simulation_results, "simulation_results_nsim_20.rds")
-################################################################################
+
+<!-- ################################################################################ -->
+<!-- ################################################################################ -->
+<!-- ################################################################################ -->
+<!-- ################################################################################ -->
+<!-- ################################################################################ -->
+<!-- ###################### FROM HERE WORK IN PROGRESS ############################## -->
+<!-- ###################### FROM HERE WORK IN PROGRESS ############################## -->
+<!-- ###################### FROM HERE WORK IN PROGRESS ############################## -->
+<!-- ###################### FROM HERE WORK IN PROGRESS ############################## -->
+<!-- ###################### FROM HERE WORK IN PROGRESS ############################## -->
+<!-- ###################### FROM HERE WORK IN PROGRESS ############################## -->
+<!-- ################################################################################ -->
+<!-- ################################################################################ -->
+<!-- ################################################################################ -->
+<!-- ################################################################################ -->
+<!-- ################################################################################ -->
+<!-- ################################################################################ -->
 
 
 
 
-# Produce an average of `TR`
-# Once simulation_results is already populated with results from MicroSim
+<!-- ################################################################################ -->
+<!-- ## new cases from microsimulation: -->
+<!-- #df_CIN1_nc  <- new_cases("CIN1") %>% dplyr:: rename(`new cases CIN1` = total_new_cases) -->
+<!-- #df_CIN2_nc  <- new_cases("CIN2") %>% dplyr:: rename(`new cases CIN2` = total_new_cases) %>% select(-age) -->
+<!-- #df_CIN3_nc  <- new_cases("CIN3") %>% dplyr:: rename(`new cases CIN3` = total_new_cases) %>% select(-age) -->
+<!-- #df_FIGO1_nc <- new_cases("FIGO.I") %>% dplyr:: rename(`new cases FIGO1` = total_new_cases) %>% select(-age) -->
+<!-- #df_FIGO2_nc <- new_cases("FIGO.II") %>% dplyr:: rename(`new cases FIGO2` = total_new_cases) %>% select(-age) -->
+<!-- #df_FIGO3_nc <- new_cases("FIGO.III") %>% dplyr:: rename(`new cases FIGO3` = total_new_cases) %>% select(-age) -->
+<!-- #df_FIGO4_nc <- new_cases("FIGO.IV") %>% dplyr:: rename(`new cases FIGO4` = total_new_cases) %>% select(-age) -->
 
-# Get the number of simulations
-n_simulations <- length(simulation_results)
+<!-- df_CIN1_nc    <- other_mean_mortality_result[[1]]$new_CIN1 -->
+<!-- df_CIN2_nc    <- other_mean_mortality_result[[1]]$new_CIN2 -->
+<!-- df_CIN3_nc    <- other_mean_mortality_result[[1]]$new_CIN3 -->
+<!-- df_Cancer_nc  <- other_mean_mortality_result[[1]]$new_Cancer -->
 
-# Initialize an array to store cumulative sums
-cumulative_sums <- simulation_results[[1]]$TR  # Initialize with the first simulation's TR array
-cumulative_sums[] <- 0  # Reset to zeros for cumulative sum
+<!-- df_microsim_new_cases <- dplyr::bind_cols(df_CIN1_nc, df_CIN2_nc, df_CIN3_nc,  -->
+<!--                                           #df_FIGO1_nc, df_FIGO2_nc,  -->
+<!--                                           #df_FIGO3_nc, df_FIGO4_nc) %>% -->
+<!--                                           df_Cancer_nc) # %>% -->
+<!--   #dplyr::mutate(`new cases cancer`= `new cases FIGO1` + -->
+<!--   #                `new cases FIGO2` + -->
+<!--   #                `new cases FIGO3` + -->
+<!--   #                `new cases FIGO4`) -->
+<!-- rm(df_CIN1_nc, df_CIN2_nc, df_CIN3_nc, df_Cancer_nc)  -->
+<!--    #df_FIGO1_nc, df_FIGO2_nc,  -->
+<!--    #df_FIGO3_nc, df_FIGO4_nc) -->
 
-# Accumulate sums across all simulations
-for (i in 1:n_simulations) {
-  cumulative_sums <- cumulative_sums + simulation_results[[i]]$TR
-}
+<!-- # Reshape the data into long format -->
+<!-- long_data_microsim_nc <- df_microsim_new_cases %>% -->
+<!--   pivot_longer(cols = c( "new cases CIN1", "new cases CIN2", "new cases CIN3", "new cases cancer"), -->
+<!--                names_to = "Health state", -->
+<!--                values_to = "value") -->
 
-# Compute the average by dividing each column by n_simulations
-average_TR <- cumulative_sums / n_simulations
+<!-- # Plot the data -->
+<!-- ggplot(long_data_microsim_nc, aes(x = age, y = value, color = `Health state`)) + -->
+<!--   geom_line(linewidth=1, alpha=0.7) + -->
+<!--   labs(x = "Age", y = "Number", color = "Health state") + -->
+<!--   #ggtitle(expression(paste("Microsimulation new cases for "), 10^6, (" individuals"))) +  -->
+<!--   ggtitle(paste("Microsimulation new cases, number of individuals: ", n_i)) +  -->
+<!--   # labs(title = element_text(lineheight = 1)) + -->
+<!--   theme_minimal()  # Optional: customize the theme -->
+<!-- ``` -->
 
-# Print or return the average_TR array
-average_TR
 
 
-################################################################################
-## Plot routine to compare the averaged simulation vs the Markov cohort model 
+<!-- ```{r, compare new cases II, loading markov result, fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth'} -->
+<!-- ## This R chunk is a plot routine (not part of the main program): -->
+<!-- new_markov_CIN1_cases <- long_data_markov_nc %>% -->
+<!--   dplyr::filter(`Health state` == "Newcases CIN-I") %>% -->
+<!--   dplyr::select(-Step) %>% -->
+<!--   dplyr::mutate(`Health state` = "new CIN1 Markov") -->
 
-# new cases from microsimulation:
-#df_CIN1_nc_2  <- sim_no_trt$new_CIN1
-df_CIN1_nc_2_AVRG  <- average_TR %>% as.data.frame() %>% dplyr::select(CIN1)
-  
-#df_CIN2_nc_2   <- sim_no_trt$new_CIN2 %>% 
-#  dplyr::select(-age)
-df_CIN2_nc_2_AVRG   <- average_TR %>% as.data.frame() %>% dplyr::select(CIN2) 
+<!-- #new_markov_CIN1_cases %>% head() -->
 
-#df_CIN3_nc_2   <- new_cases_2(state1 = "CIN2", state2 = "CIN3") %>%
-#  dplyr::select(-age)
-df_CIN3_nc_2_AVRG   <- average_TR %>% as.data.frame() %>% dplyr::select(CIN3) 
+<!-- #long_data_microsim_nc %>% head() -->
+<!-- new_microsim_CIN1_cases <- -->
+<!--   long_data_microsim_nc %>% -->
+<!--   dplyr::filter(`Health state` == "new cases CIN1") %>% -->
+<!--   dplyr:: select(age, `Health state`, value) %>% -->
+<!--   dplyr::mutate(`Health state` = "new CIN1 MicroSim" ) -->
 
-#df_cancer_nc_2 <- sim_no_trt$new_Cancer %>%
-#  dplyr::select(-age)
-df_cancer_nc_2_AVRG <-  average_TR %>% as.data.frame() %>%  
-  mutate(sum_FIGO = FIGO.I + FIGO.II + FIGO.III  + FIGO.IV) %>% 
-  select (sum_FIGO)
+<!-- comparison_new_CIN1 <-  -->
+<!--   dplyr::bind_rows(new_markov_CIN1_cases, new_microsim_CIN1_cases) -->
 
-df_microsim_new_cases_2_AVRG <- dplyr::bind_cols(df_CIN1_nc_2_AVRG, df_CIN2_nc_2_AVRG, 
-                                            df_CIN3_nc_2_AVRG, df_cancer_nc_2_AVRG)
+<!-- # plot  -->
+<!-- ggplot(comparison_new_CIN1, aes(x = age, y = value, color = `Health state`)) + -->
+<!--   geom_line(linewidth=1, alpha=0.7) + -->
+<!--   labs(x = "Age", y = "Number", color = "Health state") + -->
+<!--   ggtitle(paste("New cases CIN1: Markov vs MicroSim, number of individuals: ", n_i)) +  -->
+<!--   #labs(title = element_text(lineheight = 1)) + -->
+<!--   theme_minimal()  # Optional: customize the theme -->
 
-rm(df_CIN1_nc_2_AVRG, df_CIN2_nc_2_AVRG, df_CIN3_nc_2_AVRG, df_cancer_nc_2_AVRG)
-```
+<!-- ## -->
+<!-- # for CIN2: -->
+<!-- new_markov_CIN2_cases <- long_data_markov_nc %>% -->
+<!--   dplyr::filter(`Health state` == "Newcases CIN-II") %>% -->
+<!--   dplyr::select(-Step) %>% -->
+<!--   dplyr::mutate(`Health state` = "new CIN2 Markov") -->
+
+<!-- #new_markov_CIN2_cases %>% head() -->
+<!-- new_microsim_CIN2_cases <- -->
+<!--   long_data_microsim_nc %>% -->
+<!--   dplyr::filter(`Health state` == "new cases CIN2") %>% -->
+<!--   dplyr:: select(age, `Health state`, value) %>% -->
+<!--   dplyr::mutate(`Health state` = "new CIN2 MicroSim" ) -->
+
+<!-- comparison_new_CIN2 <-  -->
+<!--   dplyr::bind_rows(new_markov_CIN2_cases, new_microsim_CIN2_cases) -->
+
+<!-- # plot  -->
+<!-- ggplot(comparison_new_CIN2, aes(x = age, y = value, color = `Health state`)) + -->
+<!--   geom_line(linewidth=1, alpha=0.7) + -->
+<!--   labs(x = "Age", y = "Number", color = "Health state") + -->
+<!--   ggtitle(paste("New cases CIN2: Markov vs MicroSim, number of individuals: ", n_i)) +  -->
+<!--   #labs(title = element_text(lineheight = 1)) + -->
+<!--   theme_minimal()  # Optional: customize the theme -->
+
+<!-- ## -->
+<!-- # for CIN3: -->
+<!-- new_markov_CIN3_cases <- long_data_markov_nc %>% -->
+<!--   dplyr::filter(`Health state` == "Newcases CIN-III") %>% -->
+<!--   dplyr::select(-Step) %>% -->
+<!--   dplyr::mutate(`Health state` = "new CIN3 Markov") -->
+
+<!-- #new_markov_CIN2_cases %>% head() -->
+<!-- new_microsim_CIN3_cases <- -->
+<!--   long_data_microsim_nc %>% -->
+<!--   dplyr::filter(`Health state` == "new cases CIN3") %>% -->
+<!--   dplyr:: select(age, `Health state`, value) %>% -->
+<!--   dplyr::mutate(`Health state` = "new CIN3 MicroSim" ) -->
+
+<!-- comparison_new_CIN3 <-  -->
+<!--   dplyr::bind_rows(new_markov_CIN3_cases, new_microsim_CIN3_cases) -->
+
+<!-- # plot  -->
+<!-- ggplot(comparison_new_CIN3, aes(x = age, y = value, color = `Health state`)) + -->
+<!--   geom_line(linewidth=1, alpha=0.7) + -->
+<!--   labs(x = "Age", y = "Number", color = "Health state") + -->
+<!--   ggtitle(paste("New cases CIN3: Markov vs MicroSim, number of individuals: ", n_i)) +  -->
+<!--   #labs(title = element_text(lineheight = 1)) + -->
+<!--   theme_minimal()  # Optional: customize the theme -->
+
+<!-- ## -->
+<!-- # for new cancer: -->
+<!-- #long_data_markov_nc %>% select(`Health state`) %>% unique() -->
+<!-- new_markov_cancer_cases <- long_data_markov_nc %>% -->
+<!--   dplyr::filter(`Health state` == "Newcases CC") %>% -->
+<!--   dplyr::select(-Step) %>% -->
+<!--   dplyr::mutate(`Health state` = "new cancer Markov") -->
+
+<!-- new_microsim_cancer_cases <- -->
+<!--   long_data_microsim_nc %>% -->
+<!--   dplyr::filter(`Health state` == "new cases cancer") %>% -->
+<!--   dplyr:: select(age, `Health state`, value) %>% -->
+<!--   dplyr::mutate(`Health state` = "new cancer MicroSim" ) -->
+
+<!-- comparison_new_cancer <-  -->
+<!--   dplyr::bind_rows(new_markov_cancer_cases, new_microsim_cancer_cases) -->
+
+<!-- # plot  -->
+<!-- ggplot(comparison_new_cancer, aes(x = age, y = value, color = `Health state`)) + -->
+<!--   geom_line(linewidth=1, alpha=0.7) + -->
+<!--   labs(x = "Age", y = "Number", color = "Health state") + -->
+<!--   ggtitle(paste("New cancer cases: Markov vs MicroSim, number of individuals: ", n_i)) +  -->
+<!--   #labs(title = element_text(lineheight = 1)) + -->
+<!--   theme_minimal()  # Optional: customize the theme -->
+<!-- ``` -->
+
+
+
+
+<!-- #### Corrected new cases: -->
+<!--  Here I plot new cases of `CIN1`as only individual transitions of the type `HR.HPV.infection->CIN1`, i.e. only transitions coming from infections and nothing more. Similarly new cases of `CIN2` are the only transitions of the type `CIN1->CIN2`, new cases of `CIN3`are `CIN2->CIN3` and new cancers are only transitions `CIN3->FIGO-I` -->
+
+<!-- ```{r compare new cases III,  fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth'} -->
+
+<!-- ## This R chunk is a plot routine (not part of the main program): -->
+
+<!-- # new cases from microsimulation: -->
+<!-- #df_CIN1_nc_2  <- new_cases_2(state1 = "HR.HPV.infection", state2 = "CIN1",Tot_Trans_per_t = sim_no_trt$Tot_Trans_per_t)  -->
+<!-- df_CIN1_nc_2  <- sim_no_trt$new_CIN1 -->
+
+<!-- #df_CIN2_nc_2   <- new_cases_2(state1 = "CIN1", state2 = "CIN2") %>%  -->
+<!-- #  dplyr::select(-age) -->
+<!-- df_CIN2_nc_2   <- sim_no_trt$new_CIN2 %>%  -->
+<!--   dplyr::select(-age) -->
+
+<!-- #df_CIN3_nc_2   <- new_cases_2(state1 = "CIN2", state2 = "CIN3") %>% -->
+<!-- #  dplyr::select(-age) -->
+<!-- df_CIN3_nc_2   <- sim_no_trt$new_CIN3 %>% -->
+<!--   dplyr::select(-age) -->
+
+<!-- #df_cancer_nc_2 <- new_cases_2(state1 = "CIN3", state2 = "FIGO.I") %>% -->
+<!-- #  dplyr::select(-age) -->
+<!-- df_cancer_nc_2 <- sim_no_trt$new_Cancer %>% -->
+<!--   dplyr::select(-age) -->
+
+<!-- df_microsim_new_cases_2 <- dplyr::bind_cols(df_CIN1_nc_2, df_CIN2_nc_2,  -->
+<!--                                             df_CIN3_nc_2, df_cancer_nc_2) -->
+<!-- rm(df_CIN1_nc_2, df_CIN2_nc_2, df_CIN3_nc_2, df_cancer_nc_2) -->
+
+<!-- # Reshape the data into long format -->
+<!-- long_data_microsim_nc_2 <- df_microsim_new_cases_2 %>% -->
+<!--   pivot_longer(cols = c( "HR.HPV.infection->CIN1", "CIN1->CIN2", "CIN2->CIN3",  -->
+<!--                          "CIN3->FIGO.I"), -->
+<!--                names_to = "Health state", -->
+<!--                values_to = "value") -->
+
+<!-- # Plot the data -->
+<!-- ggplot(long_data_microsim_nc_2, aes(x = age, y = value, color = `Health state`)) + -->
+<!--   geom_line(linewidth=1, alpha=0.7) + -->
+<!--   labs(x = "Age", y = "Number", color = "Health state") + -->
+<!--   #ggtitle(expression(paste("Microsimulation new cases for "), 10^6, (" individuals"))) +  -->
+<!--   ggtitle(paste("Microsimulation new cases (corrected), number of individuals: ", n_i)) +  -->
+<!--   # labs(title = element_text(lineheight = 1)) + -->
+<!--   theme_minimal()  # Optional: customize the theme -->
+<!-- ##### -->
+<!-- ##### -->
+<!-- ##### -->
+
+<!-- # for CIN1: -->
+<!-- #long_data_microsim_nc %>% head() -->
+<!-- new_microsim_CIN1_cases_2 <- -->
+<!--   long_data_microsim_nc_2 %>% -->
+<!--   dplyr::filter(`Health state` == "HR.HPV.infection->CIN1") %>% -->
+<!--   dplyr:: select(age, `Health state`, value) %>% -->
+<!--   dplyr::mutate(`Health state` = "new CIN1 MicroSim (corrected)" ) -->
+
+<!-- comparison_new_CIN1_2 <-  -->
+<!--   dplyr::bind_rows(new_markov_CIN1_cases, new_microsim_CIN1_cases_2) -->
+
+<!-- # plot  -->
+<!-- ggplot(comparison_new_CIN1_2, aes(x = age, y = value, color = `Health state`)) + -->
+<!--   geom_line(linewidth=1, alpha=0.7) + -->
+<!--   labs(x = "Age", y = "Number", color = "Health state") + -->
+<!--   ggtitle(paste("New cases CIN1: Markov vs MicroSim (corrected), number of individuals: ", n_i)) +  -->
+<!--   #labs(title = element_text(lineheight = 1)) + -->
+<!--   theme_minimal()  #  -->
+
+<!-- #### -->
+<!-- # for CIN2: -->
+<!-- new_microsim_CIN2_cases_2 <- -->
+<!--   long_data_microsim_nc_2 %>% -->
+<!--   dplyr::filter(`Health state` == "CIN1->CIN2") %>% -->
+<!--   dplyr:: select(age, `Health state`, value) %>% -->
+<!--   dplyr::mutate(`Health state` = "new CIN2 MicroSim (corrected)" ) -->
+
+<!-- comparison_new_CIN2_2 <-  -->
+<!--   dplyr::bind_rows(new_markov_CIN2_cases, new_microsim_CIN2_cases_2) -->
+
+<!-- # plot  -->
+<!-- ggplot(comparison_new_CIN2_2, aes(x = age, y = value, color = `Health state`)) + -->
+<!--   geom_line(linewidth=1, alpha=0.7) + -->
+<!--   labs(x = "Age", y = "Number", color = "Health state") + -->
+<!--   ggtitle(paste("New cases CIN2: Markov vs MicroSim (corrected), number of individuals: ", n_i)) +  -->
+<!--   #labs(title = element_text(lineheight = 1)) + -->
+<!--   theme_minimal()  #  -->
+
+<!-- #### -->
+<!-- # for CIN3: -->
+<!-- new_microsim_CIN3_cases_2 <- -->
+<!--   long_data_microsim_nc_2 %>% -->
+<!--   dplyr::filter(`Health state` == "CIN2->CIN3") %>% -->
+<!--   dplyr:: select(age, `Health state`, value) %>% -->
+<!--   dplyr::mutate(`Health state` = "new CIN3 MicroSim (corrected)" ) -->
+
+<!-- comparison_new_CIN3_2 <-  -->
+<!--   dplyr::bind_rows(new_markov_CIN3_cases, new_microsim_CIN3_cases_2) -->
+
+<!-- # plot  -->
+<!-- ggplot(comparison_new_CIN3_2, aes(x = age, y = value, color = `Health state`)) + -->
+<!--   geom_line(linewidth=1, alpha=0.7) + -->
+<!--   labs(x = "Age", y = "Number", color = "Health state") + -->
+
+<!--   ggtitle(paste("New cases CIN3: Markov vs MicroSim (corrected), number of individuals: ", n_i)) +  -->
+<!--   #labs(title = element_text(lineheight = 1)) + -->
+<!--   theme_minimal()  #  -->
+
+<!-- #### -->
+<!-- # for cancer: -->
+<!-- new_microsim_cancer_cases_2 <- -->
+<!--   long_data_microsim_nc_2 %>% -->
+<!--   dplyr::filter(`Health state` == "CIN3->FIGO.I") %>% -->
+<!--   dplyr:: select(age, `Health state`, value) %>% -->
+<!--   dplyr::mutate(`Health state` = "new cancer MicroSim (corrected)" ) -->
+
+<!-- comparison_new_cancer_2 <-  -->
+<!--   dplyr::bind_rows(new_markov_cancer_cases, new_microsim_cancer_cases_2) -->
+
+<!-- # plot  -->
+<!-- ggplot(comparison_new_cancer_2, aes(x = age, y = value, color = `Health state`)) + -->
+<!--   geom_line(linewidth=1, alpha=0.7) + -->
+<!--   labs(x = "Age", y = "Number", color = "Health state") + -->
+<!--   ggtitle(paste("New cases cancer: Markov vs MicroSim (corrected), number of individuals: ", n_i)) +  -->
+<!--   #labs(title = element_text(lineheight = 1)) + -->
+<!--   theme_minimal()  #  -->
+<!-- ``` -->
+
