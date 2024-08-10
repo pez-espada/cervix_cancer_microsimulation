@@ -140,6 +140,7 @@ if (cycle_period == "1mth"){
 
 v_n <- rownames(my_Probs)
 v_n <- colnames(my_Probs)
+v_n <- v_n[-c(1,14,15)]
 n_s   <- length(v_n)                # the number of health states
 v_M_1 <- rep("H", n_i)              # everyone begins in the healthy state 
 #v_M_1 <- rep("Well", n_i)           # everyone begins in the healthy state 
@@ -1140,7 +1141,7 @@ mean_CC_mortality_func <- function(sim_stalked_result, my_Probs) {
 mean_CC_mortality_result <- mean_CC_incidence_result 
 # Concatenate the prevalence to the sim result 
 mean_CC_mortality_result <-
-  CC_mean_mortality_func(sim_stalked_result = mean_CC_mortality_result, my_Probs = my_Probs)  
+  mean_CC_mortality_func(sim_stalked_result = mean_CC_mortality_result, my_Probs = my_Probs)  
 
 # save the results
 #saveRDS(object = prevalence_result, file = "./data/stacked_sims_40x10E6x75.rds")
@@ -1380,7 +1381,7 @@ microSim_CC_mortality    <- other_mean_mortality_result[[1]]$CC_mean_mortality
 
 ```{r, ploting incidences and prevalences, echo=FALSE}
 # Check the type of the objects
-str(microSim_CN1_incidences)
+str(microSim_CN1_incidencet)
 str(microSim_CN2_incidences)
 # Repeat for other vectors
 
