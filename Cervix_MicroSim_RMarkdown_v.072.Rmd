@@ -1374,7 +1374,7 @@ microSim_CN2_incidences  <- other_mean_mortality_result[[1]]$mean_incidence_CIN2
 microSim_CN3_incidences  <- other_mean_mortality_result[[1]]$mean_incidence_CIN3_per_age_interval
 microSim_CC_incidences   <- other_mean_mortality_result[[1]]$mean_CC_incidence
 microSim_HPV_prevalences <- other_mean_mortality_result[[1]]$mean_HPV_prevalence_per_age_interval
-microSim_CC_mortality      <- other_mean_mortality_result[[1]]$CC_mean_mortality
+microSim_CC_mortality    <- other_mean_mortality_result[[1]]$CC_mean_mortality
 ```
 
 
