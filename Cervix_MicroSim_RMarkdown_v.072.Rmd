@@ -1367,7 +1367,7 @@ markov_CN2_incidences <- c(0.000000, 6.165629, 54.767952, 140.309815, 216.568392
 markov_CN3_incidences <- c(0.000000, 2.090325, 9.597415, 44.467676, 148.972191, 0.000000, 3.550684, 91.881726, 12.505042, 68.377446, 25.802481, 7.952667, 1.174088, 1.177840, 2.638642)
 markov_CC_incidences  <- c(0.000000, 0.000000, 0.000000, 5.520938, 8.360544, 13.282380, 22.906871, 20.825560, 15.867891, 32.483846, 8.962389, 17.681771, 11.737615, 17.354646, 14.582775)
 markov_HPV_prevalences <- c(0.000000000, 0.343480414, 0.377634762, 0.087223460, 0.307341403, 0.030196332, 0.050562845, 0.050151668, 0.082952596, 0.046644059, 0.018532077, 0.034193076, 0.016407832, 0.015039027, 0.003217326)
-markov_CC_mortality <- c(0.000000e+00, 0.000000e+00, 0.000000e+00, 2.977975e-06, 1.574920e-05, 2.715056e-05, 5.489929e-05, 7.284815e-05, 1.057494e-04, 5.076268e-05, 7.517773e-05, 4.960943e-05, 4.802468e-05, 4.210457e-05, 4.837655e-05) 
+markov_CC_mortality <- c(0.000000e+00, 0.000000e+00, 0.000000e+00, 2.977975e-06, 1.574920e-05, 2.715056e-05, 5.489929e-05, 7.284815e-05, 1.057494e-04, 5.076268e-05, 7.517773e-05, 4.960943e-05, 4.802468e-05, 4.210457e-05, 4.837655e-05) * 10^5
 
 # Micro im:
 microSim_CN1_incidences  <- other_mean_mortality_result[[1]]$mean_incidence_CIN1_per_age_interval
@@ -1380,39 +1380,104 @@ microSim_CC_mortality    <- other_mean_mortality_result[[1]]$CC_mean_mortality
 
 
 ```{r, ploting incidences and prevalences, echo=FALSE}
-# Check the type of the objects
-str(microSim_CN1_incidencet)
-str(microSim_CN2_incidences)
-# Repeat for other vectors
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+library(tidyr)
 
-# Convert to numeric if necessary
+# Define age groups
+age_groups <- factor(c("10-14", "15-19", "20-24", "25-29", "30-34", "35-39", "40-44", 
+                        "45-49", "50-54", "55-59", "60-64", "65-69", "70-74", 
+                        "75-79", "80-85"), 
+                      levels = c("10-14", "15-19", "20-24", "25-29", "30-34", "35-39", 
+                                 "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", 
+                                 "70-74", "75-79", "80-85"))
+
+# Create data frames from your vectors and the MicroSim data
+# Replace `microSim_...` with the actual data from your `other_mean_mortality_result`
+
 markov_data <- data.frame(
-    age = as.numeric(1:15),
-    CN1_incidences = as.numeric(markov_CN1_incidences),
-    CN2_incidences = as.numeric(markov_CN2_incidences),
-    CN3_incidences = as.numeric(markov_CN3_incidences),
-    CC_incidences = as.numeric(markov_CC_incidences),
-    HPV_prevalences = as.numeric(markov_HPV_prevalences),
-    CC_mortality = as.numeric(markov_CC_mortality)
+  age = age_groups,
+  markov_CN1_incidences = markov_CN1_incidences,
+  markov_CN2_incidences = markov_CN2_incidences,
+  markov_CN3_incidences = markov_CN3_incidences,
+  markov_CC_incidences = markov_CC_incidences,
+  markov_HPV_prevalences = markov_HPV_prevalences,
+  markov_CC_mortality = markov_CC_mortality
 )
 
+# Ensure all columns in markov_data are numeric
+markov_data[] <- lapply(markov_data, function(x) {
+  if (is.factor(x)) {
+    as.character(x)
+  } else {
+    as.numeric(x)
+  }
+})
+
+# For the MicroSim data, ensure columns are numeric if needed
+# You might need to extract these from the list manually and convert them
+
+# Example conversion if you have microSim data as tibbles
 microSim_data <- data.frame(
-    age = as.numeric(1:15),
-    CN1_incidences = as.numeric(microSim_CN1_incidences),
-    CN2_incidences = as.numeric(microSim_CN2_incidences),
-    CN3_incidences = as.numeric(microSim_CN3_incidences),
-    CC_incidences = as.numeric(microSim_CC_incidences),
-    HPV_prevalences = as.numeric(microSim_HPV_prevalences),
-    CC_mortality = as.numeric(microSim_CC_mortality)
+  age = age_groups,
+  microSim_CN1_incidences = as.numeric(other_mean_mortality_result[[1]]$mean_incidence_CIN1_per_age_interval$mean_incidence_CIN1),
+  microSim_CN2_incidences = as.numeric(other_mean_mortality_result[[1]]$mean_incidence_CIN2_per_age_interval$mean_incidence_CIN2),
+  microSim_CN3_incidences = as.numeric(other_mean_mortality_result[[1]]$mean_incidence_CIN3_per_age_interval$mean_incidence_CIN3),
+  microSim_CC_incidences = as.numeric(other_mean_mortality_result[[1]]$mean_CC_incidence$CC_mean_incidence),
+  microSim_HPV_prevalences = as.numeric(other_mean_mortality_result[[1]]$mean_HPV_prevalence_per_age_interval$prevalence),
+  microSim_CC_mortality = as.numeric(other_mean_mortality_result[[1]]$CC_mean_mortality$CC_mean_mortality)
 )
 
-ggplot(combined_data, aes(x = factor(age), y = value, fill = model)) +
-  geom_bar(stat = "identity", position = position_dodge()) +
-  facet_wrap(~metric, scales = "free_y") +
-  theme_minimal() +
-  labs(x = "Age", y = "Value", title = "Comparison of Markov and Microsimulation Models") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  scale_fill_manual(values = c("Markov" = "skyblue", "Microsimulation" = "salmon"))
+# Ensure all columns in microSim_data are numeric
+microSim_data[] <- lapply(microSim_data, function(x) {
+  if (is.factor(x)) {
+    as.character(x)
+  } else {
+    as.numeric(x)
+  }
+})
+
+# Reshape data to long format
+markov_long <- markov_data %>% 
+  pivot_longer(-age, names_to = "measure", values_to = "value") %>% 
+  mutate(model = "Markov")
+
+microSim_long <- microSim_data %>% 
+  pivot_longer(-age, names_to = "measure", values_to = "value") %>% 
+  mutate(model = "MicroSim")
+
+# Combine data
+combined_data <- bind_rows(markov_long, microSim_long)
+
+# Plotting function
+plot_comparison <- function(data, measure_name) {
+  ggplot(data %>% filter(grepl(measure_name, measure)), 
+         aes(x = age, y = value, fill = model)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    labs(title = paste(measure_name, "Comparison"),
+         x = "Age Group",
+         y = measure_name) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+}
+
+# Create plots for each measure
+plot_CN1_incidences <- plot_comparison(combined_data, "CN1_incidences")
+plot_CN2_incidences <- plot_comparison(combined_data, "CN2_incidences")
+plot_CN3_incidences <- plot_comparison(combined_data, "CN3_incidences")
+plot_CC_incidences <- plot_comparison(combined_data, "CC_incidences")
+plot_HPV_prevalences <- plot_comparison(combined_data, "HPV_prevalences")
+plot_CC_mortality <- plot_comparison(combined_data, "CC_mortality")
+
+# Display plots
+print(plot_CN1_incidences)
+print(plot_CN2_incidences)
+print(plot_CN3_incidences)
+print(plot_CC_incidences)
+print(plot_HPV_prevalences)
+print(plot_CC_mortality)
+
 
 ```
 
