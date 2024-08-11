@@ -73,6 +73,7 @@ ensure_library <- function(...) {
 ################################################################################
  
 my_Probs <- readRDS(file = "./data/probs.rds")
+my_Probs <- readRDS(file = "./data/probs4.rds")
 
 my_Probs <- # transition matrix (for all sim cycles) 
   my_Probs %>%
