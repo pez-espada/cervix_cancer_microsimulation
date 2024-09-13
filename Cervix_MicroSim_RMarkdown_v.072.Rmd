@@ -107,17 +107,17 @@ my_Probs$Larger <-
   ifelse(my_Probs$Larger == max(my_Probs$Larger), my_Probs$Larger + 1, my_Probs$Larger) 
 ```
 
-```{r, my_Probs, echo=TRUE, results='markup', message=FALSE, include=FALSE}
-library("printr")
-my_Probs %>%
-  head()
-knitr::kable(my_Probs)
-```
+<!-- ```{r, my_Probs, echo=TRUE, results='markup', message=FALSE, include=FALSE} -->
+<!-- library("printr") -->
+<!-- my_Probs %>% -->
+<!--   head() -->
+<!-- knitr::kable(my_Probs) -->
+<!-- ``` -->
 
 ### Model parameters:
 
 ```{r, model parameters}
-n_i <- 10^6                 # number of simulated individuals
+n_i <- 10^4                 # number of simulated individuals
 n_t <- 75                   # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
@@ -236,7 +236,7 @@ To progress the evolution of states for individuals, we need to both sample rand
 
 This method ensures that the transitions reflect the specified probabilities, allowing for accurate state evolution in the model.
 ```{r, sampling function}
-# efficient implementation of the rMultinom() function of the Hmisc package #### 
+# Efficient implementation of the rMultinom() function of the Hmisc package #### 
 samplev <- function (probs, m) {
   d <- dim(probs) # i.e. number of individuals times number of states: n_i x n_s
   n <- d[1]       # number of individuals n_s
@@ -406,6 +406,8 @@ age_factor <- function(my_period) {
 
 ######### WORK IN PROGRESS #################
 ############################################
+
+#### ! NOT USED ############################
 convert_matrix_to_proper_transition <- 
   function(my_age_prob_matrix, cycle_period) {
     my_age_prob_matrix %>% head(3)
@@ -650,6 +652,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       
       m_M[, 1] <- v_M_1  # indicate the initial health state   
       
+      seed <- seeds[sim]
       set.seed(seed) # set the seed for every individual for the random number generator
       
       m_C[, 1] <- Costs_per_Cancer_Diag(M_it = m_M[, 1], # estimate costs per individual for the 
@@ -914,14 +917,14 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
 ########################## Run the simulation ##################################
 ## START SIMULATION
 p = Sys.time()
-## run for no treatment
-##sim_no_trt  <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = FALSE)
-#sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 4, 
-#                        v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
-#                        d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
-#                        Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
+# run for no treatment
+#sim_no_trt  <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = FALSE)
+sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 1, 
+                        v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
+                        d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
+                        Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
 
-sim_no_trt <- readRDS(file = "./data/stacked_sims_100x10E6x75_FULL_IMPLEMENTATION.rds")
+#sim_no_trt <- readRDS(file = "./data/stacked_sims_100x10E6x75_FULL_IMPLEMENTATION.rds")
 
 comp.time = Sys.time() - p
 comp.time %>% print()
