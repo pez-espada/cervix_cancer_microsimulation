@@ -316,6 +316,9 @@ Probs <- function(M_it, my_Probs) {
     cat("Transition probabilities contain NA values\n")
   }
   
+  cat("I'm still here!\n")
+  browser()
+   
   ifelse(colSums(m_P_it, na.rm = TRUE) >= .991, 
          return(t(m_P_it)), 
          stop("Probabilities do not sum to 1"))
