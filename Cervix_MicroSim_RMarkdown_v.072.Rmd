@@ -316,9 +316,6 @@ Probs <- function(M_it, my_Probs) {
     cat("Transition probabilities contain NA values\n")
   }
   
-  cat("I'm still here!\n")
-  browser()
-   
   ifelse(colSums(m_P_it, na.rm = TRUE) >= .991, 
          return(t(m_P_it)), 
          stop("Probabilities do not sum to 1"))
@@ -688,6 +685,10 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
           dplyr::filter(Lower <= age_in_loop  &
                           Larger >= age_in_loop) 
         
+        ## Debugging:
+        #cat("I'm still here!\n")
+        #browser()
+        
         # Add colnames and update `v_n`:
         rownames(my_age_prob_matrix) <- v_n <<- 
           my_age_prob_matrix %>%
@@ -718,6 +719,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
         # transition probability matrix that depends on age:
         ## Debugging:
         #cat("The time step is", t, "\n")
+        
         m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
         
         m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
@@ -797,11 +799,10 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       # of cancer state per time (cycle). A new case of cancer state X in time t
       # is defined as an individual transition to this state X provided the
       # individual was not in that state X a time t-1.
-      # NOTE that the TR output display individual transitions at each cycle t
+      # NOTE that the TR output displays individual transitions at each cycle t
       # that are going to occur at t + 1. That is, "XX->YY" in cycle t meant that the
       # corresponding individual is in state "XX" in t and is transiting to state
       # "YY" in t + 1.
-      # A character with all transitions:
       transitions <- 
         TS %>% 
         as_tibble() %>% 

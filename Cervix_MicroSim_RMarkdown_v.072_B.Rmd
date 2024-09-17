@@ -316,9 +316,6 @@ Probs <- function(M_it, my_Probs) {
     cat("Transition probabilities contain NA values\n")
   }
   
-  cat("I'm still here!\n")
-  browser()
-  
   ifelse(colSums(m_P_it, na.rm = TRUE) >= .991, 
          return(t(m_P_it)), 
          stop("Probabilities do not sum to 1"))
@@ -652,7 +649,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       # Create the matrix capturing the state name/costs/health outcomes 
       # for all individuals at each time point:
       #m_M <- m_C <- m_E <-  matrix(nrow = n_i, ncol = (n_t + 1), 
-      # Debugginng
       m_M <- m_C <- m_E <-  matrix(nrow = n_i, ncol = (n_t), 
                                    dimnames = list( 1:n_i, 
       #                                              paste0("cycle_", 1:(n_t + 1), sep = "")))  
@@ -662,6 +658,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       
       seed <- seeds[sim]
       set.seed(seed) # set the seed for every individual for the random number generator
+      
+      
       
       m_C[, 1] <- Costs_per_Cancer_Diag(M_it = m_M[, 1], # estimate costs per individual for the 
                                         symptomatics = symptomatics,
@@ -678,13 +676,16 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       ######################## run over all the cycles ############################# 
       #for (t in 1:(n_t)) {
       # Debugging:
-      for (t in 2:(n_t)) {
+      #for (t in 2:(n_t)) {
+      for (t in 1:(n_t-1)) {
         ############################################################################
         # Select the transition matrix based on the cycle `n_t`:
         # Since our age intervals start at 10 years old,
         # `age_in_loop` is calculated as `t + 10 * age_factor(cycle_period)`.
         age_in_loop <- t + 10
-        age_in_loop <- t + 8
+        #age_in_loop <- t + 8
+        age_in_loop <- t + 9
+        
         # Choose corresponding transition matrix according current age:
         ## DONT USE it for cycle_period = "1yr"
         #my_age_prob_matrix <- my_Probs %>% 
@@ -696,11 +697,14 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
           dplyr::filter(Lower <= age_in_loop  &
                           Larger >= age_in_loop) 
         
+        
         # Add colnames and update `v_n`:
         rownames(my_age_prob_matrix) <- v_n <<- 
           my_age_prob_matrix %>%
           dplyr::select(-c(Age.group, Lower, Larger)) %>% 
           colnames()
+        
+        
         ############################################################################
         
         # update/correct n_s (<<- let change variable from inside a function):
@@ -709,8 +713,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
         ############################################################################ 
         #new code:
         new_entries <- diagnose_column(m_M[, t], t)
-        
-        
         
         if (!is.null(new_entries)) {
           stored_list[[t]] <- new_entries
@@ -728,14 +730,13 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
         # transition probability matrix that depends on age:
         ## Debugging:
         #cat("The time step is", t, "\n")
-        m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
         
+        m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
         
         m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
                                                      # and store that state in  
                                                      # matrix m_M 
         ############################################################################    
-        
         
         # m_M[, t + 1] <- update_column(m_M[, t], new_entries)
         next_col <- m_M[, t + 1]
@@ -752,7 +753,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
         # Debugging:
         #m_C[, t] <-                              
         m_C[, t + 1] <-                              
-          Costs_per_Cancer_Diag(M_it = m_M[, t],  
+          Costs_per_Cancer_Diag(M_it = m_M[, t + 1],  
                                 symptomatics = symptomatics,
                                 time_iteration = t,
                                 cost_Vec = cost_Vec,    
@@ -767,6 +768,11 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
         # Conditional on treatment
         cat('\r', paste(round(t/n_t * 100),          # display the 
                         "% done", sep = " "))        # progress of  the simulation                    
+        
+        # Debugging:
+        cat("I'm still here!\n")
+        browser()
+        
       }  
       ######################## close loop for cycles ############################### 
       
