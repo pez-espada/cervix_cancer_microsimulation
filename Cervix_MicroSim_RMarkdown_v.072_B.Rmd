@@ -769,10 +769,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
         cat('\r', paste(round(t/n_t * 100),          # display the 
                         "% done", sep = " "))        # progress of  the simulation                    
         
-        # Debugging:
-        cat("I'm still here!\n")
-        browser()
-        
       }  
       ######################## close loop for cycles ############################### 
       
@@ -795,7 +791,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
         
         TS <- matrix(TS, nrow = n_i)
         rownames(TS) <- paste("Ind",   1:n_i, sep = " ")   # name the rows 
-        colnames(TS) <- paste0("cycle_", 1:(n_t + 1), sep = "")   # name the columns 
+        #colnames(TS) <- paste0("cycle_", 1:(n_t + 1), sep = "")   # name the columns 
+        colnames(TS) <- paste0("cycle_", 1:(n_t), sep = "")   # name the columns 
       } else {
         TS <- NULL
       }
@@ -806,7 +803,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
         #TR <- TR / n_i                                   # create a distribution 
         # trace
         
-        rownames(TR) <- paste("cycle", 1:(n_t + 1), sep = "_") # name the rows 
+        #rownames(TR) <- paste("cycle", 1:(n_t + 1), sep = "_") # name the rows 
+        rownames(TR) <- paste("cycle", 1:(n_t), sep = "_") # name the rows 
         colnames(TR) <- v_n                              # name the columns 
       } else {
         TR <- NULL
@@ -837,7 +835,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
                                                   = transitions, 
                                                   ordered = TRUE))))
         # trace
-        rownames(Tot_Trans_per_t) <- paste0("cycle_", 1:(n_t + 1), sep = "") # name the rows 
+        #rownames(Tot_Trans_per_t) <- paste0("cycle_", 1:(n_t + 1), sep = "") # name the rows 
+        rownames(Tot_Trans_per_t) <- paste0("cycle_", 1:(n_t), sep = "") # name the rows 
       } else {
         Tot_Trans_per_t <- NULL
       }
@@ -880,7 +879,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       TR <- TR %>% mutate(age = row_number() + 8)
       #Remove large objects: 
       #rm(m_M, m_C, m_E)
-      
       # Store the results from the simulation in a list
       results <- list(strategy = strategy,
                       seed = seeds[sim],
@@ -918,6 +916,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
   stacked_results <- 
     summarize_results_by_Strategy(results_list = simulation_results, 
                                  numb_of_sims = numb_of_sims)
+  
   
   ## Debugging:
   #cat("The class of the stacked results is: ", stacked_results %>% class() %>% print(), "\n")
@@ -1403,6 +1402,7 @@ microSim_CN3_incidences  <- other_mean_mortality_result[[1]]$mean_incidence_CIN3
 microSim_CC_incidences   <- other_mean_mortality_result[[1]]$mean_CC_incidence
 microSim_HPV_prevalences <- other_mean_mortality_result[[1]]$mean_HPV_prevalence_per_age_interval
 microSim_CC_mortality    <- other_mean_mortality_result[[1]]$CC_mean_mortality
+
 ```
 
 
@@ -1445,6 +1445,10 @@ markov_data[] <- lapply(markov_data, function(x) {
 # For the MicroSim data, ensure columns are numeric if needed
 # You might need to extract these from the list manually and convert them
 
+# Debugging:
+cat("I'm still here!\n")
+browser()
+  
 # Example conversion if you have microSim data as tibbles
 microSim_data <- data.frame(
   age = age_groups,
@@ -1456,6 +1460,11 @@ microSim_data <- data.frame(
   microSim_CC_mortality = as.numeric(other_mean_mortality_result[[1]]$CC_mean_mortality$CC_mean_mortality)
 )
 
+# THE CODE BREAKS HERE!
+## Debugging:
+#cat("I'm still here!\n")
+#browser()
+  
 # Ensure all columns in microSim_data are numeric
 microSim_data[] <- lapply(microSim_data, function(x) {
   if (is.factor(x)) {
@@ -1504,7 +1513,5 @@ print(plot_CN3_incidences)
 print(plot_CC_incidences)
 print(plot_HPV_prevalences)
 print(plot_CC_mortality)
-
-
 ```
 
