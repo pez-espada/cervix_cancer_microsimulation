@@ -682,7 +682,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
         # Select the transition matrix based on the cycle `n_t`:
         # Since our age intervals start at 10 years old,
         # `age_in_loop` is calculated as `t + 10 * age_factor(cycle_period)`.
-        age_in_loop <- t + 10
+        #age_in_loop <- t + 10
         #age_in_loop <- t + 8
         age_in_loop <- t + 9
         
@@ -876,7 +876,12 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       ### add age to TR:
       TR <- as.data.frame(TR)
       #TR <- TR %>% mutate(age = row_number() + 10)
-      TR <- TR %>% mutate(age = row_number() + 8)
+      #TR <- TR %>% mutate(age = row_number() + 8)
+      TR <- TR %>% mutate(age = row_number() + 9:)
+      # Debugging:
+      cat("I'm still here!\n")
+      browser()
+      
       #Remove large objects: 
       #rm(m_M, m_C, m_E)
       # Store the results from the simulation in a list
@@ -1445,10 +1450,6 @@ markov_data[] <- lapply(markov_data, function(x) {
 # For the MicroSim data, ensure columns are numeric if needed
 # You might need to extract these from the list manually and convert them
 
-# Debugging:
-cat("I'm still here!\n")
-browser()
-  
 # Example conversion if you have microSim data as tibbles
 microSim_data <- data.frame(
   age = age_groups,
