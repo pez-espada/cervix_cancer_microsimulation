@@ -847,9 +847,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       new_CIN3 <- new_CIN3 %>% dplyr::slice(c(1:n_t))
       new_Cancer <- new_Cancer %>% dplyr::slice(c(1:n_t))
       
-      # Debugging:
-      cat("I'm still here!\n")
-      browser()
+      ## Debugging:
+      #cat("I'm still here!\n")
+      #browser()
       
       # Removing no needed extra row from TR:
       # Removing no needed extra row from TR:

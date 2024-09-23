@@ -628,6 +628,13 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
     #simulation_results <- list()
     #seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
     
+    my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
+      my_age_prob_matrix <- my_Prob_matrix %>% 
+        dplyr::filter(Lower <= my_age_in_loop  &
+                        Larger >= my_age_in_loop) 
+    }
+       
+    
     for(sim in 1:numb_of_sims) {
       
       cat("Running simulation", sim, "with seed", seeds[sim], "\n")
@@ -693,16 +700,29 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
         #                  (age_in_loop / age_factor(cycle_period)) &
         #                  Larger >= (age_in_loop / age_factor(cycle_period)) %>%
         #                  floor()) 
-        my_age_prob_matrix <- my_Probs %>% 
-          dplyr::filter(Lower <= age_in_loop  &
-                          Larger >= age_in_loop) 
+        #my_age_prob_matrix <- my_Probs %>% 
+        #  dplyr::filter(Lower <= age_in_loop  &
+        #                  Larger >= age_in_loop) 
+        
+        #my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
+        #  my_age_prob_matrix <- my_Prob_matrix %>% 
+        #    dplyr::filter(Lower <= my_age_in_loop  &
+        #                    Larger >= my_age_in_loop) 
+        #}
+       
+        ## As we are moving states forward in the future, i.e. in t we decide
+        # what state we are going to observe in t + 1 then we need to use the 
+        # transition probability at t + 1 so it compares well with the Markov
+        #my_age_prob_matrix <- 
+        #  my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
+        #                          my_age_in_loop = (age_in_loop + 1))
         
         
-        # Add colnames and update `v_n`:
-        rownames(my_age_prob_matrix) <- v_n <<- 
-          my_age_prob_matrix %>%
-          dplyr::select(-c(Age.group, Lower, Larger)) %>% 
-          colnames()
+        ## Add colnames and update `v_n`:
+        #rownames(my_age_prob_matrix) <- v_n <<- 
+        #  my_age_prob_matrix %>%
+        #  dplyr::select(-c(Age.group, Lower, Larger)) %>% 
+        #  colnames()
         
         
         ############################################################################
@@ -728,8 +748,16 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
         # Extract the transition probabilities of each individuals at cycle t
         # given the individual current state and the corresponding 
         # transition probability matrix that depends on age:
-        ## Debugging:
-        #cat("The time step is", t, "\n")
+        # Next time (t+1) transition
+        my_age_prob_matrix <- 
+          my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
+                                  my_age_in_loop = (age_in_loop + 1))
+        
+        # Add colnames and update `v_n`:
+        rownames(my_age_prob_matrix) <- v_n <<- 
+          my_age_prob_matrix %>%
+          dplyr::select(-c(Age.group, Lower, Larger)) %>% 
+          colnames()
         
         m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
         
@@ -877,10 +905,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       TR <- as.data.frame(TR)
       #TR <- TR %>% mutate(age = row_number() + 10)
       #TR <- TR %>% mutate(age = row_number() + 8)
-      TR <- TR %>% mutate(age = row_number() + 9:)
-      # Debugging:
-      cat("I'm still here!\n")
-      browser()
+      TR <- TR %>% mutate(age = row_number() + 9)
       
       #Remove large objects: 
       #rm(m_M, m_C, m_E)
@@ -1017,7 +1042,8 @@ mean_incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in
     arrange(Lower)
   
   # Create a vector of the breaks for the intervals
-  breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
+  #breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
+  breaks <- c(age_intervals$Lower, max(age_intervals$Larger))
   
   # Create labels for the intervals
   labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
@@ -1035,11 +1061,16 @@ mean_incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in
   new_state    <- paste0("new_", state)
   new_state_df <- sim_stalked_result[[1]][new_state][[1]]
   
+  ## Debugging:
+  #cat("I'm still here!\n")
+  #browser()
+  
   my_incidence_df <- 
     my_incidence_df %>% 
     dplyr::left_join(new_state_df %>%
                        dplyr::select(-c(sim.1, row_names)), 
-                     by = c("sim", "age", "cycle"))
+                     #by = c("sim", "age", "cycle"))
+                     by = c("age"))
   
   # Find the column containing "->" and the state
   target_column <-
@@ -1093,6 +1124,10 @@ mean_CC_incidence_func <- function(sim_stalked_result, my_Probs) {
     unique() %>% 
     arrange(Lower)
   
+  ## Debugging:
+  #cat("I'm still here!\n")
+  #browser()
+  
   # Create a vector of the breaks for the intervals
   breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
   
@@ -1103,7 +1138,8 @@ mean_CC_incidence_func <- function(sim_stalked_result, my_Probs) {
    
   # Compute prevalence and average it by age intervals
   df <- merge(sim_stalked_result[[1]]$TR, 
-                  sim_stalked_result[[1]]$new_Cancer, by = c("sim", "age", "cycle")) %>%
+                  #sim_stalked_result[[1]]$new_Cancer, by = c("sim", "age", "cycle")) %>%
+                  sim_stalked_result[[1]]$new_Cancer, by = c("sim", "age")) %>%
     dplyr::rename(new_Cancer = `CIN3->FIGO.I`)
   
   df <- df %>% 
@@ -1128,7 +1164,8 @@ mean_CC_incidence_result <- mean_incidence_result
 
 # Concatenate the prevalence to the sim result 
 mean_CC_incidence_result <-
-  mean_CC_incidence_func(sim_stalked_result = mean_CC_incidence_result, my_Probs = my_Probs)  
+  mean_CC_incidence_func(sim_stalked_result = mean_CC_incidence_result,
+                         my_Probs = my_Probs)  
 
 ################################################################################
 # Computing Mortality:
@@ -1451,6 +1488,7 @@ markov_data[] <- lapply(markov_data, function(x) {
 # You might need to extract these from the list manually and convert them
 
 # Example conversion if you have microSim data as tibbles
+# THE CODE BREAKS HERE!
 microSim_data <- data.frame(
   age = age_groups,
   microSim_CN1_incidences = as.numeric(other_mean_mortality_result[[1]]$mean_incidence_CIN1_per_age_interval$mean_incidence_CIN1),
@@ -1461,11 +1499,6 @@ microSim_data <- data.frame(
   microSim_CC_mortality = as.numeric(other_mean_mortality_result[[1]]$CC_mean_mortality$CC_mean_mortality)
 )
 
-# THE CODE BREAKS HERE!
-## Debugging:
-#cat("I'm still here!\n")
-#browser()
-  
 # Ensure all columns in microSim_data are numeric
 microSim_data[] <- lapply(microSim_data, function(x) {
   if (is.factor(x)) {
