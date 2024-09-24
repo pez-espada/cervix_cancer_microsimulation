@@ -664,8 +664,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       m_M[, 1] <- v_M_1  # indicate the initial health state   
       
       seed <- seeds[sim]
+      cat ("This is the seed:  ", seed, "\n")
       set.seed(seed) # set the seed for every individual for the random number generator
-      
       
       
       m_C[, 1] <- Costs_per_Cancer_Diag(M_it = m_M[, 1], # estimate costs per individual for the 
@@ -911,7 +911,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       #rm(m_M, m_C, m_E)
       # Store the results from the simulation in a list
       results <- list(strategy = strategy,
-                      seed = seeds[sim],
+                      #seed = seeds[sim],
+                      seed = seed,
                       sim_numb = sim, 
                       #m_M = m_M, 
                       #m_C = m_C, 
