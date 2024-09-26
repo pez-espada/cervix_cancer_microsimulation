@@ -1,51 +1,8 @@
----
-title: "Cervix Microsimulation Model Follow-Up Document"
-author: "Carlos J. Dommar D'Lima"
-output:
-  html_document:
-    theme: cerulean
-    toc: true
-date: "2024-04-05"
----
-
-
-```{r setup, include=FALSE}
+## ----setup, include=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------
 knitr::opts_chunk$set(echo = TRUE)
-```
-
-This document details the progression of the development of microsimulation models for cervical cancer built upon the currently existing models Markov cohort models in the group.
-
-## R options for Microsimulation
-
-There are a different ways one can build and implement microsimulation models based in existing libraries and dedicated platforms (such as ABMs, in Repast, Netlogo, etc.). However I aim to use R as much as possible or make it R-user friendly. For this regard there is several ways to proceed:
-
--   Build everything from scratch
--   Leverage existing coded libraries/packages
-
-### Existing code/packages for micorsimulation using R (that I am aware of, so far)
-
--   [Krijkamp et al (2018)](https://journals.sagepub.com/doi/abs/10.1177/0272989X18754513)
--   [Clements et al (2018?) `microsimulation` R package](https://cran.r-project.org/web/packages/microsimulation/index.html)
--   [Tikka's et al (2021) `Sima` R open-source simulation framework](https://microsimulation.pub/articles/00240)
-
-## Krijkamp et al microsimulation code (2018)
-
-Among the reasons Krijkamps's code is a good start for implementing microsimulation models i R rather than start from scratch are the
-
-a)  the documentation is good;
-
-b)  the code for the simple case Health-Sick-Sicker-Death model is also simple and concise; the code seems to be maintained in a [git repository](https://github.com/DARTH-git/Microsimulation-tutorial) and it is part of a larger open source set of tools of a group called Decision Analysis in R for Technologies in Health - [DARTH] (<http://darthworkgroup.com/>) with [repositories](https://github.com/DARTH-git) of a number of tools that can be useful such [cohort modeling](https://github.com/DARTH-git/Cohort-modeling-tutorial), and a decision-analytic modeling coding [framework] (<https://github.com/DARTH-git/darthpack>);
-
-c)  Educational
-
-Some possible drawbacks include slow code and difficulties in scaling up; as the model complexity increases, the code may become less clean and readable. Adopting an Object-Oriented (OO) approach would likely be a better long-term solution for production code. In this scenario, exploring `Sima` would be worthwhile.
 
 
-### Krijkamp implementation for a Cervix model with 12 cancer-related states and 15 age-dependent transition matrices.
-
-The idea is to build on the simple [sick-sicker](https://github.com/DARTH-git/Microsimulation-tutorial) model introduced by Krijkamp et al. The initial step is to incorporate the model framework of the Markov cohort cervix model which has 12 mutually exclusive cancer-related states.
-
-```{r, preamble, echo=FALSE, results='hide', message=FALSE}
+## ----preamble, echo=FALSE, results='hide', message=FALSE--------------------------------------------------------------------------------------------------------------------------------
 ################################################################################
 # This code is a modified version of the original code from:
 # [https://github.com/DARTH-git/Microsimulation-tutorial] (Krijkamp et al 2018 
@@ -104,18 +61,9 @@ my_Probs$Larger <- sapply(my_Probs$Age.group, function(x) extract_numbers(x)[2])
 # For the last cycle/iteration we need to adjust the last transition matrix:
 my_Probs$Larger <- 
   ifelse(my_Probs$Larger == max(my_Probs$Larger), my_Probs$Larger + 1, my_Probs$Larger) 
-```
 
-<!-- ```{r, my_Probs, echo=TRUE, results='markup', message=FALSE, include=FALSE} -->
-<!-- library("printr") -->
-<!-- my_Probs %>% -->
-<!--   head() -->
-<!-- knitr::kable(my_Probs) -->
-<!-- ``` -->
 
-### Model parameters:
-
-```{r, model parameters}
+## ----model parameters-------------------------------------------------------------------------------------------------------------------------------------------------------------------
 n_i <- 10^5                 # number of simulated individuals
 n_t <- 75                   # time horizon, 75 cycles (it starts from 1)
 
@@ -155,12 +103,9 @@ cost_Vec = c(0, 39.54, 288.91, 1552.27, 1552.27,
              5759.81, 12903.63, 23032.41, 35323.14, 0, 0, 0)
 utilityCoefs = c(1, 1, 0.987, 0.87, 0.87, 0.76, 0.67, 0.67, 0.67, 0.938, 0, 0)
 
-```
 
 
-
-## The Functions:
-```{r, functions, include=FALSE}
+## ----functions, include=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------
 #### For extracting the probabilities of transitions given the transition matrix:
 ########### Probably the following function is not needed ######################
 #' Extract transition probability from Transition Matrix
@@ -195,46 +140,9 @@ trans_prb <- function(P, state1, state2) {
   )
   return(transition_prob)
 }
-```
-
-### The Sampling Function:
-
-[Krijkamp et al (2018)](https://journals.sagepub.com/doi/abs/10.1177/0272989X18754513) developed a sampling function called `samplev()` by modifying and generating random numbers for multinomial variables from the `Hmisc` R package. The `samplev()` function randomly draws the individuals' state vector at $t+1$. `samplev()` takes as argument `probs` and `m`. 
-
-* `probs` is a matrix of dimensions `n_i x n_s` (number of individuals times number of health-states in the model). Each element $\text{probs} = p_{ij}$ represents the probability of the individual $i$ transitioning to health-state $j$  at $t+1$, given their current state at $t$ as described in the appropriate transition matrix.
-
-* `m=1`in the model.
-
-To progress the evolution of states for individuals, we need to both sample random numbers and make transition selections based on these numbers. The procedure is as follows:
-
--   **Random Number Sampling**: When an individual needs to make a state transition, a random number between 0 and 1 (uniform distribution) is generated. This random number is then compared to the cumulative probabilities of all possible transitions from the current state.
-
--   **Transition Selection**: The transition with a cumulative probability range that encompasses the generated random number is selected. This means that transitions with higher probabilities have a larger range within the 0-1 interval, making them more likely to be chosen.
 
 
-### Cumulative Probabilities and Binning:
-`samplv()` performs the following steps:
-
-1.  **Calculate Cumulative Probabilities**: For each state, the individual transition probabilities are summed sequentially to create a series of cumulative probabilities. For example, if there are three transitions (A, B, and C) with probabilities 0.3, 0.4, and 0.3 respectively, their cumulative probabilities would be:  
-
--   Transition A: 0.3
--   Transition B: 0.3 + 0.4 = 0.7
--   Transition C: 0.7 + 0.3 = 1.0 (this sum must always be 1)
-
-2.  **Binning the Range (0-1)**: The range between 0 and 1 is conceptually divided into bins based on these cumulative probabilities. In the example:
-
--   Transition A: 0 - 0.3 (first 30% of the range)
--   Transition B: 0.3 - 0.7 (next 40% of the range)
--   Transition C: 0.7 - 1.0 (last 30% of the range)
-
-3.  **Selecting the Transition**:
-
-3.1 **Sample a Random Number**:  a random number between 0 and 1 is generated.
-
-3.2 **Identify the Winning Bin**: This random number is then compared to the binned ranges. The transition whose cumulative probability range encompasses the random number is chosen as the next state.
-
-This method ensures that the transitions reflect the specified probabilities, allowing for accurate state evolution in the model.
-```{r, sampling function}
+## ----sampling function------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # Efficient implementation of the rMultinom() function of the Hmisc package #### 
 samplev <- function (probs, m) {
   d <- dim(probs) # i.e. number of individuals times number of states: n_i x n_s
@@ -283,12 +191,9 @@ samplev <- function (probs, m) {
   }
   ran
 }
-```
 
 
-
-### The Probability Function
-```{r, probability function}
+## ----probability function---------------------------------------------------------------------------------------------------------------------------------------------------------------
 knitr::opts_chunk$set(tidy = TRUE, out.width = 60)
 ########################## Probability function #################################
 ## The Probs function that updates the transition probabilities of every cycle:
@@ -319,13 +224,9 @@ Probs <- function(M_it, my_Probs) {
          return(t(m_P_it)), 
          stop("Probabilities do not sum to 1"))
 }
-```
 
 
-
-### The Costs Function:
-For now I implement the `Cost_per_Cancer_Diag`function that only take into account the costs associated with the diagnose of women go go to the health centers after undergoing symptoms. This cost is charged once in the patient's lfetime. This is the only kind of cost involved when running a simulation of the natural history of the disease.
-```{r, costs function, tidy=TRUE}
+## ----costs function, tidy=TRUE----------------------------------------------------------------------------------------------------------------------------------------------------------
 ### Costs function
 # The `Costs_per_Cancer_Diag` function estimates the costs of a diagnose 
 # individual due to cancer symptoms (FIGO.I-IV) at every cycle. 
@@ -349,11 +250,9 @@ Costs_per_Cancer_Diag <- function (M_it, cost_Vec, symptomatics, time_iteration,
   }
   return(c_it)              		                           # return the costs
 }
-```
 
 
-### The QALYs function:
-```{r, qalys function, tidy=TRUE}
+## ----qalys function, tidy=TRUE----------------------------------------------------------------------------------------------------------------------------------------------------------
 ### Health outcome function 
 # new version
 Effs <- function (M_it, Trt = FALSE, cl = 1, utilityCoefs) {
@@ -375,11 +274,9 @@ Effs <- function (M_it, Trt = FALSE, cl = 1, utilityCoefs) {
   )
   return(u_it)
 }
-```
 
 
-### Functions related with cycle length, periods, time resolution (work in progress)
-```{r, time period related functions, echo=TRUE}
+## ----time period related functions, echo=TRUE-------------------------------------------------------------------------------------------------------------------------------------------
 ########### WORK IN PROGRESS #########################
 age_factor <- function(my_period) {
   # it receives a string with the period of the cycle, and it can be:
@@ -433,12 +330,9 @@ convert_matrix_to_proper_transition <-
     ensure_library("ctmcd")
   TM_qo <- ctmcd::gm(TM_pracma$B, te=1, method = "QO") 
   }
-```
 
 
-### The Symptons function
-The symptom function simply account for the individuals that being in a cancer related state, actually develop cancer symptoms and are likely detected at a health facility. From the individuals that are at any of the FIGO states only a portion develops symptoms and are then accounted as cancer patients. These individuals are counted and tracked, and there is an added cost associated with symptoms. Furthermore, an individual who develop sysmptoms can either remain in that cancer state or recover and transit to the `Survival` state. The functions related to this functionality are as follow:
-```{r symptoms, echo=TRUE}
+## ----symptoms, echo=TRUE----------------------------------------------------------------------------------------------------------------------------------------------------------------
 # An individual can be in cancer states, i.e. FIGO.I, FIGO.II. FIGO.III and FIGO.IV
 # (in the model) and yet no develop symptoms. Form th Markov cohort model we have
 # that the probability of developing symptoms are 0.11, 0.23, 0.66, and 0.9 for
@@ -519,12 +413,9 @@ update_column <- function(col, new_entries, next_col) {
   return(next_col)
 }
 #################################################################################
-```
 
 
-
-### Functions to compute new cases or specific states transistions:
-```{r new cases, echo=FALSE}
+## ----new cases, echo=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------
 # Function to compute (total) new cases of a state across the cycles:
 new_cases <- function(state) {
   # It receives a string with the desired health-related state
@@ -574,14 +465,9 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t){
                   cycle = as.numeric(row_number()))
   return(transition_cases)
 }
-```
 
-################################################################################
-################################################################################
-### The the main microsimulation function, `MicroSim`
-This is a modified version of [Krijkamp et al (2018)](https://journals.sagepub.com/doi/abs/10.1177/0272989X18754513) where I have extended the number of individual states to 12 and have included age-dependent transition matrices.
 
-```{r MicroSim function, tidy=TRUE}
+## ----MicroSim function, tidy=TRUE-------------------------------------------------------------------------------------------------------------------------------------------------------
 # Mod: incorporate loop over simulations:
 # This version stacks solution of simulations but produces a list with stacked elements
 MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
@@ -958,14 +844,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
 ## Or should the prevalence/incidence coputed outside the MicroSim function?
 ## HERE I SHOULD IMPLEMENT THE COMPUTATION OF PREVALENCE AND INCIDENCE (?):
 #prevalence_func <- function(cases, )
-```
-################################################################################
-################################################################################
 
 
-################################################################################
-## Test simulation
-```{r, perform simulation, tidy=TRUE, echo=FALSE, include=FALSE, results='hide'}
+## ----perform simulation, tidy=TRUE, echo=FALSE, include=FALSE, results='hide'-----------------------------------------------------------------------------------------------------------
 ########################## Run the simulation ##################################
 ## START SIMULATION
 p = Sys.time()
@@ -980,12 +861,9 @@ sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 15,
 
 comp.time = Sys.time() - p
 comp.time %>% print()
-```
-################################################################################
 
 
-
-```{r, post-simulation computations, tidy=TRUE, echo=FALSE, include=FALSE, results='hide'}
+## ----post-simulation computations, tidy=TRUE, echo=FALSE, include=FALSE, results='hide'-------------------------------------------------------------------------------------------------
                   ###################################
                   ## Post-simulation Computations: ##
                   ###################################
@@ -1256,26 +1134,17 @@ other_mean_mortality_result <-
 
 # save the results
 #saveRDS(object = prevalence_result, file = "./data/stacked_sims_40x10E6x75.rds")
-```
 
 
-<!-- ## Code for converting a .Rmd file to a plain .R script -->
-<!-- ```{r convert .Rmd to .R} -->
-<!-- library(knitr) -->
-<!-- # purl("your_script.Rmd", output = "your_script.R") -->
-<!-- # example: -->
-<!-- purl("Cervix_MicroSim_RMarkdown_v.072_B.Rmd", output = "cervix_microSim_stacked_list_B.R") -->
-<!-- ``` -->
+## ----convert .Rmd to .R-----------------------------------------------------------------------------------------------------------------------------------------------------------------
+library(knitr)
+# purl("your_script.Rmd", output = "your_script.R")
+# example:
+purl("Cervix_MicroSim_RMarkdown_v.072_B.Rmd", output = "cervix_microSim_stacked_list_B.R")
+purl("Cervix_MicroSim_RMarkdown_v.072_B.Rmd", output = "cervix_microSim_stacked_list_B.R")
 
 
-
-
-
-<!--
-## Perform cost-effectiveness analysis (this code is to be change to implement our own cost-effectiveness analysis):
-
-################################################################################
-```{r, cost-efectiveness, tidy=TRUE}
+## ----cost-efectiveness, tidy=TRUE-------------------------------------------------------------------------------------------------------------------------------------------------------
 ####################### Cost-effectiveness analysis #############################
 ## store the mean costs (and MCSE) of each strategy in a new variable C (vector costs)
 #v_C  <- c(sim_no_trt$tc_hat_disc, sim_trt$tc_hat_disc) 
@@ -1312,12 +1181,9 @@ other_mean_mortality_result <-
 #  c("Costs", "*",  "QALYs", "*", "Incremental Costs",
 #    "*", "QALYs Gained", "*", "ICER")
 #table_micro  # print the table 
-```
--->
 
 
-### Plotting routines: simulation curves
-```{r, plot curves, fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth'}
+## ----plot curves, fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth'-------------------------------------------------------------------------------------------------------
 ## This R chunk is a plot routine (not part of the main program):
 library(RColorBrewer)
 # Convert matrix to data frame
@@ -1352,15 +1218,9 @@ ggplot(long_micro_sim_df, aes(x = age, y = Average, color = Stage)) +
        y = "Average Count",
        color = "Stage") +
   theme_minimal()
-```
 
 
-
-
-### Comparing microsimulation with Markov cohort simulations.
-Given the output of a Markov cohort model with a 12-state structure and 15 age-dependent transition matrices, I proceeded to compare both simulations. I did this by aggregating individuals from the microsimulation and comparing the results with the corresponding cohort model outcomes.
-
-```{r, loading markov result, fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth'}
+## ----loading markov result, fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth'---------------------------------------------------------------------------------------------
 if (!require("readxl")) install.packages("readxl")
 library(readxl)
 # This R chunk is a plot routine (not part of the main program):
@@ -1423,12 +1283,9 @@ ggplot(long_merged_data, aes(x = age, y = value, color = `Health state`)) +
   theme_minimal()  # Optional: customize the theme
 
 ################################################################################
-```
 
 
-## Incidence, prevalences and mortalities
-
-```{r incidences, prevalences, and mortalities}
+## ----incidences, prevalences, and mortalities-------------------------------------------------------------------------------------------------------------------------------------------
 # Markov:
 markov_CN1_incidences <- c(0.00000, 204.73492, 981.96179, 1368.24200, 3006.85782, 33.48096, 1362.96678, 459.48051, 697.84223, 794.33833, 223.00222, 246.23082, 176.02167, 126.22963, 53.70939)
 markov_CN2_incidences <- c(0.000000, 6.165629, 54.767952, 140.309815, 216.568392, 1476.306267, 1579.728160, 1298.914564, 466.596151, 637.661611, 442.298632, 304.784447, 250.953880, 165.628020, 116.925192)
@@ -1445,10 +1302,9 @@ microSim_CC_incidences   <- other_mean_mortality_result[[1]]$mean_CC_incidence
 microSim_HPV_prevalences <- other_mean_mortality_result[[1]]$mean_HPV_prevalence_per_age_interval
 microSim_CC_mortality    <- other_mean_mortality_result[[1]]$CC_mean_mortality
 
-```
 
 
-```{r, ploting incidences and prevalences, fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth,'}
+## ----ploting incidences and prevalences, fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth,'-------------------------------------------------------------------------------
 # Load necessary libraries
 library(dplyr)
 library(ggplot2)
@@ -1547,5 +1403,4 @@ print(plot_CN3_incidences)
 print(plot_CC_incidences)
 print(plot_HPV_prevalences)
 print(plot_CC_mortality)
-```
 
