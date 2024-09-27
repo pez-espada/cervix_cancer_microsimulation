@@ -53,8 +53,6 @@ extract_numbers <- function(range_factor) {
 }
 ###############################################################
 
-# Before apply the function, convert Age.group from factor to character
-# my_Probs$Age.group <- as.character(my_Probs$Age.group)
 # Apply the function to the Range column and create new columns
 my_Probs$Lower  <- sapply(my_Probs$Age.group, function(x) extract_numbers(x)[1])
 my_Probs$Larger <- sapply(my_Probs$Age.group, function(x) extract_numbers(x)[2])
@@ -195,31 +193,30 @@ samplev <- function (probs, m) {
 
 ## ----probability function---------------------------------------------------------------------------------------------------------------------------------------------------------------
 knitr::opts_chunk$set(tidy = TRUE, out.width = 60)
-########################## Probability function #################################
+######################### Probability function #################################
 ## The Probs function that updates the transition probabilities of every cycle:
 Probs <- function(M_it, my_Probs) {
   n_s <- length(v_n)
   n_i <- length(M_it)
   m_P_it <- matrix(NA, n_s, n_i) 
   rownames(m_P_it) <- v_n
-  
   for (i in 1:length(v_n)) {
     state_mask <- !is.na(M_it) & M_it == v_n[i]
     
     if (sum(state_mask) > 0) {
-      m_P_it[, state_mask] <- lapply(X = v_n, function(x) trans_prb(P = my_Probs, state1 = v_n[i], state2 = x)) %>%
+      m_P_it[, state_mask] <- 
+        lapply(X = v_n, function(x) trans_prb(P = my_Probs, state1 =
+                                                v_n[i], state2 = x)) %>%
         unlist()
     } else {
       ## Debugging:
       #cat("State", v_n[i], "is not present in M_it at this time step\n")
     }
   }
-  
   if (any(is.na(m_P_it))) {
     # Diagnostic message
     cat("Transition probabilities contain NA values\n")
   }
-  
   ifelse(colSums(m_P_it, na.rm = TRUE) >= .991, 
          return(t(m_P_it)), 
          stop("Probabilities do not sum to 1"))
@@ -236,17 +233,22 @@ Costs_per_Cancer_Diag <- function (M_it, cost_Vec, symptomatics, time_iteration,
   c_it <- rep(0, length(M_it))
   ci_t <- 0
   if(nrow(symptomatics) > 0 ) {
-    c_it[symptomatics %>% filter(DiagnosedState == "FIGO.I" & TimeStep == time_iteration) %>% 
-           select(ID) %>% as.list() %>% unlist()] <- cost_Vec[which(v_n %in% "FIGO.I")]
-    
-    c_it[symptomatics %>% filter(DiagnosedState == "FIGO.II" & TimeStep == time_iteration) %>% 
-           select(ID) %>% as.list() %>% unlist()] <- cost_Vec[which(v_n %in% "FIGO.II")]
-    
-    c_it[symptomatics %>% filter(DiagnosedState == "FIGO.III" & TimeStep == time_iteration) %>% 
-           select(ID) %>% as.list() %>% unlist()] <- cost_Vec[which(v_n %in% "FIGO.III")]
-    
-    c_it[symptomatics %>% filter(DiagnosedState == "FIGO.IV" & TimeStep == time_iteration) %>% 
-           select(ID) %>% as.list() %>% unlist()] <- cost_Vec[which(v_n %in% "FIGO.IV")]
+    c_it[symptomatics %>% 
+           filter(DiagnosedState == "FIGO.I" & TimeStep == time_iteration) %>% 
+           select(ID) %>% as.list() %>% 
+           unlist()] <- cost_Vec[which(v_n %in% "FIGO.I")]
+    c_it[symptomatics %>% 
+           filter(DiagnosedState == "FIGO.II" & TimeStep == time_iteration) %>% 
+           select(ID) %>% as.list() %>% 
+           unlist()] <- cost_Vec[which(v_n %in% "FIGO.II")]
+    c_it[symptomatics %>%
+           filter(DiagnosedState == "FIGO.III" & TimeStep == time_iteration) %>% 
+           select(ID) %>% as.list() %>% 
+           unlist()] <- cost_Vec[which(v_n %in% "FIGO.III")]
+    c_it[symptomatics %>% 
+           filter(DiagnosedState == "FIGO.IV" & TimeStep == time_iteration) %>% 
+           select(ID) %>% as.list() %>% 
+           unlist()] <- cost_Vec[which(v_n %in% "FIGO.IV")]
   }
   return(c_it)              		                           # return the costs
 }
@@ -254,7 +256,6 @@ Costs_per_Cancer_Diag <- function (M_it, cost_Vec, symptomatics, time_iteration,
 
 ## ----qalys function, tidy=TRUE----------------------------------------------------------------------------------------------------------------------------------------------------------
 ### Health outcome function 
-# new version
 Effs <- function (M_it, Trt = FALSE, cl = 1, utilityCoefs) {
   # check length of vector of states and vector of utility/QALYs are the same:
   u_it <- 0                   # by default the utility for everyone is zero
@@ -262,7 +263,6 @@ Effs <- function (M_it, Trt = FALSE, cl = 1, utilityCoefs) {
     for (i in 1:length(utilityCoefs)) {
       u_it[M_it == v_n[i]] <- utilityCoefs[i]   # update the utility if healthy
     },
-    
     error = function(e){
       message("An error occurred:\n", e)
       print("Check state vector and utility vector have the same dimensions:")
@@ -303,12 +303,11 @@ age_factor <- function(my_period) {
 ######### WORK IN PROGRESS #################
 ############################################
 
-#### ! NOT USED ############################
+#### ! NOT USED ! ############################
 convert_matrix_to_proper_transition <- 
   function(my_age_prob_matrix, cycle_period) {
     my_age_prob_matrix %>% head(3)
     ensure_library(c("expm", "pracma", "ctmcd"))
-    
     trans_matrix <- my_age_prob_matrix %>% 
       select(-c("Age.group", "Lower", "Larger")) %>% 
       as.matrix()
@@ -323,12 +322,11 @@ convert_matrix_to_proper_transition <-
       pracma::rootm(trans_matrix, p=age_factor(cycle_period), 
                     kmax = 20, tol = 1e-10)
     round(TM_pracma$B, 5)
-  
     # Regularization with the `ctmcd` package, The code below uses the 
     # quasi-optimization of the generator (QOG) approach from 
     # Kreinin and Sidelnikova (2001).:
     ensure_library("ctmcd")
-  TM_qo <- ctmcd::gm(TM_pracma$B, te=1, method = "QO") 
+    TM_qo <- ctmcd::gm(TM_pracma$B, te=1, method = "QO") 
   }
 
 
@@ -359,28 +357,22 @@ diagnose_column <- function(col, time_step) {
   new_entries <- data.frame(ID = integer(), 
                             TimeStep = integer(), DiagnosedState = character(),
                             RecoveredFromState = logical())
-  
   for (state_idx in seq_along(states_to_check)) {
     state <- states_to_check[state_idx]
     prob_symptom <- symptom_prob_vec[state_idx]
     prob_survival <- survival_prob_vec[state_idx]
-    
     in_state <- which(col == state)
     if (length(in_state) > 0) {
       # Remove individuals who have already been diagnosed
       in_state <- setdiff(in_state, global_diagnosed)
-      
       if (length(in_state) > 0) {
         # Store based on diagnose probability
         to_store <- in_state[runif(length(in_state)) < prob_symptom]
-        
         if (length(to_store) > 0) {
           # Add these individuals to the global diagnosed list
           global_diagnosed <<- c(global_diagnosed, to_store)
-          
           # Check another probability to potentially change their state to "Survival"
           recovered <- to_store[runif(length(to_store)) < prob_survival]
-          
           # Store the individuals' IDs, time steps, diagnosed states, and recovery status
           new_entries <- rbind(new_entries, data.frame(
             ID = to_store, 
@@ -391,7 +383,6 @@ diagnose_column <- function(col, time_step) {
       }
     }
   }
-  
   rownames(new_entries) <- NULL
   return(new_entries)
 }
@@ -417,6 +408,7 @@ update_column <- function(col, new_entries, next_col) {
 
 ## ----new cases, echo=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------
 # Function to compute (total) new cases of a state across the cycles:
+# (NOT USED)
 new_cases <- function(state) {
   # It receives a string with the desired health-related state
   # it gives back a tibble with age and new cases of that state at that age.
@@ -440,7 +432,6 @@ new_cases <- function(state) {
       new_col_set <- append(new_col_set, col_set[i])
     } 
   }
-  
   # Select columns with new_cases of `state`:
   new_cases <- sim_no_trt$Tot_Trans_per_t %>%
     as_tibble() %>%
@@ -449,10 +440,11 @@ new_cases <- function(state) {
     dplyr::select(-everything(), total_new_cases) %>%
     #dplyr::mutate(age = row_number() + 9)
     dplyr::mutate(age = row_number() + 10)
-  
   return(new_cases)
 }
-####
+
+
+#### (USED) ####
 new_cases_2 <- function(state1, state2, Tot_Trans_per_t){
   # This function receives two strings with the names of a state as named in the 
   # vector state `v_n` and it gives back a df with two columns: age and number of
@@ -467,6 +459,7 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t){
 }
 
 
+## THE MICROSIMULATION MAIN FUNCTION
 ## ----MicroSim function, tidy=TRUE-------------------------------------------------------------------------------------------------------------------------------------------------------
 # Mod: incorporate loop over simulations:
 # This version stacks solution of simulations but produces a list with stacked elements
@@ -474,7 +467,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
                      v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE, 
                      TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix) 
 {
-  
   seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
   {
     #simulation_results <- vector("list", numb_of_sims)
@@ -518,12 +510,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
         dplyr::filter(Lower <= my_age_in_loop  &
                         Larger >= my_age_in_loop) 
     }
-       
-    
     for(sim in 1:numb_of_sims) {
       
       cat("Running simulation", sim, "with seed", seeds[sim], "\n")
-      
       symptomatics <-
         data.frame(ID = integer(), TimeStep = integer(), 
                    DiagnosedState = character(), 
@@ -563,7 +552,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
                                                                     # per individual 
                                                                     # for the initial
                                                                     # health state  
-      
       stored_list <- list()
       ######################## run over all the cycles ############################# 
       #for (t in 1:(n_t)) {
@@ -594,7 +582,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
         #    dplyr::filter(Lower <= my_age_in_loop  &
         #                    Larger >= my_age_in_loop) 
         #}
-       
+        
         ## As we are moving states forward in the future, i.e. in t we decide
         # what state we are going to observe in t + 1 then we need to use the 
         # transition probability at t + 1 so it compares well with the Markov
@@ -610,46 +598,49 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
         #  colnames()
         
         
-        ############################################################################
+        ########################################################################
         
         # update/correct n_s (<<- let change variable from inside a function):
         n_s  <<- length(v_n)  
         
-        ############################################################################ 
+        ######################################################################## 
         #new code:
         new_entries <- diagnose_column(m_M[, t], t)
         
         if (!is.null(new_entries)) {
           stored_list[[t]] <- new_entries
         }
-        
         if (nrow(new_entries) > 0) {
           symptomatics <- bind_rows(symptomatics, new_entries)
         }
-        ############################################################################ 
+        ######################################################################## 
         
-        
-        ############################################################################    
-        # Extract the transition probabilities of each individuals at cycle t
-        # given the individual current state and the corresponding 
-        # transition probability matrix that depends on age:
-        # Next time (t+1) transition
+       
+         
+        ########################################################################    
         my_age_prob_matrix <- 
           my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
                                   my_age_in_loop = (age_in_loop + 1))
-        
         # Add colnames and update `v_n`:
         rownames(my_age_prob_matrix) <- v_n <<- 
           my_age_prob_matrix %>%
           dplyr::select(-c(Age.group, Lower, Larger)) %>% 
           colnames()
         
+        # Extract the transition probabilities of each individuals at cycle t
+        # given the individual current state and the corresponding 
+        # transition probability matrix that depends on age:
+        # Next time (t+1) transition
         m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
         
         m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
                                                      # and store that state in  
-                                                     # matrix m_M 
-        ############################################################################    
+        # matrix m_M 
+        ########################################################################    
+        
+        # Debugging:
+        cat("I'm still here!\n")
+        browser()
         
         # m_M[, t + 1] <- update_column(m_M[, t], new_entries)
         next_col <- m_M[, t + 1]
@@ -659,7 +650,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
         m_M[, t + 1] <- ifelse(next_col == "Survival", "Survival", m_M[, t + 1])
          
         
-        ############################################################################    
+        ########################################################################    
         ## Costs per CC diagnose at time t + 1.
         
         # Estimate costs per individual during cycle t + 1 conditional on treatment:
@@ -671,7 +662,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
                                 time_iteration = t,
                                 cost_Vec = cost_Vec,    
                                 Trt)            
-        
         
         m_E[, t + 1] <- # estimate QALYs per individual during cycle t + 1
           Effs( m_M[, t + 1], Trt, 
@@ -841,18 +831,14 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
   
 } # end of MicroSim function
 
-## Or should the prevalence/incidence coputed outside the MicroSim function?
-## HERE I SHOULD IMPLEMENT THE COMPUTATION OF PREVALENCE AND INCIDENCE (?):
-#prevalence_func <- function(cases, )
-
-
+################################################################################
 ## ----perform simulation, tidy=TRUE, echo=FALSE, include=FALSE, results='hide'-----------------------------------------------------------------------------------------------------------
 ########################## Run the simulation ##################################
 ## START SIMULATION
 p = Sys.time()
 # run for no treatment
 #sim_no_trt  <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = FALSE)
-sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 15, 
+sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 1, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
@@ -861,6 +847,8 @@ sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 15,
 
 comp.time = Sys.time() - p
 comp.time %>% print()
+################################################################################
+################################################################################
 
 
 ## ----post-simulation computations, tidy=TRUE, echo=FALSE, include=FALSE, results='hide'-------------------------------------------------------------------------------------------------
@@ -939,10 +927,6 @@ mean_incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in
   new_state    <- paste0("new_", state)
   new_state_df <- sim_stalked_result[[1]][new_state][[1]]
   
-  ## Debugging:
-  #cat("I'm still here!\n")
-  #browser()
-  
   my_incidence_df <- 
     my_incidence_df %>% 
     dplyr::left_join(new_state_df %>%
@@ -960,7 +944,8 @@ mean_incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in
                                                       dplyr::lag(rowSums(select(., all_of(all_previous_states))), 
                                                                  n=1, default = NA)) * 10^5 )
   
-  library(rlang)
+  #library(rlang)
+  ensure_library("rlang")
   df <- my_incidence_df %>%
     dplyr::select(everything()) %>%
     dplyr::mutate(age_interval = 
@@ -1136,12 +1121,12 @@ other_mean_mortality_result <-
 #saveRDS(object = prevalence_result, file = "./data/stacked_sims_40x10E6x75.rds")
 
 
-## ----convert .Rmd to .R-----------------------------------------------------------------------------------------------------------------------------------------------------------------
-library(knitr)
-# purl("your_script.Rmd", output = "your_script.R")
-# example:
-purl("Cervix_MicroSim_RMarkdown_v.072_B.Rmd", output = "cervix_microSim_stacked_list_B.R")
-purl("Cervix_MicroSim_RMarkdown_v.072_B.Rmd", output = "cervix_microSim_stacked_list_B.R")
+### ----convert .Rmd to .R-----------------------------------------------------------------------------------------------------------------------------------------------------------------
+#library(knitr)
+## purl("your_script.Rmd", output = "your_script.R")
+## example:
+#purl("Cervix_MicroSim_RMarkdown_v.072_B.Rmd", output = "cervix_microSim_stacked_list.R")
+#purl("Cervix_MicroSim_RMarkdown_v.072_B.Rmd", output = "cervix_microSim_stacked_list_B.R")
 
 
 ## ----cost-efectiveness, tidy=TRUE-------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1186,6 +1171,7 @@ purl("Cervix_MicroSim_RMarkdown_v.072_B.Rmd", output = "cervix_microSim_stacked_
 ## ----plot curves, fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth'-------------------------------------------------------------------------------------------------------
 ## This R chunk is a plot routine (not part of the main program):
 library(RColorBrewer)
+#ensure_library("RColorBrewer")
 # Convert matrix to data frame
 micro_sim_df <- sim_no_trt[[1]]$TR
 micro_sim_df <- other_mean_mortality_result[[1]]$TR
@@ -1206,6 +1192,7 @@ averaged_micro_sim_df <- micro_sim_df %>%
 # Reshape the data to long format for easier plotting with ggplot2
 long_micro_sim_df <- averaged_micro_sim_df %>%
   pivot_longer(cols = c(CIN1, CIN2, CIN3, FIGO.I, FIGO.II, FIGO.III, FIGO.IV),
+  #pivot_longer(cols = c( FIGO.IV, CC_Death),
                         #Survival, CC_Death, Other.Death), 
                names_to = "Stage", 
                values_to = "Average")
