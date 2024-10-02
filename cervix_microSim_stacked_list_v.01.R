@@ -62,7 +62,7 @@ my_Probs$Larger <-
 
 
 ## ----model parameters-------------------------------------------------------------------------------------------------------------------------------------------------------------------
-n_i <- 10^6                 # number of simulated individuals
+n_i <- 10^4                 # number of simulated individuals
 n_t <- 75                   # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
@@ -959,6 +959,17 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
       
       #Remove large objects: 
       #rm(m_M, m_C, m_E)
+      
+      # Computing new cancer cases pert cycle using diff() function:
+      New_CC_Death <- c(0, TR %>% 
+                          select(CC_Death) %>% 
+                          as_vector() %>% 
+                          diff())
+      TR$New_CC_Death <- New_CC_Death 
+      TR$New_CC_Death <- ifelse( TR$age==10, 0, TR$New_CC_Death )
+      
+      
+      
       # Store the results from the simulation in a list
       results <- list(strategy = strategy,
                       #seed = seeds[sim],
@@ -1013,7 +1024,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
 ## START SIMULATION
 p = Sys.time()
 # run for no treatment
-sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 10, 
+sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 1, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
@@ -1021,6 +1032,7 @@ sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 10,
 
 #sim_no_trt <- readRDS(file = "./data/stacked_sims_100x10E6x75_FULL_IMPLEMENTATION.rds")
 #sim_no_trt <- readRDS(file = "./data/stacked_sims_100x10E6x75.rds")
+#sim_no_trt <- readRDS(file = "./data/stacked_sims_10x10E6x75_20241002.rds")
 
 comp.time = Sys.time() - p
 comp.time %>% print()
@@ -1322,8 +1334,8 @@ other_mean_mortality_result <- mean_CC_mortality_result
 other_mean_mortality_result <-
   other_mean_mortality_func(sim_stalked_result = other_mean_mortality_result, my_Probs = my_Probs)  
 
-# save the results
-saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_10x10E6x75_20241002.rds")
+## save the results
+#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_50x10E6x75_20241002.rds")
 
 
 ### ----convert .Rmd to .R-----------------------------------------------------------------------------------------------------------------------------------------------------------------
