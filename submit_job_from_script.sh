@@ -8,5 +8,5 @@
 #Rscript -e "rmarkdown::render('~/carlos-code/cervix_cancer_microsimulation--20240617T075924Z-001/cervix_cancer_microsimulation/Cervix_MicroSim_RMarkdown_v.071.Rmd')"
 
 
-
-Rscript /home/07075107P/carlos-code/cervix_cancer_microsimulation--20240617T075924Z-001/cervix_cancer_microsimulation/cervix_microSim_stacked_list.R      # Run your R script
+#Rscript /home/07075107P/carlos-code/cervix_cancer_microsimulation--20240617T075924Z-001/cervix_cancer_microsimulation/cervix_microSim_stacked_list.R      # Run your R script
+Rscript /home/07075107P/carlos-code/cervix_cancer_microsimulation--20240617T075924Z-001/cervix_cancer_microsimulation/cervix_microSim_stacked_list_v.01.R    # Run your R script

@@ -407,44 +407,44 @@ update_column <- function(col, new_entries, next_col) {
 
 
 ## ----new cases, echo=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------
-# Function to compute (total) new cases of a state across the cycles:
-# (NOT USED)
-new_cases <- function(state) {
-  # It receives a string with the desired health-related state
-  # it gives back a tibble with age and new cases of that state at that age.
-  # Note that new cases are computed as all transitions going to that state
-  # and coming from a different stage
-  
-  # Columns that containst `state`:
-  col_set <- sim_no_trt$Tot_Trans_per_t %>% 
-    as_tibble() %>% 
-    select(contains(state)) %>%
-    colnames() #%>%
-  
-  # Columns with transitions to `state`: `xx->state`with `xx!=state`
-  new_col_set <- NULL
-  for (i in 1:length(col_set)) {
-    if ((stringr::str_split(string = col_set[i], pattern = "->") %>% 
-         unlist() %>% .[2]) == state &&
-        (stringr::str_split(string = col_set[i], pattern = "->") %>% 
-         unlist() %>% .[1]) != state)
-    {
-      new_col_set <- append(new_col_set, col_set[i])
-    } 
-  }
-  # Select columns with new_cases of `state`:
-  new_cases <- sim_no_trt$Tot_Trans_per_t %>%
-    as_tibble() %>%
-    dplyr::select(one_of(new_col_set)) %>%
-    dplyr::mutate(total_new_cases = rowSums(.)) %>%
-    dplyr::select(-everything(), total_new_cases) %>%
-    #dplyr::mutate(age = row_number() + 9)
-    dplyr::mutate(age = row_number() + 10)
-  return(new_cases)
-}
+## Function to compute (total) new cases of a state across the cycles:
+## (NOT USED)
+#new_cases <- function(state) {
+#  # It receives a string with the desired health-related state
+#  # it gives back a tibble with age and new cases of that state at that age.
+#  # Note that new cases are computed as all transitions going to that state
+#  # and coming from a different stage
+#  
+#  # Columns that containst `state`:
+#  col_set <- sim_no_trt$Tot_Trans_per_t %>% 
+#    as_tibble() %>% 
+#    select(contains(state)) %>%
+#    colnames() #%>%
+#  
+#  # Columns with transitions to `state`: `xx->state`with `xx!=state`
+#  new_col_set <- NULL
+#  for (i in 1:length(col_set)) {
+#    if ((stringr::str_split(string = col_set[i], pattern = "->") %>% 
+#         unlist() %>% .[2]) == state &&
+#        (stringr::str_split(string = col_set[i], pattern = "->") %>% 
+#         unlist() %>% .[1]) != state)
+#    {
+#      new_col_set <- append(new_col_set, col_set[i])
+#    } 
+#  }
+#  # Select columns with new_cases of `state`:
+#  new_cases <- sim_no_trt$Tot_Trans_per_t %>%
+#    as_tibble() %>%
+#    dplyr::select(one_of(new_col_set)) %>%
+#    dplyr::mutate(total_new_cases = rowSums(.)) %>%
+#    dplyr::select(-everything(), total_new_cases) %>%
+#    #dplyr::mutate(age = row_number() + 9)
+#    dplyr::mutate(age = row_number() + 10)
+#  return(new_cases)
+#}
 
 
-##### (USED) ####
+##### (OLD CODE) ####
 #new_cases_2 <- function(state1, state2, Tot_Trans_per_t){
 #  # This function receives two strings with the names of a state as named in the 
 #  # vector state `v_n` and it gives back a df with two columns: age ad number of
@@ -467,7 +467,7 @@ new_cases <- function(state) {
 
 
 ################################################################################
-########################### TESTING ############################################
+############################ OLD CODE ##########################################
 ################################################################################
 # new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
 #   # Convert the data to a tibble for easier manipulation
@@ -638,7 +638,7 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
 ## ----MicroSim function, tidy=TRUE-------------------------------------------------------------------------------------------------------------------------------------------------------
 # Mod: incorporate loop over simulations:
 # This version stacks solution of simulations but produces a list with stacked elements
-MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
+MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                      v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE, 
                      TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix) 
 {
@@ -1013,13 +1013,14 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
 ## START SIMULATION
 p = Sys.time()
 # run for no treatment
-#sim_no_trt  <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = FALSE)
-sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 1, 
+sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 10, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
 
+
 #sim_no_trt <- readRDS(file = "./data/stacked_sims_100x10E6x75_FULL_IMPLEMENTATION.rds")
+#sim_no_trt <- readRDS(file = "./data/stacked_sims_100x10E6x75.rds")
 
 comp.time = Sys.time() - p
 comp.time %>% print()
@@ -1027,8 +1028,8 @@ comp.time %>% print()
 ################################################################################
 
 
-
-
+################################################################################
+################################################################################
 ## ----post-simulation computations, tidy=TRUE, echo=FALSE, include=FALSE, results='hide'-------------------------------------------------------------------------------------------------
 ################################################################################
 ################################################################################
@@ -1073,8 +1074,6 @@ mean_prevalence_func <- function(sim_stalked_result, my_Probs) {
 mean_prevalence_result <-
   mean_prevalence_func(sim_stalked_result = sim_no_trt, my_Probs = my_Probs)  
 
-# save the results
-#saveRDS(object = prevalence_result, file = "./data/stacked_sims_40x10E6x75.rds")
 
 ################################################################################
 # Incidence is defined by the NEW number of individuals in the state of interest
@@ -1227,17 +1226,17 @@ mean_CC_mortality_func <- function(sim_stalked_result, my_Probs) {
   # Create labels for the intervals
   labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
   
-  # Compute prevalence and average it by age intervals
-  df <- sim_stalked_result[[1]]$TR %>% 
-    #dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
-    dplyr::select(everything()) %>% 
-    dplyr::mutate(total_alive = H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
-                    FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
-    dplyr::mutate(CC_mortality = (CC_Death / total_alive) * 10^5) %>% 
-    dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
-    dplyr::group_by(age_interval) %>% 
-    dplyr::summarise(CC_mean_mortality = mean(CC_mortality, na.rm = TRUE)) %>% 
-    dplyr::ungroup()
+  ## Compute prevalence and average it by age intervals
+  #df <- sim_stalked_result[[1]]$TR %>% 
+  #  #dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
+  #  dplyr::select(everything()) %>% 
+  #  dplyr::mutate(total_alive = H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
+  #                  FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
+  #  dplyr::mutate(CC_mortality = (CC_Death / total_alive) * 10^5) %>% 
+  #  dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
+  #  dplyr::group_by(age_interval) %>% 
+  #  dplyr::summarise(CC_mean_mortality = mean(CC_mortality, na.rm = TRUE)) %>% 
+  #  dplyr::ungroup()
   
   ################# TESTING #################################################
   # Define the age range you want to keep
@@ -1265,9 +1264,7 @@ mean_CC_mortality_func <- function(sim_stalked_result, my_Probs) {
     dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>%
     dplyr::group_by(age_interval) %>%
     dplyr::summarise(CC_mean_mortality = mean(CC_mortality, na.rm = TRUE)) %>%
-    
     dplyr::ungroup()
-  
   ################# TESTING #################################################
   
   
@@ -1284,8 +1281,6 @@ mean_CC_mortality_result <- mean_CC_incidence_result
 mean_CC_mortality_result <-
   mean_CC_mortality_func(sim_stalked_result = mean_CC_mortality_result, my_Probs = my_Probs)  
 
-# save the results
-#saveRDS(object = prevalence_result, file = "./data/stacked_sims_40x10E6x75.rds")
  
 ################################################################################
 # B. Cancer-unrelated Mortality
@@ -1328,7 +1323,7 @@ other_mean_mortality_result <-
   other_mean_mortality_func(sim_stalked_result = other_mean_mortality_result, my_Probs = my_Probs)  
 
 # save the results
-#saveRDS(object = prevalence_result, file = "./data/stacked_sims_40x10E6x75.rds")
+saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_10x10E6x75_20241002.rds")
 
 
 ### ----convert .Rmd to .R-----------------------------------------------------------------------------------------------------------------------------------------------------------------
