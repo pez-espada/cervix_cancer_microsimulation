@@ -586,14 +586,17 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
       transition_cases <- Tot_Trans_per_t_tbl %>%
         dplyr::select(all_of(transition_column)) %>%  # Select the column based on the transition
         dplyr::mutate(age = row_number() + 10,        # Add the `age` column (adjust as needed)
-                      cycle = row_number())           # Add the `cycle` column
+                      #cycle = row_number()
+                      cycle = age - 9
+                      )           # Add the `cycle` column
     } else {
       # If the column does not exist, create a column of zeros and issue a warning
       warning(paste0("Transition '", transition_column, "' not found! Using a column of zeros."))
       transition_cases <- tibble(
         !!transition_column := rep(0, nrow(Tot_Trans_per_t_tbl)),  # Create a zero column
         age = row_number() + 10,
-        cycle = row_number()
+        #cycle = row_number()
+        cycle = age - 9
       )
     }
     return(transition_cases)
@@ -623,7 +626,9 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
       mutate(!!paste0(state2, "_per_t") := sum(c_across(everything()), na.rm = TRUE)) %>%
       ungroup() %>%
       dplyr::mutate(age = row_number() + 10,         # Add the `age` column
-                    cycle = row_number())            # Add the `cycle` column
+                    #cycle = row_number()
+                    cycle = age - 9                  # Add the `cycle` column
+      )            
     
     return(transition_cases)
   }
@@ -895,11 +900,12 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         unlist()
       
       if(TS_out == TRUE){
-        Tot_Trans_per_t <- t(apply(TS, 2, 
-                                   function(x) 
-                                     table(factor(x, levels 
-                                                  = transitions, 
-                                                  ordered = TRUE))))
+        Tot_Trans_per_t <- 
+          t(apply(TS, 2, 
+                  function(x) 
+                    table(factor(x, levels 
+                                 = transitions, 
+                                 ordered = TRUE))))
         # trace
         #rownames(Tot_Trans_per_t) <- paste0("cycle_", 1:(n_t + 1), sep = "") # name the rows 
         rownames(Tot_Trans_per_t) <- paste0("cycle_", 1:(n_t), sep = "") # name the rows 
@@ -924,7 +930,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                                              "FIGO.II", "FIGO.III", "FIGO.IV"),
                                   state2 = "CC_Death", 
                                   Tot_Trans_per_t = Tot_Trans_per_t)
-      
+     
+       
       # Before sending back, some cleaning regarding cycle `n_t+1` which is 
       # computed but no needed as a result:
       m_M <-m_M[, 1:n_t]
@@ -937,10 +944,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
       new_CC_Death <- new_CC_Death %>% 
         dplyr::select(CC_Death_per_t, age, cycle) %>%
         dplyr::slice(c(1:n_t))
-      
-      ## Debugging:
-      #cat("I'm still here!\n")
-      #browser()
       
       # Removing no needed extra row from TR:
       row_to_remove <- n_t + 1
@@ -956,18 +959,22 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
       #TR <- TR %>% mutate(age = row_number() + 10)
       #TR <- TR %>% mutate(age = row_number() + 8)
       TR <- TR %>% mutate(age = row_number() + 9)
+      TR$sim <- sim
       
       #Remove large objects: 
       #rm(m_M, m_C, m_E)
       
       # Computing new cancer cases pert cycle using diff() function:
-      New_CC_Death <- c(0, TR %>% 
+      CC_Death_by_diff <- c(0, TR %>% 
                           select(CC_Death) %>% 
                           as_vector() %>% 
                           diff())
-      TR$New_CC_Death <- New_CC_Death 
-      TR$New_CC_Death <- ifelse( TR$age==10, 0, TR$New_CC_Death )
+      TR$CC_Death_by_diff <- CC_Death_by_diff 
+      TR$CC_Death_by_diff <- ifelse( TR$age==10, 0, TR$CC_Death_by_diff)
       
+      CC_Death_by_diff <- TR %>% 
+        dplyr::select(sim, age, CC_Death_by_diff) %>% 
+        dplyr::as_tibble()
       
       
       # Store the results from the simulation in a list
@@ -994,7 +1001,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                       new_CIN2 = new_CIN2,
                       new_CIN3 = new_CIN3,
                       new_Cancer = new_Cancer,
-                      new_CC_Death = new_CC_Death)  
+                      new_CC_Death = new_CC_Death,
+                      CC_Death_by_diff = CC_Death_by_diff)  
       
     #results$seed <- seeds[sim]
     simulation_results[sim] <- list(results)
@@ -1024,7 +1032,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
 ## START SIMULATION
 p = Sys.time()
 # run for no treatment
-sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 1, 
+sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 2, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
@@ -1038,6 +1046,7 @@ comp.time = Sys.time() - p
 comp.time %>% print()
 ################################################################################
 ################################################################################
+
 
 
 ################################################################################
@@ -1293,6 +1302,66 @@ mean_CC_mortality_result <- mean_CC_incidence_result
 mean_CC_mortality_result <-
   mean_CC_mortality_func(sim_stalked_result = mean_CC_mortality_result, my_Probs = my_Probs)  
 
+# Debugging:
+cat("I'm still here!\n")
+browser()
+
+
+################################################################################
+# A.2 Cancer-related Deaths (per differences) per age
+mean_CC_mortality_by_diff_func <- function(sim_stalked_result, my_Probs) {
+  # Extract unique age intervals
+  age_intervals <- my_Probs %>% 
+    select(Lower, Larger) %>% 
+    unique() %>% 
+    arrange(Lower)
+  
+  # Create a vector of the breaks for the intervals
+  breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
+  
+  # Create labels for the intervals
+  labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
+  
+  ################# TESTING #################################################
+  # Define the age range you want to keep
+  age_range <- 10:84
+  
+  # Left join sim_no_trt[[1]]$TR with sim_no_trt[[1]]$new_CC_Death by age
+  df <- sim_no_trt[[1]]$TR %>%
+    left_join(sim_no_trt[[1]]$CC_Death_by_diff %>%
+                dplyr::select(age, CC_Death_by_diff), by = "age") %>%
+    
+    # Filter for ages in the desired range
+    dplyr::filter(age %in% age_range) %>%
+    
+    # Fill missing CC_Death_per_t with zeros (for cases where the age doesn't exist)
+    dplyr::mutate(CC_Death_by_diff_per_t = coalesce(CC_Death_by_diff, 0)) %>%
+    
+    # Compute total_alive
+    dplyr::mutate(total_alive = H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
+                    FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
+    
+    # Compute CC_mortality based on CC_Death_per_t and total_alive
+    dplyr::mutate(CC_by_diff_mortality = (CC_Death_by_diff_per_t / total_alive) * 10^5) %>%
+    
+    # Compute age intervals and average CC_mortality by age intervals
+    dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>%
+    dplyr::group_by(age_interval) %>%
+    dplyr::summarise(CC_by_diff_mean_mortality = mean(CC_by_diff_mortality, na.rm = TRUE)) %>%
+    dplyr::ungroup()
+  ################# TESTING #################################################
+  
+  #return(df)
+  sim_stalked_result[[1]]$CC_by_diff_mean_mortality <- df
+  return(sim_stalked_result)
+}
+################################################################################
+
+
+### TESTING ###
+mean_CC_mortality_by_diff_result <- mean_CC_mortality_result
+mean_CC_mortality_by_diff_result <-
+  mean_CC_mortality_by_diff_func(sim_stalked_result = mean_CC_mortality_by_diff_result, my_Probs = my_Probs)  
  
 ################################################################################
 # B. Cancer-unrelated Mortality
@@ -1335,7 +1404,7 @@ other_mean_mortality_result <-
   other_mean_mortality_func(sim_stalked_result = other_mean_mortality_result, my_Probs = my_Probs)  
 
 ## save the results
-#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_50x10E6x75_20241002.rds")
+#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E6x75_20241003.rds")
 
 
 ### ----convert .Rmd to .R-----------------------------------------------------------------------------------------------------------------------------------------------------------------
