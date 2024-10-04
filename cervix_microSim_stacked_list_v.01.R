@@ -1266,7 +1266,8 @@ mean_CC_mortality_func <- function(sim_stalked_result, my_Probs) {
   # Left join sim_no_trt[[1]]$TR with sim_no_trt[[1]]$new_CC_Death by age
   df <- sim_no_trt[[1]]$TR %>%
     left_join(sim_no_trt[[1]]$new_CC_Death %>%
-                dplyr::select(age, CC_Death_per_t), by = "age") %>%
+                dplyr::select(age, CC_Death_per_t), 
+              by = "age", relationship = "many-to-many") %>%
     
     # Filter for ages in the desired range
     dplyr::filter(age %in% age_range) %>%
@@ -1302,10 +1303,6 @@ mean_CC_mortality_result <- mean_CC_incidence_result
 mean_CC_mortality_result <-
   mean_CC_mortality_func(sim_stalked_result = mean_CC_mortality_result, my_Probs = my_Probs)  
 
-# Debugging:
-cat("I'm still here!\n")
-browser()
-
 
 ################################################################################
 # A.2 Cancer-related Deaths (per differences) per age
@@ -1329,7 +1326,9 @@ mean_CC_mortality_by_diff_func <- function(sim_stalked_result, my_Probs) {
   # Left join sim_no_trt[[1]]$TR with sim_no_trt[[1]]$new_CC_Death by age
   df <- sim_no_trt[[1]]$TR %>%
     left_join(sim_no_trt[[1]]$CC_Death_by_diff %>%
-                dplyr::select(age, CC_Death_by_diff), by = "age") %>%
+                dplyr::select(age, CC_Death_by_diff), 
+              by = c("age", "CC_Death_by_diff"), 
+              relationship = "many-to-many") %>%
     
     # Filter for ages in the desired range
     dplyr::filter(age %in% age_range) %>%
@@ -1398,7 +1397,7 @@ other_mean_mortality_func <- function(sim_stalked_result, my_Probs) {
 ################################################################################
 
 # Initialize the result with the original structure
-other_mean_mortality_result <- mean_CC_mortality_result
+other_mean_mortality_result <- mean_CC_mortality_by_diff_result
 # Concatenate the prevalence to the sim result 
 other_mean_mortality_result <-
   other_mean_mortality_func(sim_stalked_result = other_mean_mortality_result, my_Probs = my_Probs)  
@@ -1568,12 +1567,13 @@ markov_HPV_prevalences <- c(0.000000000, 0.343480414, 0.377634762, 0.087223460, 
 markov_CC_mortality <- c(0.000000e+00, 0.000000e+00, 0.000000e+00, 2.977975e-06, 1.574920e-05, 2.715056e-05, 5.489929e-05, 7.284815e-05, 1.057494e-04, 5.076268e-05, 7.517773e-05, 4.960943e-05, 4.802468e-05, 4.210457e-05, 4.837655e-05) * 10^5
 
 # Micro im:
-microSim_CN1_incidences  <- other_mean_mortality_result[[1]]$mean_incidence_CIN1_per_age_interval
-microSim_CN2_incidences  <- other_mean_mortality_result[[1]]$mean_incidence_CIN2_per_age_interval
-microSim_CN3_incidences  <- other_mean_mortality_result[[1]]$mean_incidence_CIN3_per_age_interval
-microSim_CC_incidences   <- other_mean_mortality_result[[1]]$mean_CC_incidence
-microSim_HPV_prevalences <- other_mean_mortality_result[[1]]$mean_HPV_prevalence_per_age_interval
-microSim_CC_mortality    <- other_mean_mortality_result[[1]]$CC_mean_mortality
+microSim_CN1_incidences          <- other_mean_mortality_result[[1]]$mean_incidence_CIN1_per_age_interval
+microSim_CN2_incidences          <- other_mean_mortality_result[[1]]$mean_incidence_CIN2_per_age_interval
+microSim_CN3_incidences          <- other_mean_mortality_result[[1]]$mean_incidence_CIN3_per_age_interval
+microSim_CC_incidences           <- other_mean_mortality_result[[1]]$mean_CC_incidence
+microSim_HPV_prevalences         <- other_mean_mortality_result[[1]]$mean_HPV_prevalence_per_age_interval
+microSim_CC_mortality            <- other_mean_mortality_result[[1]]$CC_mean_mortality
+microSim_CC_by_diff_mortality    <- other_mean_mortality_result[[1]]$CC_by_diff_mean_mortality
 
 
 
@@ -1601,7 +1601,8 @@ markov_data <- data.frame(
   markov_CN3_incidences = markov_CN3_incidences,
   markov_CC_incidences = markov_CC_incidences,
   markov_HPV_prevalences = markov_HPV_prevalences,
-  markov_CC_mortality = markov_CC_mortality
+  markov_CC_mortality = markov_CC_mortality,
+  markov_CC_mortality_copy = markov_CC_mortality
 )
 
 # Ensure all columns in markov_data are numeric
@@ -1613,11 +1614,11 @@ markov_data[] <- lapply(markov_data, function(x) {
   }
 })
 
+
 # For the MicroSim data, ensure columns are numeric if needed
 # You might need to extract these from the list manually and convert them
 
 # Example conversion if you have microSim data as tibbles
-# THE CODE BREAKS HERE!
 microSim_data <- data.frame(
   age = age_groups,
   microSim_CN1_incidences = as.numeric(other_mean_mortality_result[[1]]$mean_incidence_CIN1_per_age_interval$mean_incidence_CIN1),
@@ -1625,7 +1626,8 @@ microSim_data <- data.frame(
   microSim_CN3_incidences = as.numeric(other_mean_mortality_result[[1]]$mean_incidence_CIN3_per_age_interval$mean_incidence_CIN3),
   microSim_CC_incidences = as.numeric(other_mean_mortality_result[[1]]$mean_CC_incidence$CC_mean_incidence),
   microSim_HPV_prevalences = as.numeric(other_mean_mortality_result[[1]]$mean_HPV_prevalence_per_age_interval$prevalence),
-  microSim_CC_mortality = as.numeric(other_mean_mortality_result[[1]]$CC_mean_mortality$CC_mean_mortality)
+  microSim_CC_mortality = as.numeric(other_mean_mortality_result[[1]]$CC_mean_mortality$CC_mean_mortality),
+  microSim_CC_by_diff_mortality = as.numeric(other_mean_mortality_result[[1]]$CC_by_diff_mean_mortality$CC_by_diff_mean_mortality)
 )
 
 # Ensure all columns in microSim_data are numeric
@@ -1649,6 +1651,9 @@ microSim_long <- microSim_data %>%
 # Combine data
 combined_data <- bind_rows(markov_long, microSim_long)
 
+cat("I'm still here, debugging! \n")
+browser()
+
 # Plotting function
 plot_comparison <- function(data, measure_name) {
   ggplot(data %>% filter(grepl(measure_name, measure)), 
@@ -1668,6 +1673,7 @@ plot_CN3_incidences <- plot_comparison(combined_data, "CN3_incidences")
 plot_CC_incidences <- plot_comparison(combined_data, "CC_incidences")
 plot_HPV_prevalences <- plot_comparison(combined_data, "HPV_prevalences")
 plot_CC_mortality <- plot_comparison(combined_data, "CC_mortality")
+plot_CC_by_diff_mortality <- plot_comparison(combined_data, "CC_by_diff_mortality")
 
 # Display plots
 print(plot_CN1_incidences)
@@ -1676,4 +1682,5 @@ print(plot_CN3_incidences)
 print(plot_CC_incidences)
 print(plot_HPV_prevalences)
 print(plot_CC_mortality)
+print(plot_CC_by_diff_mortality)
 
