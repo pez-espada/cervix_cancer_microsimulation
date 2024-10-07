@@ -585,19 +585,40 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
     if (transition_column %in% colnames(Tot_Trans_per_t_tbl)) {
       transition_cases <- Tot_Trans_per_t_tbl %>%
         dplyr::select(all_of(transition_column)) %>%  # Select the column based on the transition
-        dplyr::mutate(age = row_number() + 10,        # Add the `age` column (adjust as needed)
+        #dplyr::mutate(age = row_number() + 10,        # Add the `age` column (adjust as needed)
+        dplyr::mutate(age = row_number() + 9,        # Add the `age` column (adjust as needed)
                       #cycle = row_number()
                       cycle = age - 9
-                      )           # Add the `cycle` column
+        )           # Add the `cycle` column
+      
+      #############
+      ## TESTING ##
+      # Add a zero row for age = 10
+      transition_cases <- tibble(!!transition_column := 0, age = 10, cycle = 1) %>%
+        bind_rows(transition_cases)
+      ## TESTING ##
+      #############
+      
     } else {
       # If the column does not exist, create a column of zeros and issue a warning
       warning(paste0("Transition '", transition_column, "' not found! Using a column of zeros."))
       transition_cases <- tibble(
         !!transition_column := rep(0, nrow(Tot_Trans_per_t_tbl)),  # Create a zero column
-        age = row_number() + 10,
-        #cycle = row_number()
-        cycle = age - 9
+        #age = row_number() + 10,
+        # TESTING
+        age = row_number() + 9,
+        cycle = row_number()
+        #cycle = age - 9
       )
+      
+      #############
+      ## TESTING ##
+      # Add a zero row for age = 10
+      transition_cases <- tibble(!!transition_column := 0, age = 10, cycle = 1) %>%
+        bind_rows(transition_cases)
+      #############
+      
+      
     }
     return(transition_cases)
     
@@ -625,15 +646,93 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
       rowwise() %>%
       mutate(!!paste0(state2, "_per_t") := sum(c_across(everything()), na.rm = TRUE)) %>%
       ungroup() %>%
-      dplyr::mutate(age = row_number() + 10,         # Add the `age` column
-                    #cycle = row_number()
-                    cycle = age - 9                  # Add the `cycle` column
+      # TESTING
+      #dplyr::mutate(age = row_number() + 10,         # Add the `age` column
+      dplyr::mutate(age = row_number() + 9,          # Adjust to start `age` at 10
+                    cycle = row_number()
+                    #cycle = age - 9                  # Add the `cycle` column
       )            
     
     return(transition_cases)
   }
 }
 
+
+
+#################### TESTING ###################################################
+new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
+  # Convert the data to a tibble for easier manipulation
+  Tot_Trans_per_t_tbl <- as_tibble(Tot_Trans_per_t)
+  
+  # Case when state1 is a single string
+  if (length(state1) == 1) {
+    transition_column <- paste0(state1, "->", state2)  # Create the transition name
+    
+    # If the transition column exists, select it
+    if (transition_column %in% colnames(Tot_Trans_per_t_tbl)) {
+      transition_cases <- Tot_Trans_per_t_tbl %>%
+        dplyr::select(all_of(transition_column)) %>%  
+        dplyr::mutate(age = row_number() + 10,        
+                      cycle = age - 9) 
+      
+      # Modify the dataframe: Add a new row with age = 10 and transition column = 0, and delete the last row (age = 85)
+      transition_cases <- transition_cases %>%
+        add_row(!!transition_column := 0, age = 10, cycle = 1, .before = 1) %>%  # Add row at the beginning
+        slice(-n()) %>%  # Remove the last row
+        mutate(age = 10:(10 + n() - 1),  # Adjust age to start from 10
+               cycle = age - 9)  # Adjust cycle
+    } else {
+      # Handle missing transition columns
+      warning(paste0("Transition '", transition_column, "' not found! Using a column of zeros."))
+      transition_cases <- tibble(
+        !!transition_column := rep(0, nrow(Tot_Trans_per_t_tbl)),  
+        age = row_number() + 10,
+        cycle = age - 9
+      ) %>%
+        add_row(!!transition_column := 0, age = 10, cycle = 1, .before = 1) %>%  
+        slice(-n()) %>%
+        mutate(age = 10:(10 + n() - 1), 
+               cycle = age - 9)
+    }
+    return(transition_cases)
+    
+    # Case when state1 is a vector (length > 1)
+  } else if (length(state1) > 1) {
+    transition_columns <- paste0(state1, "->", state2)  
+    
+    # Handle missing columns and replace them with zeros
+    existing_cols <- intersect(transition_columns, colnames(Tot_Trans_per_t_tbl))
+    missing_cols <- setdiff(transition_columns, colnames(Tot_Trans_per_t_tbl))
+    
+    if (length(missing_cols) > 0) {
+      warning(paste0("Some transitions not found: ", paste(missing_cols, collapse = ", "), ". Using columns of zeros for these."))
+    }
+    
+    # Create missing columns (zeros)
+    missing_df <- tibble(
+      !!!setNames(lapply(missing_cols, function(x) rep(0, nrow(Tot_Trans_per_t_tbl))), missing_cols)
+    )
+    
+    # Combine and process
+    transition_cases <- Tot_Trans_per_t_tbl %>%
+      dplyr::select(all_of(existing_cols)) %>%
+      bind_cols(missing_df) %>%  
+      rowwise() %>%
+      mutate(!!paste0(state2, "_per_t") := sum(c_across(everything()), na.rm = TRUE)) %>%
+      ungroup() %>%
+      dplyr::mutate(age = row_number() + 10,  
+                    cycle = age - 9) %>%
+      add_row(!!paste0(state2, "_per_t") := 0, age = 10, cycle = 1, .before = 1) %>%
+      slice(-n()) %>%
+      mutate(age = 10:(10 + n() - 1), 
+             cycle = age - 9)
+    
+    return(transition_cases)
+  }
+}
+
+
+#################### TESTING ###################################################
 
 
 ################################################################################
@@ -718,6 +817,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
       m_M[, 1] <- v_M_1  # indicate the initial health state   
       
       seed <- seeds[sim]
+      seed <- 17
       cat ("This is simulation's seed:  ", seed, "\n")
       set.seed(seed) # set the seed for every individual for the random number generator
       
@@ -931,7 +1031,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                                   state2 = "CC_Death", 
                                   Tot_Trans_per_t = Tot_Trans_per_t)
      
-       
+      
       # Before sending back, some cleaning regarding cycle `n_t+1` which is 
       # computed but no needed as a result:
       m_M <-m_M[, 1:n_t]
@@ -1059,16 +1159,17 @@ comp.time %>% print()
                   ###################################
 ################################################################################
 ################################################################################
-# Prevalence is defined as number of infected divided by total alive individuals
-# for that cycle/time step
+# # Prevalence is defined as number of infected divided by total alive individuals
+# # for that cycle/time step
 mean_prevalence_func <- function(sim_stalked_result, my_Probs) {
-  # Extract unique age intervals
+  # Extract unique age intervals and ensure Larger doesn't exceed 84
   age_intervals <- my_Probs %>% 
     select(Lower, Larger) %>% 
     unique() %>% 
+    dplyr::mutate(Larger = ifelse(Larger == 85, 84, Larger)) %>% # Ensure Larger is capped at 84
     arrange(Lower)
   
-  # Create a vector of the breaks for the intervals
+  # Create a vector of breaks for the intervals
   breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
   
   # Create labels for the intervals
@@ -1076,20 +1177,19 @@ mean_prevalence_func <- function(sim_stalked_result, my_Probs) {
   
   # Compute prevalence and average it by age intervals
   df <- sim_stalked_result[[1]]$TR %>% 
-    #dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
     dplyr::select(everything()) %>% 
     dplyr::mutate(total_alive = H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
                     FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
-    dplyr::mutate(prevalence = HR.HPV.infection / total_alive) %>% 
-    dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
-    dplyr::group_by(age_interval) %>% 
-    dplyr::summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>% 
+    dplyr::mutate(prevalence = HR.HPV.infection / total_alive) %>%
+    dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>%
+    dplyr::group_by(age_interval) %>%
+    dplyr::summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>%
     dplyr::ungroup()
   
+  # Store the result in the list
   sim_stalked_result[[1]]$mean_HPV_prevalence_per_age_interval <- df
   return(sim_stalked_result)
 }
-################################################################################
 
 # Concatenate the prevalence to the sim result 
 mean_prevalence_result <-
@@ -1101,52 +1201,48 @@ mean_prevalence_result <-
 # in the time t divided by all the individuals in  the epidemiological "precedent" 
 # states at time t-1 (in the previous cycle). This is how is defined in the  the 
 # Markov model. We follow that definition to compare the micro sim and the Markov. 
-mean_incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in progress
-  # Extract unique age intervals
+mean_incidence_func <- function(sim_stalked_result, state, my_Probs) {
+  # Extract unique age intervals and ensure Larger doesn't exceed 84
   age_intervals <- my_Probs %>% 
-    select(Lower, Larger) %>% 
+    dplyr::select(Lower, Larger) %>% 
     unique() %>% 
+    dplyr::mutate(Larger = ifelse(Larger == 85, 84, Larger)) %>%  # Cap at 84
     arrange(Lower)
   
   # Create a vector of the breaks for the intervals
-  #breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
-  breaks <- c(age_intervals$Lower, max(age_intervals$Larger))
+  breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
   
   # Create labels for the intervals
   labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
   
-  ##############################################################################
-  # Incidence definition: 
-  # I(state(n), t) = # newcases(n, t) /
-  # (state(1) + state(2) + ... + state(n-1), t-1)
-  
+  # Define all previous states
   all_previous_states <- v_n[1 : ( which(v_n == state) - 1)]
   
   my_incidence_df <- sim_stalked_result[[1]]$TR
   
-  # Defining new_cases state:
-  new_state    <- paste0("new_", state)
+  # Define the new state for incidence calculation
+  new_state <- paste0("new_", state)
   new_state_df <- sim_stalked_result[[1]][new_state][[1]]
   
   my_incidence_df <- 
     my_incidence_df %>% 
     dplyr::left_join(new_state_df %>%
                        dplyr::select(-c(sim.1, row_names)), 
-                     #by = c("sim", "age", "cycle"))
                      by = c("age"), relationship = "many-to-many")
   
   # Find the column containing "->" and the state
-  target_column <-
-    grep(paste0("->", state), names(my_incidence_df), value = TRUE)
+  target_column <- grep(paste0("->", state), names(my_incidence_df), value = TRUE)
   
-  # Create the new column
+  # Calculate the incidence rate
   my_incidence_df <- my_incidence_df %>%
     dplyr::mutate(!!paste0("incidence_", state) := (get(target_column) /
                                                       dplyr::lag(rowSums(select(., all_of(all_previous_states))), 
                                                                  n=1, default = NA)) * 10^5 )
   
-  #library(rlang)
+  # Ensure the 'rlang' library is available
   ensure_library("rlang")
+  
+  # Create the age intervals and compute mean incidence
   df <- my_incidence_df %>%
     dplyr::select(everything()) %>%
     dplyr::mutate(age_interval = 
@@ -1158,11 +1254,10 @@ mean_incidence_func <- function(sim_stalked_result, state, my_Probs) { # work in
                 mean(!!sym(paste0("incidence_", state)), na.rm = TRUE)) %>%
     ungroup()
   
-  ##result_name <- paste0("mean_incidence_", state, "_per_age_interval")
+  # Store the result in the list
   sim_stalked_result[[1]][[paste0("mean_incidence_", state, "_per_age_interval")]] <- df
-  #sim_stalked_result[[1]]$mean_incidence_per_age_interval <- df
   return(sim_stalked_result)
-} 
+}
 ################################################################################
 
 # Computing incidences:
@@ -1183,9 +1278,17 @@ for (my_state in incidence_states_to_compute) {
 # Computing Cervix Cancer incidence:
 mean_CC_incidence_func <- function(sim_stalked_result, my_Probs) {
   # Extract unique age intervals
+  #age_intervals <- my_Probs %>% 
+  #  select(Lower, Larger) %>% 
+  #  unique() %>% 
+  #  ## making larger interval equals 84
+  #  #dplyr::mutate(Larger = ifelse(Larger==85, 84, Larger)) %>%
+  #  arrange(Lower)
+  
   age_intervals <- my_Probs %>% 
-    select(Lower, Larger) %>% 
+    dplyr::select(Lower, Larger) %>% 
     unique() %>% 
+    dplyr::mutate(Larger = ifelse(Larger == 85, 84, Larger)) %>%  # Cap at 84
     arrange(Lower)
   
   # Create a vector of the breaks for the intervals
@@ -1236,9 +1339,17 @@ mean_CC_incidence_result <-
 # A. Cancer-related Deaths per age
 mean_CC_mortality_func <- function(sim_stalked_result, my_Probs) {
   # Extract unique age intervals
+  #age_intervals <- my_Probs %>% 
+  #  select(Lower, Larger) %>% 
+  #  unique() %>% 
+  #  ## making larger interval equals 84
+  #  #dplyr::mutate(Larger = ifelse(Larger==85, 84, Larger)) %>%
+  #  arrange(Lower)
+  
   age_intervals <- my_Probs %>% 
-    select(Lower, Larger) %>% 
+    dplyr::select(Lower, Larger) %>% 
     unique() %>% 
+    dplyr::mutate(Larger = ifelse(Larger == 85, 84, Larger)) %>%  # Cap at 84
     arrange(Lower)
   
   # Create a vector of the breaks for the intervals
@@ -1266,8 +1377,8 @@ mean_CC_mortality_func <- function(sim_stalked_result, my_Probs) {
   # Left join sim_no_trt[[1]]$TR with sim_no_trt[[1]]$new_CC_Death by age
   df <- sim_no_trt[[1]]$TR %>%
     left_join(sim_no_trt[[1]]$new_CC_Death %>%
-                dplyr::select(age, CC_Death_per_t), 
-              by = "age", relationship = "many-to-many") %>%
+                dplyr::select(sim, age, CC_Death_per_t), 
+              by = c("sim", "age"))  %>% #, relationship = "many-to-many") %>%
     
     # Filter for ages in the desired range
     dplyr::filter(age %in% age_range) %>%
@@ -1289,8 +1400,6 @@ mean_CC_mortality_func <- function(sim_stalked_result, my_Probs) {
     dplyr::ungroup()
   ################# TESTING #################################################
   
-  
-  
   #return(df)
   sim_stalked_result[[1]]$CC_mean_mortality <- df
   return(sim_stalked_result)
@@ -1303,14 +1412,25 @@ mean_CC_mortality_result <- mean_CC_incidence_result
 mean_CC_mortality_result <-
   mean_CC_mortality_func(sim_stalked_result = mean_CC_mortality_result, my_Probs = my_Probs)  
 
+cat("I'm still here, debugging! \n")
+browser()
+
 
 ################################################################################
 # A.2 Cancer-related Deaths (per differences) per age
 mean_CC_mortality_by_diff_func <- function(sim_stalked_result, my_Probs) {
   # Extract unique age intervals
+  #age_intervals <- my_Probs %>% 
+  #  select(Lower, Larger) %>% 
+  #  unique() %>% 
+  #  ## making larger interval equals 84
+  #  #dplyr::mutate(Larger = ifelse(Larger==85, 84, Larger)) %>%
+  #  arrange(Lower)
+  
   age_intervals <- my_Probs %>% 
-    select(Lower, Larger) %>% 
+    dplyr::select(Lower, Larger) %>% 
     unique() %>% 
+    dplyr::mutate(Larger = ifelse(Larger == 85, 84, Larger)) %>%  # Cap at 84
     arrange(Lower)
   
   # Create a vector of the breaks for the intervals
@@ -1370,6 +1490,8 @@ other_mean_mortality_func <- function(sim_stalked_result, my_Probs) {
   age_intervals <- my_Probs %>% 
     select(Lower, Larger) %>% 
     unique() %>% 
+    ## making larger interval equals 84
+    #dplyr::mutate(Larger = ifelse(Larger==85, 84, Larger)) %>%
     arrange(Lower)
   
   # Create a vector of the breaks for the intervals
@@ -1650,9 +1772,6 @@ microSim_long <- microSim_data %>%
 
 # Combine data
 combined_data <- bind_rows(markov_long, microSim_long)
-
-cat("I'm still here, debugging! \n")
-browser()
 
 # Plotting function
 plot_comparison <- function(data, measure_name) {
