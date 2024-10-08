@@ -1412,10 +1412,6 @@ mean_CC_mortality_result <- mean_CC_incidence_result
 mean_CC_mortality_result <-
   mean_CC_mortality_func(sim_stalked_result = mean_CC_mortality_result, my_Probs = my_Probs)  
 
-cat("I'm still here, debugging! \n")
-browser()
-
-
 ################################################################################
 # A.2 Cancer-related Deaths (per differences) per age
 mean_CC_mortality_by_diff_func <- function(sim_stalked_result, my_Probs) {
@@ -1446,8 +1442,8 @@ mean_CC_mortality_by_diff_func <- function(sim_stalked_result, my_Probs) {
   # Left join sim_no_trt[[1]]$TR with sim_no_trt[[1]]$new_CC_Death by age
   df <- sim_no_trt[[1]]$TR %>%
     left_join(sim_no_trt[[1]]$CC_Death_by_diff %>%
-                dplyr::select(age, CC_Death_by_diff), 
-              by = c("age", "CC_Death_by_diff"), 
+                dplyr::select(sim, age, CC_Death_by_diff), 
+              by = c("sim", "age", "CC_Death_by_diff"), 
               relationship = "many-to-many") %>%
     
     # Filter for ages in the desired range
@@ -1480,18 +1476,26 @@ mean_CC_mortality_by_diff_func <- function(sim_stalked_result, my_Probs) {
 ### TESTING ###
 mean_CC_mortality_by_diff_result <- mean_CC_mortality_result
 mean_CC_mortality_by_diff_result <-
-  mean_CC_mortality_by_diff_func(sim_stalked_result = mean_CC_mortality_by_diff_result, my_Probs = my_Probs)  
+  mean_CC_mortality_by_diff_func(sim_stalked_result =
+                                   mean_CC_mortality_by_diff_result, my_Probs = 
+                                   my_Probs)  
  
 ################################################################################
 # B. Cancer-unrelated Mortality
 other_mean_mortality_func <- function(sim_stalked_result, my_Probs) {
   
   # Extract unique age intervals
+  #age_intervals <- my_Probs %>% 
+  #  select(Lower, Larger) %>% 
+  #  unique() %>% 
+  #  ## making larger interval equals 84
+  #  #dplyr::mutate(Larger = ifelse(Larger==85, 84, Larger)) %>%
+  #  arrange(Lower)
+  
   age_intervals <- my_Probs %>% 
-    select(Lower, Larger) %>% 
+    dplyr::select(Lower, Larger) %>% 
     unique() %>% 
-    ## making larger interval equals 84
-    #dplyr::mutate(Larger = ifelse(Larger==85, 84, Larger)) %>%
+    dplyr::mutate(Larger = ifelse(Larger == 85, 84, Larger)) %>%  # Cap at 84
     arrange(Lower)
   
   # Create a vector of the breaks for the intervals
@@ -1522,7 +1526,8 @@ other_mean_mortality_func <- function(sim_stalked_result, my_Probs) {
 other_mean_mortality_result <- mean_CC_mortality_by_diff_result
 # Concatenate the prevalence to the sim result 
 other_mean_mortality_result <-
-  other_mean_mortality_func(sim_stalked_result = other_mean_mortality_result, my_Probs = my_Probs)  
+  other_mean_mortality_func(sim_stalked_result = 
+                              other_mean_mortality_result, my_Probs = my_Probs)  
 
 ## save the results
 #saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E6x75_20241003.rds")
@@ -1708,10 +1713,10 @@ library(tidyr)
 # Define age groups
 age_groups <- factor(c("10-14", "15-19", "20-24", "25-29", "30-34", "35-39", "40-44", 
                         "45-49", "50-54", "55-59", "60-64", "65-69", "70-74", 
-                        "75-79", "80-85"), 
+                        "75-79", "80-84"), 
                       levels = c("10-14", "15-19", "20-24", "25-29", "30-34", "35-39", 
                                  "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", 
-                                 "70-74", "75-79", "80-85"))
+                                 "70-74", "75-79", "80-84"))
 
 # Create data frames from your vectors and the MicroSim data
 # Replace `microSim_...` with the actual data from your `other_mean_mortality_result`
@@ -1723,8 +1728,7 @@ markov_data <- data.frame(
   markov_CN3_incidences = markov_CN3_incidences,
   markov_CC_incidences = markov_CC_incidences,
   markov_HPV_prevalences = markov_HPV_prevalences,
-  markov_CC_mortality = markov_CC_mortality,
-  markov_CC_mortality_copy = markov_CC_mortality
+  markov_CC_mortality = markov_CC_mortality
 )
 
 # Ensure all columns in markov_data are numeric
@@ -1772,6 +1776,9 @@ microSim_long <- microSim_data %>%
 
 # Combine data
 combined_data <- bind_rows(markov_long, microSim_long)
+
+cat("I'm still here, debugging! \n")
+browser()
 
 # Plotting function
 plot_comparison <- function(data, measure_name) {
