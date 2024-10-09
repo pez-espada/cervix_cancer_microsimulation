@@ -1728,7 +1728,9 @@ markov_data <- data.frame(
   markov_CN3_incidences = markov_CN3_incidences,
   markov_CC_incidences = markov_CC_incidences,
   markov_HPV_prevalences = markov_HPV_prevalences,
-  markov_CC_mortality = markov_CC_mortality
+  markov_CC_mortality = markov_CC_mortality,
+  # Assign the same values from markov_CC_mortality to markov_CC_by_diff_mortality
+  markov_CC_by_diff_mortality <- markov_CC_mortality
 )
 
 # Ensure all columns in markov_data are numeric
@@ -1777,8 +1779,8 @@ microSim_long <- microSim_data %>%
 # Combine data
 combined_data <- bind_rows(markov_long, microSim_long)
 
-cat("I'm still here, debugging! \n")
-browser()
+#cat("I'm still here, debugging! \n")
+#browser()
 
 # Plotting function
 plot_comparison <- function(data, measure_name) {
