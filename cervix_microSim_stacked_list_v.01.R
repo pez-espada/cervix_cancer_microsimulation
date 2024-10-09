@@ -40,7 +40,6 @@ my_Probs <- # transition matrix (for all sim cycles)
 
 # tidying up a bit the transition matrix:
 my_Probs <- my_Probs %>% dplyr::rename("H" = "Well")
-# Rename the 'old_name' column to 'new_name'
 
 my_Probs <- my_Probs %>% as.data.frame() # convert back to data.frame (no needed?)
 
@@ -351,6 +350,7 @@ stored_list <- vector("list", n_t)
 # Initialize a global vector to store all diagnosed individuals
 global_diagnosed <- integer()
 
+################################################################################
 # Function receives a column with current state of `n_i`individuals and gives
 # a dataframe with `ID, TimeStep`, `state`, and `RecoveredFromState` 
 diagnose_column <- function(col, time_step) {
@@ -386,6 +386,7 @@ diagnose_column <- function(col, time_step) {
   rownames(new_entries) <- NULL
   return(new_entries)
 }
+################################################################################
 
 #################################################################################
 update_column <- function(col, new_entries, next_col) {
@@ -572,94 +573,116 @@ update_column <- function(col, new_entries, next_col) {
 
 
 
+#################################################################################
+## This function take a initial state (string) or a set of initial states, a final
+## state, and a df with the total transitions per time/cycle and gives back the 
+## number of new transitions between initial and final state
+#new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
+#  # Convert the data to a tibble for easier manipulation
+#  Tot_Trans_per_t_tbl <- as_tibble(Tot_Trans_per_t)
+#  
+#  # Case when state1 is a single string
+#  if (length(state1) == 1) {
+#    transition_column <- paste0(state1, "->", state2)  # Create the transition name
+#    
+#    # If the transition column exists, select it
+#    if (transition_column %in% colnames(Tot_Trans_per_t_tbl)) {
+#      transition_cases <- Tot_Trans_per_t_tbl %>%
+#        dplyr::select(all_of(transition_column)) %>%  # Select the column based on the transition
+#        #dplyr::mutate(age = row_number() + 10,        # Add the `age` column (adjust as needed)
+#        dplyr::mutate(age = row_number() + 9,        # Add the `age` column (adjust as needed)
+#                      #cycle = row_number()
+#                      cycle = age - 9
+#        )           # Add the `cycle` column
+#      
+#      #############
+#      ## TESTING ##
+#      # Add a zero row for age = 10
+#      transition_cases <- tibble(!!transition_column := 0, age = 10, cycle = 1) %>%
+#        bind_rows(transition_cases)
+#      ## TESTING ##
+#      #############
+#      
+#    } else {
+#      # If the column does not exist, create a column of zeros and issue a warning
+#      warning(paste0("Transition '", transition_column, "' not found! Using a column of zeros."))
+#      transition_cases <- tibble(
+#        !!transition_column := rep(0, nrow(Tot_Trans_per_t_tbl)),  # Create a zero column
+#        #age = row_number() + 10,
+#        # TESTING
+#        age = row_number() + 9,
+#        cycle = row_number()
+#        #cycle = age - 9
+#      )
+#      
+#      #############
+#      ## TESTING ##
+#      # Add a zero row for age = 10
+#      transition_cases <- tibble(!!transition_column := 0, age = 10, cycle = 1) %>%
+#        bind_rows(transition_cases)
+#      #############
+#      
+#      
+#    }
+#    return(transition_cases)
+#    
+#    # Case when state1 is a vector (length > 1)
+#  } else if (length(state1) > 1) {
+#    transition_columns <- paste0(state1, "->", state2)  # Create transition names for all states
+#    
+#    # Select columns that exist, and replace missing columns with zeros
+#    existing_cols <- intersect(transition_columns, colnames(Tot_Trans_per_t_tbl))
+#    missing_cols <- setdiff(transition_columns, colnames(Tot_Trans_per_t_tbl))
+#    
+#    if (length(missing_cols) > 0) {
+#      warning(paste0("Some transitions not found: ",
+#                     paste(missing_cols, collapse = ", "),
+#                     ". Using columns of zeros for these."))
+#    }
+#    
+#    # Create a tibble for the missing columns (zeros).
+#    # The operator ' unquote-splice` ("!!!") splices or unpack (corte y pega) 
+#    # a list or vector into multiple arguments (used with functions of `rlang`).
+#    # in our case the !!! is used to unpack the list returned by setNames() 
+#    # and pass it as individual arguments to tibble(). This way, each item in 
+#    # the list becomes a separate column in the tibble, with the names provided
+#    # by missing_cols.
+#    missing_df <- tibble(
+#      !!!setNames(lapply(missing_cols, 
+#                         function(x) rep(0, nrow(Tot_Trans_per_t_tbl))), 
+#                  missing_cols)
+#    )
+#    
+#    # Combine existing columns with the missing ones.
+#    # The "unquote" operator unquotes a value or an expression, rather than 
+#    # treating it as a literal symbol or character string.
+#    # a) !! (Unquote): Injects a single value or expression into a function. 
+#    # It is typically used when you want to reference or compute something based
+#    # on a single variable or expression.
+#    # b) !!! (Unquote-splice): Injects or "splices" multiple values or elements 
+#    #from a list or vector into a function. It is used when you need to spread 
+#    # a list of arguments across multiple positions or inputs.
+#    transition_cases <- Tot_Trans_per_t_tbl %>%
+#      dplyr::select(all_of(existing_cols)) %>%
+#      bind_cols(missing_df) %>%                     # Add the missing columns (zeros)
+#      rowwise() %>%
+#      mutate(!!paste0(state2, "_per_t") := sum(c_across(everything()), na.rm = TRUE)) %>%
+#      ungroup() %>%
+#      # TESTING
+#      #dplyr::mutate(age = row_number() + 10,         # Add the `age` column
+#      dplyr::mutate(age = row_number() + 9,          # Adjust to start `age` at 10
+#                    cycle = row_number()
+#                    #cycle = age - 9                  # Add the `cycle` column
+#      )            
+#    
+#    return(transition_cases)
+#  }
+#}
+#################################################################################
 
-new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
-  # Convert the data to a tibble for easier manipulation
-  Tot_Trans_per_t_tbl <- as_tibble(Tot_Trans_per_t)
-  
-  # Case when state1 is a single string
-  if (length(state1) == 1) {
-    transition_column <- paste0(state1, "->", state2)  # Create the transition name
-    
-    # If the transition column exists, select it
-    if (transition_column %in% colnames(Tot_Trans_per_t_tbl)) {
-      transition_cases <- Tot_Trans_per_t_tbl %>%
-        dplyr::select(all_of(transition_column)) %>%  # Select the column based on the transition
-        #dplyr::mutate(age = row_number() + 10,        # Add the `age` column (adjust as needed)
-        dplyr::mutate(age = row_number() + 9,        # Add the `age` column (adjust as needed)
-                      #cycle = row_number()
-                      cycle = age - 9
-        )           # Add the `cycle` column
-      
-      #############
-      ## TESTING ##
-      # Add a zero row for age = 10
-      transition_cases <- tibble(!!transition_column := 0, age = 10, cycle = 1) %>%
-        bind_rows(transition_cases)
-      ## TESTING ##
-      #############
-      
-    } else {
-      # If the column does not exist, create a column of zeros and issue a warning
-      warning(paste0("Transition '", transition_column, "' not found! Using a column of zeros."))
-      transition_cases <- tibble(
-        !!transition_column := rep(0, nrow(Tot_Trans_per_t_tbl)),  # Create a zero column
-        #age = row_number() + 10,
-        # TESTING
-        age = row_number() + 9,
-        cycle = row_number()
-        #cycle = age - 9
-      )
-      
-      #############
-      ## TESTING ##
-      # Add a zero row for age = 10
-      transition_cases <- tibble(!!transition_column := 0, age = 10, cycle = 1) %>%
-        bind_rows(transition_cases)
-      #############
-      
-      
-    }
-    return(transition_cases)
-    
-    # Case when state1 is a vector (length > 1)
-  } else if (length(state1) > 1) {
-    transition_columns <- paste0(state1, "->", state2)  # Create transition names for all states
-    
-    # Select columns that exist, and replace missing columns with zeros
-    existing_cols <- intersect(transition_columns, colnames(Tot_Trans_per_t_tbl))
-    missing_cols <- setdiff(transition_columns, colnames(Tot_Trans_per_t_tbl))
-    
-    if (length(missing_cols) > 0) {
-      warning(paste0("Some transitions not found: ", paste(missing_cols, collapse = ", "), ". Using columns of zeros for these."))
-    }
-    
-    # Create a tibble for the missing columns (zeros)
-    missing_df <- tibble(
-      !!!setNames(lapply(missing_cols, function(x) rep(0, nrow(Tot_Trans_per_t_tbl))), missing_cols)
-    )
-    
-    # Combine existing columns with the missing ones
-    transition_cases <- Tot_Trans_per_t_tbl %>%
-      dplyr::select(all_of(existing_cols)) %>%
-      bind_cols(missing_df) %>%                     # Add the missing columns (zeros)
-      rowwise() %>%
-      mutate(!!paste0(state2, "_per_t") := sum(c_across(everything()), na.rm = TRUE)) %>%
-      ungroup() %>%
-      # TESTING
-      #dplyr::mutate(age = row_number() + 10,         # Add the `age` column
-      dplyr::mutate(age = row_number() + 9,          # Adjust to start `age` at 10
-                    cycle = row_number()
-                    #cycle = age - 9                  # Add the `cycle` column
-      )            
-    
-    return(transition_cases)
-  }
-}
 
 
-
-#################### TESTING ###################################################
+################################################################################
 new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
   # Convert the data to a tibble for easier manipulation
   Tot_Trans_per_t_tbl <- as_tibble(Tot_Trans_per_t)
@@ -709,11 +732,26 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
     }
     
     # Create missing columns (zeros)
+    # Create a tibble for the missing columns (zeros).
+    # The operator ' unquote-splice` ("!!!") splices or unpack (corte y pega) 
+    # a list or vector into multiple arguments (used with functions of `rlang`).
+    # in our case the !!! is used to unpack the list returned by setNames() 
+    # and pass it as individual arguments to tibble(). This way, each item in 
+    # the list becomes a separate column in the tibble, with the names provided
+    # by missing_cols.
     missing_df <- tibble(
       !!!setNames(lapply(missing_cols, function(x) rep(0, nrow(Tot_Trans_per_t_tbl))), missing_cols)
     )
     
     # Combine and process
+    # The "unquote" operator unquotes a value or an expression, rather than 
+    # treating it as a literal symbol or character string.
+    # a) !! (Unquote): Injects a single value or expression into a function. 
+    # It is typically used when you want to reference or compute something based
+    # on a single variable or expression.
+    # b) !!! (Unquote-splice): Injects or "splices" multiple values or elements 
+    #from a list or vector into a function. It is used when you need to spread 
+    # a list of arguments across multiple positions or inputs.
     transition_cases <- Tot_Trans_per_t_tbl %>%
       dplyr::select(all_of(existing_cols)) %>%
       bind_cols(missing_df) %>%  
@@ -726,18 +764,14 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
       slice(-n()) %>%
       mutate(age = 10:(10 + n() - 1), 
              cycle = age - 9)
-    
     return(transition_cases)
   }
 }
-
-
-#################### TESTING ###################################################
-
-
 ################################################################################
 
 
+
+################################################################################
 ## THE MICROSIMULATION MAIN FUNCTION
 ## ----MicroSim function, tidy=TRUE-------------------------------------------------------------------------------------------------------------------------------------------------------
 # Mod: incorporate loop over simulations:
@@ -1117,13 +1151,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
   stacked_results <- 
     summarize_results_by_Strategy(results_list = simulation_results, 
                                  numb_of_sims = numb_of_sims)
-  
-  
-  ## Debugging:
-  #cat("The class of the stacked results is: ", stacked_results %>% class() %>% print(), "\n")
-  
   return(stacked_results)
-  
 } # end of MicroSim function
 
 ################################################################################
@@ -1137,7 +1165,7 @@ sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 2,
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
 
-
+# Load computed simulation if needed here:
 #sim_no_trt <- readRDS(file = "./data/stacked_sims_100x10E6x75_FULL_IMPLEMENTATION.rds")
 #sim_no_trt <- readRDS(file = "./data/stacked_sims_100x10E6x75.rds")
 #sim_no_trt <- readRDS(file = "./data/stacked_sims_10x10E6x75_20241002.rds")
@@ -1181,7 +1209,8 @@ mean_prevalence_func <- function(sim_stalked_result, my_Probs) {
     dplyr::mutate(total_alive = H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
                     FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
     dplyr::mutate(prevalence = HR.HPV.infection / total_alive) %>%
-    dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>%
+    dplyr::mutate(age_interval = cut(age, breaks = breaks, 
+                                     labels = labels, right = FALSE)) %>%
     dplyr::group_by(age_interval) %>%
     dplyr::summarise(prevalence = mean(prevalence, na.rm = TRUE)) %>%
     dplyr::ungroup()
@@ -1235,9 +1264,10 @@ mean_incidence_func <- function(sim_stalked_result, state, my_Probs) {
   
   # Calculate the incidence rate
   my_incidence_df <- my_incidence_df %>%
-    dplyr::mutate(!!paste0("incidence_", state) := (get(target_column) /
-                                                      dplyr::lag(rowSums(select(., all_of(all_previous_states))), 
-                                                                 n=1, default = NA)) * 10^5 )
+    dplyr::mutate(!!paste0("incidence_", state) := 
+                    (get(target_column) /
+                       dplyr::lag(rowSums(select(., all_of(all_previous_states))), 
+                                  n=1, default = NA)) * 10^5 )
   
   # Ensure the 'rlang' library is available
   ensure_library("rlang")
