@@ -20,7 +20,7 @@ This document details the progression of the development of microsimulation mode
 
 There are a different ways one can build and implement microsimulation models based in existing libraries and dedicated platforms (such as ABMs, in Repast, Netlogo, etc.). However I aim to use R as much as possible or make it R-user friendly. For this regard there is several ways to proceed:
 
--   Build everything from scratch
+-   Build everything from scrrratch
 -   Leverage existing coded libraries/packages
 
 ### Existing code/packages for micorsimulation using R (that I am aware of, so far)
