@@ -61,7 +61,7 @@ my_Probs$Larger <-
 
 
 ## ----model parameters-------------------------------------------------------------------------------------------------------------------------------------------------------------------
-n_i <- 10^4                 # number of simulated individuals
+n_i <- 10^6                 # number of simulated individuals
 n_t <- 75                   # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
@@ -573,7 +573,7 @@ update_column <- function(col, new_entries, next_col) {
 
 
 
-#################################################################################
+################################################################################
 ## This function take a initial state (string) or a set of initial states, a final
 ## state, and a df with the total transitions per time/cycle and gives back the 
 ## number of new transitions between initial and final state
@@ -851,7 +851,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
       m_M[, 1] <- v_M_1  # indicate the initial health state   
       
       seed <- seeds[sim]
-      seed <- 17
+      #seed <- 17
       cat ("This is simulation's seed:  ", seed, "\n")
       set.seed(seed) # set the seed for every individual for the random number generator
       
@@ -1160,7 +1160,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
 ## START SIMULATION
 p = Sys.time()
 # run for no treatment
-sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 2, 
+sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 20, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
@@ -1244,7 +1244,7 @@ mean_incidence_func <- function(sim_stalked_result, state, my_Probs) {
   # Create labels for the intervals
   labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
   
-  # Define all previous states
+  # Define all previous epi states
   all_previous_states <- v_n[1 : ( which(v_n == state) - 1)]
   
   my_incidence_df <- sim_stalked_result[[1]]$TR
@@ -1338,9 +1338,10 @@ mean_CC_incidence_func <- function(sim_stalked_result, my_Probs) {
   df <- df %>% 
     #dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
     dplyr::select(everything()) %>% 
-    dplyr::mutate(total_alive = H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
-                    FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
-    dplyr::mutate(CC_incidence = (new_Cancer / total_alive) * 10^5) %>% 
+    # total_alive at the previous time step
+    dplyr::mutate(total_alive_lagged = dplyr::lag(H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
+                    FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival, n=1)) %>%
+    dplyr::mutate(CC_incidence = (new_Cancer / total_alive_lagged) * 10^5) %>% 
     dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
     dplyr::group_by(age_interval) %>% 
     dplyr::summarise(CC_mean_incidence = mean(CC_incidence, na.rm = TRUE)) %>% 
@@ -1416,12 +1417,12 @@ mean_CC_mortality_func <- function(sim_stalked_result, my_Probs) {
     # Fill missing CC_Death_per_t with zeros (for cases where the age doesn't exist)
     dplyr::mutate(CC_Death_per_t = coalesce(CC_Death_per_t, 0)) %>%
     
-    # Compute total_alive
-    dplyr::mutate(total_alive = H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
-                    FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
+    # Compute total_alive one previous time stpe / cylce:
+    dplyr::mutate(total_alive_lagged = dplyr::lag(H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
+                    FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival), n=1) %>%
     
     # Compute CC_mortality based on CC_Death_per_t and total_alive
-    dplyr::mutate(CC_mortality = (CC_Death_per_t / total_alive) * 10^5) %>%
+    dplyr::mutate(CC_mortality = (CC_Death_per_t / total_alive_lagged) * 10^5) %>%
     
     # Compute age intervals and average CC_mortality by age intervals
     dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>%
@@ -1559,8 +1560,8 @@ other_mean_mortality_result <-
   other_mean_mortality_func(sim_stalked_result = 
                               other_mean_mortality_result, my_Probs = my_Probs)  
 
-## save the results
-#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E6x75_20241003.rds")
+# save the results
+#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E6x75_20241010.rds")
 
 
 ### ----convert .Rmd to .R-----------------------------------------------------------------------------------------------------------------------------------------------------------------
