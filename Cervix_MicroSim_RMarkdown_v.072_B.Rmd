@@ -760,8 +760,13 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
         
         m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
         
+        ## Debugging:
+        #cat("I'm still here!\n")
+        #browser()
+        #
+        
         m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
-                                                     # and store that state in  
+        # and store that state in  
                                                      # matrix m_M 
         ############################################################################    
         
@@ -881,6 +886,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       new_Cancer <- new_cases_2(state1 = "CIN3", state2 = "FIGO.I", 
                                 Tot_Trans_per_t = Tot_Trans_per_t)
       
+      new_CC_Death <- new_cases_2(state1 = "FIGO.IV", state2 = "CC_Death", 
+                                  Tot_Trans_per_t = Tot_Trans_per_t)
+      
       # Before sending back, some cleaning regarding cycle `n_t+1` which is 
       # computed but no needed as a result:
       m_M <-m_M[, 1:n_t]
@@ -890,6 +898,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       new_CIN2 <- new_CIN2 %>% dplyr::slice(c(1:n_t))
       new_CIN3 <- new_CIN3 %>% dplyr::slice(c(1:n_t))
       new_Cancer <- new_Cancer %>% dplyr::slice(c(1:n_t))
+      new_CC_Death <- new_CC_Death %>% dplyr::slice(c(1:n_t))
       
       # Removing no needed extra row from TR:
       row_to_remove <- n_t + 1
@@ -931,7 +940,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
                       new_CIN1 = new_CIN1,
                       new_CIN2 = new_CIN2,
                       new_CIN3 = new_CIN3,
-                      new_Cancer = new_Cancer)  
+                      new_Cancer = new_Cancer,
+                      new_CC_Death = new_CC_Death)  
       
     #results$seed <- seeds[sim]
     simulation_results[sim] <- list(results)
@@ -971,7 +981,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
 p = Sys.time()
 # run for no treatment
 #sim_no_trt  <- MicroSim(v_M_1, n_i, n_t, v_n, d_c, d_e, Trt = FALSE)
-sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 15, 
+sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 1, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
@@ -1123,10 +1133,6 @@ mean_CC_incidence_func <- function(sim_stalked_result, my_Probs) {
     select(Lower, Larger) %>% 
     unique() %>% 
     arrange(Lower)
-  
-  ## Debugging:
-  #cat("I'm still here!\n")
-  #browser()
   
   # Create a vector of the breaks for the intervals
   breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)

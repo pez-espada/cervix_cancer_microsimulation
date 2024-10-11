@@ -506,6 +506,7 @@ diagnose_column <- function(col, time_step) {
 #################################################################################
 update_column <- function(col, new_entries, next_col) {
   if (nrow(new_entries) > 0) {
+    #browser()
     diagnosed_ids <- new_entries$ID
     recovered_ids <- new_entries$ID[new_entries$RecoveredFromState]
     
@@ -728,13 +729,16 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
         ############################################################################    
         
         
+        # As we have performed the diagnose/screening BEFORE the state TRANSITION
+        # in the program for the current time/cycle, and the transition function
+        # (samplev()) modifies states at time + 1 we need to make sure that the
+        # possible change we have made in the screening and survival prevails:
         # m_M[, t + 1] <- update_column(m_M[, t], new_entries)
         next_col <- m_M[, t + 1]
         next_col <- update_column(m_M[, t], new_entries, next_col)
         
         # Ensure next_col updates are preserved after sampling
         m_M[, t + 1] <- ifelse(next_col == "Survival", "Survival", m_M[, t + 1])
-        
         
         ############################################################################    
         ## Costs per CC diagnose at time t + 1.
