@@ -851,7 +851,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
       m_M[, 1] <- v_M_1  # indicate the initial health state   
       
       seed <- seeds[sim]
-      #seed <- 17
+      seed <- 17
       cat ("This is simulation's seed:  ", seed, "\n")
       set.seed(seed) # set the seed for every individual for the random number generator
       
@@ -909,16 +909,17 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         # update/correct n_s (<<- let change variable from inside a function):
         n_s  <<- length(v_n)  
         
-        ######################################################################## 
-        #new code:
-        new_entries <- diagnose_column(m_M[, t], t)
-        
-        if (!is.null(new_entries)) {
-          stored_list[[t]] <- new_entries
-        }
-        if (nrow(new_entries) > 0) {
-          symptomatics <- bind_rows(symptomatics, new_entries)
-        }
+        ######################################################################### 
+        ##new code:
+        ## Diagnose (or appearance of symptomatics):
+        #new_entries <- diagnose_column(m_M[, t], t)
+        #
+        #if (!is.null(new_entries)) {
+        #  stored_list[[t]] <- new_entries
+        #}
+        #if (nrow(new_entries) > 0) {
+        #  symptomatics <- bind_rows(symptomatics, new_entries)
+        #}
         ######################################################################## 
         
        
@@ -926,7 +927,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         ########################################################################    
         my_age_prob_matrix <- 
           my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
-                                  my_age_in_loop = (age_in_loop + 1))
+                                  ## WHY add 1 to age_in_loop??
+                                  #my_age_in_loop = (age_in_loop + 1))
+                                  my_age_in_loop = (age_in_loop))
         # Add colnames and update `v_n`:
         rownames(my_age_prob_matrix) <- v_n <<- 
           my_age_prob_matrix %>%
@@ -944,12 +947,12 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         # matrix m_M 
         ########################################################################    
         
-        # m_M[, t + 1] <- update_column(m_M[, t], new_entries)
-        next_col <- m_M[, t + 1]
-        next_col <- update_column(m_M[, t], new_entries, next_col)
+        ## m_M[, t + 1] <- update_column(m_M[, t], new_entries)
+        #next_col <- m_M[, t + 1]
+        #next_col <- update_column(m_M[, t], new_entries, next_col)
         
-        # Ensure next_col updates are preserved after sampling
-        m_M[, t + 1] <- ifelse(next_col == "Survival", "Survival", m_M[, t + 1])
+        ## Ensure next_col updates are preserved after sampling
+        #m_M[, t + 1] <- ifelse(next_col == "Survival", "Survival", m_M[, t + 1])
          
         
         ########################################################################    
@@ -957,12 +960,29 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         
         # Estimate costs per individual during cycle t + 1 conditional on treatment:
         # Debugging:
+        
+        ######################################################################## 
+        #new code:
+        # Diagnose (or appearance of symptomatics):
+        new_entries <- diagnose_column(m_M[, t + 1], (t + 1))
+        
+        if (!is.null(new_entries)) {
+          stored_list[[t+1]] <- new_entries
+        }
+        if (nrow(new_entries) > 0) {
+          symptomatics <- bind_rows(symptomatics, new_entries)
+        }
+        ######################################################################## 
+        
+        #cat("I'm still here, debugging! \n")
+        #browser()
+        
         #m_C[, t] <-                              
         m_C[, t + 1] <-                              
           Costs_per_Cancer_Diag(M_it = m_M[, t + 1],  
                                 symptomatics = symptomatics,
                                 #time_iteration = t,
-                                time_iteration = (t + 1),
+                                time_iteration = (t+1),
                                 cost_Vec = cost_Vec,    
                                 Trt)            
         
@@ -1161,7 +1181,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
 ## START SIMULATION
 p = Sys.time()
 # run for no treatment
-sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 50, 
+sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 2, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
@@ -1169,7 +1189,7 @@ sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 50,
 # Load computed simulation if needed here:
 #sim_no_trt <- readRDS(file = "./data/stacked_sims_100x10E6x75_FULL_IMPLEMENTATION.rds")
 #sim_no_trt <- readRDS(file = "./data/stacked_sims_100x10E6x75.rds")
-#sim_no_trt <- readRDS(file = "./data/stacked_sims_10x10E6x75_20241002.rds")
+#sim_no_trt <- readRDS(file = "./data/stacked_sims_20x10E6x75_20241009.rds")
 
 comp.time = Sys.time() - p
 comp.time %>% print()
@@ -1561,8 +1581,8 @@ other_mean_mortality_result <-
   other_mean_mortality_func(sim_stalked_result = 
                               other_mean_mortality_result, my_Probs = my_Probs)  
 
-# save the results
-#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E6x75_20241010.rds")
+### save the results
+#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_10x10E6x75_20241009.rds")
 
 
 ### ----convert .Rmd to .R-----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1810,9 +1830,6 @@ microSim_long <- microSim_data %>%
 
 # Combine data
 combined_data <- bind_rows(markov_long, microSim_long)
-
-#cat("I'm still here, debugging! \n")
-#browser()
 
 # Plotting function
 plot_comparison <- function(data, measure_name) {
