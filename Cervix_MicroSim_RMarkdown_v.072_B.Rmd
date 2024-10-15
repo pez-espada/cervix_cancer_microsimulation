@@ -584,7 +584,7 @@ This is a modified version of [Krijkamp et al (2018)](https://journals.sagepub.c
 ```{r MicroSim function, tidy=TRUE}
 # Mod: incorporate loop over simulations:
 # This version stacks solution of simulations but produces a list with stacked elements
-MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
+MicroSim <- function(strategy="natural_history", numb_of_sims = 10,
                      v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE, 
                      TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix) 
 {
