@@ -61,7 +61,7 @@ my_Probs$Larger <-
 
 
 ## ----model parameters-------------------------------------------------------------------------------------------------------------------------------------------------------------------
-n_i <- 10^5                 # number of simulated individuals
+n_i <- 10^6                 # number of simulated individuals
 n_t <- 75                   # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
@@ -327,7 +327,7 @@ convert_matrix_to_proper_transition <-
     ensure_library("ctmcd")
     TM_qo <- ctmcd::gm(TM_pracma$B, te=1, method = "QO") 
   }
-
+#### ! NOT USED ! ############################
 
 ## ----symptoms, echo=TRUE----------------------------------------------------------------------------------------------------------------------------------------------------------------
 # An individual can be in cancer states, i.e. FIGO.I, FIGO.II. FIGO.III and FIGO.IV
@@ -510,8 +510,6 @@ update_column <- function(col, new_entries, next_col) {
 #     return(transition_cases)
 #   }
 # }
-
-
 
 
 
@@ -776,7 +774,7 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
 ## ----MicroSim function, tidy=TRUE-------------------------------------------------------------------------------------------------------------------------------------------------------
 # Mod: incorporate loop over simulations:
 # This version stacks solution of simulations but produces a list with stacked elements
-MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
+MicroSim <- function(strategy="natural_history", numb_of_sims = 5,
                      v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE, 
                      TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix) 
 {
@@ -818,11 +816,14 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
     #simulation_results <- list()
     #seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
     
+    ############################################################################
     my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
       my_age_prob_matrix <- my_Prob_matrix %>% 
         dplyr::filter(Lower <= my_age_in_loop  &
                         Larger >= my_age_in_loop) 
     }
+    ############################################################################
+    
     for(sim in 1:numb_of_sims) {
       
       cat("Running simulation", sim, "with seed", seeds[sim], "\n")
@@ -831,10 +832,10 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                    DiagnosedState = character(), 
                    RecoveredFromState = logical(), stringsAsFactors = FALSE)
       
-      #v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   # calculate the cost discount weight based
-      #                                       # on the discount rate d_c 
-      # Debugging
-      v_dwc <- 1 / (1 + d_c) ^ (1:(n_t))   # calculate the cost discount weight based
+      v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   # calculate the cost discount weight based
+                                             # on the discount rate d_c 
+      ## Debugging
+      #_dwc <- 1 / (1 + d_c) ^ (1:(n_t))   # calculate the cost discount weight based
       
       #v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   # calculate the QALY discount weight based 
       #                                       # on the discount rate d.e
@@ -910,6 +911,10 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         n_s  <<- length(v_n)  
         
         ######################################################################### 
+        ## This piece of code has been moved to run after the transition has 
+        ## been performed, and to have entries for states of the next time step, 
+        ## i.e. a t + 1 as the computation of the cost is performed for t+1 during
+        # the loop t.
         ##new code:
         ## Diagnose (or appearance of symptomatics):
         #new_entries <- diagnose_column(m_M[, t], t)
@@ -922,7 +927,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         #}
         ######################################################################## 
         
-       
          
         ########################################################################    
         my_age_prob_matrix <- 
@@ -944,22 +948,22 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         
         m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
                                                      # and store that state in  
-        # matrix m_M 
+                                                     # matrix m_M 
         ########################################################################    
         
+        
+        ########################################################################
+        ## This piece of coding is not needed as long as the diagnose/symptomatics
+        ## determination if done after the computation of  transitions
         ## m_M[, t + 1] <- update_column(m_M[, t], new_entries)
         #next_col <- m_M[, t + 1]
         #next_col <- update_column(m_M[, t], new_entries, next_col)
         
         ## Ensure next_col updates are preserved after sampling
         #m_M[, t + 1] <- ifelse(next_col == "Survival", "Survival", m_M[, t + 1])
+        ########################################################################
          
         
-        ########################################################################    
-        ## Costs per CC diagnose at time t + 1.
-        
-        # Estimate costs per individual during cycle t + 1 conditional on treatment:
-        # Debugging:
         
         ######################################################################## 
         #new code:
@@ -974,9 +978,11 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         }
         ######################################################################## 
         
-        #cat("I'm still here, debugging! \n")
-        #browser()
         
+        ########################################################################    
+        ## Costs per CC diagnose at time t + 1.
+        
+        # Estimate costs per individual during cycle t + 1 conditional on treatment:
         #m_C[, t] <-                              
         m_C[, t + 1] <-                              
           Costs_per_Cancer_Diag(M_it = m_M[, t + 1],  
@@ -1011,6 +1017,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
       tc_hat_undisc <- mean(tc_undisc)        # average (discounted) cost 
       te_hat_undisc <- mean(te_undisc)        # average (discounted) QALYs
       
+      ##cat("I'm still here, debugging! \n")
+      #browser()
+        
       # Create a matrix of transitions across states transitions from one state to the other:
       if (TS_out == TRUE) {  
         TS <- paste(m_M, cbind(m_M[, -1], NA), sep = "->")    
@@ -1181,7 +1190,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
 ## START SIMULATION
 p = Sys.time()
 # run for no treatment
-sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 2, 
+sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 5, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
@@ -1581,8 +1590,8 @@ other_mean_mortality_result <-
   other_mean_mortality_func(sim_stalked_result = 
                               other_mean_mortality_result, my_Probs = my_Probs)  
 
-### save the results
-#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_10x10E6x75_20241009.rds")
+## save the results
+#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_10x10E6x75_20241016.rds")
 
 
 ### ----convert .Rmd to .R-----------------------------------------------------------------------------------------------------------------------------------------------------------------
