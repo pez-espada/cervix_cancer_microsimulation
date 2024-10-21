@@ -1,7 +1,3 @@
-##     setup
-knitr::opts_chunk$set(echo = TRUE)
-
-
 ##     preamble
 ################################################################################
 # This code is a modified version of the original code from:
@@ -60,7 +56,7 @@ my_Probs$Larger <-
 
 
 ## ----model parameters
-n_i <- 10^4                 # number of simulated individuals
+n_i <- 10^5                 # number of simulated individuals
 n_t <- 75                   # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
@@ -104,18 +100,18 @@ utilityCoefs = c(1, 1, 0.987, 0.87, 0.87, 0.76, 0.67, 0.67, 0.67, 0.938, 0, 0)
 ## ----functions
 #### For extracting the probabilities of transitions given the transition matrix:
 ########### Probably the following function is not needed ######################
-#' Extract transition probability from Transition Matrix
-#'
-#' @param P 
-#' @param state1 
-#' @param state2 
-#'
+#' extract transition probability from transition matrix
+#' 
+#' @param p
+#' @param state1
+#' @param state2
+#' 
 #' @return a numeric scalar corresponding to the asked probability of transition
 #' @export
-#'
+#' 
 #' @examples
-#' trans_prb(P = my_Probs, state1 = "Well", state2 = "HR.HPV.infection") 
-#' trans_prb(P = my_Probs, state1 = "CIN1", state2 = "CIN2") 
+#' trans_prb(p = my_probs, state1 = "well", state2 = "hr.hpv.infection")
+#' trans_prb(P = my_Probs, state1 = "CIN1", state2 = "CIN2")
 trans_prb <- function(P, state1, state2) {
   # If the matrix of transition, P, is given:
   # the probability of an individual to go to state 'state2' the next time
@@ -210,7 +206,7 @@ Probs <- function(M_it, my_Probs) {
         unlist()
     } else {
       ## Debugging:
-      #cat("State", v_n[i], "is not present in M_it at this time step\n")
+      #c
     }
   }
   if (any(is.na(m_P_it))) {
@@ -262,21 +258,25 @@ Costs_per_Cancer_Diag <- function (M_it, cost_Vec, symptomatics, time_iteration,
 Effs <- function (M_it, Trt = FALSE, cl = 1, utilityCoefs) {
   # check length of vector of states and vector of utility/QALYs are the same:
   u_it <- 0                   # by default the utility for everyone is zero
-  tryCatch(
+  #tryCatch(
+  #  for (i in 1:length(utilityCoefs)) {
+  #    u_it[M_it == v_n[i]] <- utilityCoefs[i]   # update the utility if healthy
+  #  },
+  #  error = function(e){
+  #    message("An error occurred:\n", e)
+  #    print("Check state vector and utility vector have the same dimensions:")
+  #    P %>% rownames() %>% print()
+  #  },
+  #  warning = function(w){
+  #    message("A warning occured:\n", w)
+  #  }
+  #)
+  #
     for (i in 1:length(utilityCoefs)) {
       u_it[M_it == v_n[i]] <- utilityCoefs[i]   # update the utility if healthy
-    },
-    error = function(e){
-      message("An error occurred:\n", e)
-      print("Check state vector and utility vector have the same dimensions:")
-      P %>% rownames() %>% print()
-    },
-    warning = function(w){
-      message("A warning occured:\n", w)
     }
-  )
   return(u_it)
-}
+} #
 ################################################################################
 
 
@@ -533,24 +533,25 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 1,
   seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
   
   # Register the parallel backend
+  #P <- my_Probs
   cl <- makeCluster(n_cores)
+  clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", 
+                      "Probs","my_Probs", "utilityCoefs", "v_n", "samplev",
+                      "diagnose_column", "states_to_check", "symptom_prob_vec",
+                      "survival_prob_vec", "global_diagnosed", "cost_Vec", "new_cases_2"))
   registerDoParallel(cl)
   
   simulation_results <- list() 
   
-  #cat("I'm still here, debugging! \n")
-  browser()
-  
   
   #for(sim in 1:numb_of_sims) {
   # Parallel processing using foreach
-  simulation_results <- foreach(sim = 1:numb_of_sims, .packages = c("dplyr")) %dopar% { 
+  simulation_results <- 
+    foreach(sim = 1:numb_of_sims, .packages = c("dplyr", "tidyr", "purrr") ) %dopar% { 
+    
+   # P <- my_Probs
     
     cat("Running simulation", sim, "with seed", seeds[sim], "\n")
-    
-    #cat("I'm still here, debugging! \n")
-    browser()
-    
     
     symptomatics <-
       data.frame(ID = integer(), TimeStep = integer(), 
@@ -827,14 +828,14 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 1,
   
   stopCluster(cl)  # Stop the cluster when done
   
-  return(simulation_results)  # Return the list of results
+  #return(simulation_results)  # Return the list of results
   
   ## stack results
   ##source("./R/Sumarize_results_by_Strategy_Func.R")
-  #stacked_results <- 
-  #  summarize_results_by_Strategy(results_list = simulation_results, 
-  #                                numb_of_sims = numb_of_sims)
-  #return(stacked_results)
+  stacked_results <- 
+    summarize_results_by_Strategy(results_list = simulation_results, 
+                                  numb_of_sims = numb_of_sims)
+  return(stacked_results)
   
 } # end of MicroSim function
 ################################################################################
@@ -847,7 +848,7 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 1,
 ## START SIMULATION
 p = Sys.time()
 # run for no treatment
-sim_no_trt  <- MicroSim_parallel(strategy = "natural_history",numb_of_sims = 4, 
+sim_no_trt  <- MicroSim_parallel(strategy = "natural_history",numb_of_sims = 60, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
@@ -872,8 +873,8 @@ comp.time %>% print()
 ###################################
 ################################################################################
 ################################################################################
-# # Prevalence is defined as number of infected divided by total alive individuals
-# # for that cycle/time step
+## Prevalence is defined as number of infected divided by total alive individuals
+## for that cycle/time step
 mean_prevalence_func <- function(sim_stalked_result, my_Probs) {
   # Extract unique age intervals and ensure Larger doesn't exceed 84
   age_intervals <- my_Probs %>% 
@@ -940,8 +941,9 @@ mean_incidence_func <- function(sim_stalked_result, state, my_Probs) {
   
   my_incidence_df <- 
     my_incidence_df %>% 
-    dplyr::left_join(new_state_df %>%
-                       dplyr::select(-c(sim.1, row_names)), 
+    dplyr::left_join(new_state_df, # %>%
+                       #dplyr::select(-c(sim.1, row_names)), 
+                       #dplyr::select(-c(row_names)), 
                      by = c("age"), relationship = "many-to-many")
   
   # Find the column containing "->" and the state
@@ -1008,6 +1010,9 @@ mean_CC_incidence_func <- function(sim_stalked_result, my_Probs) {
   
   # Create a vector of the breaks for the intervals
   breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
+  
+  ##cat("I'm still here, debugging! \n")
+  #browser()
   
   # Create labels for the intervals
   labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")

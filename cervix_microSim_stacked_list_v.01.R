@@ -257,20 +257,27 @@ Costs_per_Cancer_Diag <- function (M_it, cost_Vec, symptomatics, time_iteration,
 ### Health outcome function 
 Effs <- function (M_it, Trt = FALSE, cl = 1, utilityCoefs) {
   # check length of vector of states and vector of utility/QALYs are the same:
+  
+  ##cat("I'm still here, debugging! \n")
+  #browser()
+  
   u_it <- 0                   # by default the utility for everyone is zero
-  tryCatch(
-    for (i in 1:length(utilityCoefs)) {
-      u_it[M_it == v_n[i]] <- utilityCoefs[i]   # update the utility if healthy
-    },
-    error = function(e){
-      message("An error occurred:\n", e)
-      print("Check state vector and utility vector have the same dimensions:")
-      P %>% rownames() %>% print()
-    },
-    warning = function(w){
-      message("A warning occured:\n", w)
-    }
-  )
+  # tryCatch(
+  #   for (i in 1:length(utilityCoefs)) {
+  #     u_it[M_it == v_n[i]] <- utilityCoefs[i]   # update the utility if healthy
+  #   },
+  #   error = function(e){
+  #     message("An error occurred:\n", e)
+  #     print("Check state vector and utility vector have the same dimensions:")
+  #     P %>% rownames() %>% print()
+  #   },
+  #   warning = function(w){
+  #     message("A warning occured:\n", w)
+  #   }
+  # )
+  for (i in 1:length(utilityCoefs)) {
+       u_it[M_it == v_n[i]] <- utilityCoefs[i]   # update the utility if healthy
+     }
   return(u_it)
 }
 
@@ -1017,9 +1024,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
     tc_hat_undisc <- mean(tc_undisc)        # average (discounted) cost 
     te_hat_undisc <- mean(te_undisc)        # average (discounted) QALYs
     
-    ##cat("I'm still here, debugging! \n")
-    #browser()
-    
     # Create a matrix of transitions across states transitions from one state to the other:
     if (TS_out == TRUE) {  
       TS <- paste(m_M, cbind(m_M[, -1], NA), sep = "->")    
@@ -1190,7 +1194,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
 ## START SIMULATION
 p = Sys.time()
 # run for no treatment
-sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 4, 
+sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 6, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)

@@ -172,7 +172,7 @@ samplev <- function (probs, m) {
   ### Random sampling, binning, and moving states: 
   for (j in 1:m) {
     un <- rep(runif(n), rep(k, n)) # repeat `runif(n)` `rep(k,n)`times
-    # this create a numeric of `n_i x n_s` that 
+    # This create a numeric of `n_i x n_s` that 
     # sample  an uniformed distributed number 
     # between 0 and 1. The generated random number
     # repeats itself `n_s` times and then another 
@@ -277,8 +277,8 @@ Effs <- function (M_it, Trt = FALSE, cl = 1, utilityCoefs) {
 
 
 ################################################################################
-## ----time period related functions, echo=TRUE
-########### WORK IN PROGRESS #########################
+## ----Time period related functions
+########################## WORK IN PROGRESS ####################################
 age_factor <- function(my_period) {
   # it receives a string with the period of the cycle, and it can be:
   #  - "1mth"
@@ -332,7 +332,7 @@ convert_matrix_to_proper_transition <-
 #### ! NOT USED ! ############################
 ################################################################################
 
-## symptoms
+## ** Symptoms **
 # An individual can be in cancer states, i.e. FIGO.I, FIGO.II. FIGO.III and FIGO.IV
 # (in the model) and yet no develop symptoms. Form th Markov cohort model we have
 # that the probability of developing symptoms are 0.11, 0.23, 0.66, and 0.9 for
@@ -392,7 +392,7 @@ diagnose_column <- function(col, time_step) {
 ################################################################################
 
 
-#################################################################################
+################################################################################
 update_column <- function(col, new_entries, next_col) {
   if (nrow(new_entries) > 0) {
     diagnosed_ids <- new_entries$ID
@@ -408,7 +408,7 @@ update_column <- function(col, new_entries, next_col) {
   }
   return(next_col)
 }
-#################################################################################
+################################################################################# 
 
 
 ################################################################################
@@ -418,7 +418,7 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
   
   # Case when state1 is a single string
   if (length(state1) == 1) {
-    transition_column <- paste0(state1, "->", state2)  # Create the transition name
+    transition_column <- paste0(state1, "->", state2)#Create the transition name
     
     # If the transition column exists, select it
     if (transition_column %in% colnames(Tot_Trans_per_t_tbl)) {
@@ -507,17 +507,14 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
 # Mod: incorporate loop over simulations:
 # This version stacks solution of simulations but produces a list with stacked elements
 # Parallelize!
-ensure_library(parallel)
+library(parallel)
 
-MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
+Para_MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
                      v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE, 
                      TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix) {
    
-  seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
-  #simulation_results <- vector("list", numb_of_sims)
+  seeds <- sample(1:10000, numb_of_sims, replace = FALSE) # Generate random seeds
   simulation_results <- list() 
-  ## Debuging:
-  #TR_out = TRUE; TS_out = TRUE; Trt = FALSE; seed = 1
   
   #Arguments:
   # v_M_1:   vector of initial states for individuals
@@ -546,19 +543,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
   # event incurs a one-time, lifetime cost (applicable only once, upon diagnosis).
   #symptomatics <- data.frame()
   
-  ## Initialize an empty list to store results from each simulation
-  #simulation_results <- list()
-  #seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
-  
-  ############################################################################
-  my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
-    my_age_prob_matrix <- my_Prob_matrix %>% 
-      dplyr::filter(Lower <= my_age_in_loop  &
-                      Larger >= my_age_in_loop) 
-  }
-  ############################################################################
- 
-  
   # Function for a single simulation
   run_single_simulation <- function(sim, seed, strategy, v_M_1, n_i, n_t, v_n, 
                                     d_c, d_e, TR_out, TS_out, Trt, Pmatrix) {
@@ -574,11 +558,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
     
     v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1)) # calculate the cost discount weight based
     v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1)) # calculate the QALY discount weight based 
-    #v_dwe <- 1 / (1 + d_e) ^ (1:(n_t))   # calculate the QALY discount weight based 
     
     # Create the matrix capturing the state name/costs/health outcomes 
     # for all individuals at each time point:
-    #m_M <- m_C <- m_E <-  matrix(nrow = n_i, ncol = (n_t + 1), 
     m_M <- m_C <- m_E <- 
       matrix(nrow = n_i, ncol = (n_t), 
              dimnames = list( 1:n_i, 
@@ -587,7 +569,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
     
     m_M[, 1] <- v_M_1  # Set initial health state   
     
-    seed <- seeds[sim]
+    #seed <- seeds[sim]
     #seed <- 17
     cat ("This is simulation's seed:  ", seed, "\n")
     set.seed(seed) # set the seed for every individual for the random number generator
@@ -604,10 +586,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
                                                                   # for the initial
                                                                   # health state  
     stored_list <- list()
+    
     ######################## run over all the cycles ############################# 
-    #for (t in 1:(n_t)) {
-    # Debugging:
-    #for (t in 2:(n_t)) {
     for (t in 1:(n_t - 1)) {
       ############################################################################
       # Select the transition matrix based on the cycle `n_t`:
@@ -618,7 +598,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       age_in_loop <- t + 9
       ########################################################################
       
-      # update/correct n_s (<<- let change variable from inside a function):
+      # Update/correct n_s (<<- let change variable from inside a function):
       n_s  <<- length(v_n)  
       
       ######################################################################### 
@@ -638,28 +618,34 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       #}
       ######################################################################## 
       
+      # Get transition matrix for the current age
+      my_age_prob_matrix <- Pmatrix %>%
+        dplyr::filter(Lower <= age_in_loop & Larger >= age_in_loop)
       
-      ########################################################################    
-      my_age_prob_matrix <- 
-        my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
-                                ## WHY add 1 to age_in_loop??
-                                #my_age_in_loop = (age_in_loop + 1))
-                                my_age_in_loop = (age_in_loop))
+     # ########################################################################    
+     # my_age_prob_matrix <- 
+     #   my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
+     #                           ## WHY add 1 to age_in_loop??
+     #                           #my_age_in_loop = (age_in_loop + 1))
+     #                           my_age_in_loop = (age_in_loop))
+      
       # Add colnames and update `v_n`:
       rownames(my_age_prob_matrix) <- v_n <<- 
         my_age_prob_matrix %>%
         dplyr::select(-c(Age.group, Lower, Larger)) %>% 
         colnames()
       
+      ##########################################################################
+      ## ** Perform Transitions **
       # Extract the transition probabilities of each individuals at cycle t
       # given the individual current state and the corresponding 
       # transition probability matrix that depends on age:
       # Next time (t+1) transition
       m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
       
-      m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
-                                                   # and store that state in  
-                                                   # matrix m_M 
+      m_M[, t + 1] <- samplev(probs = m_P, m = 1) # sample the next health state 
+                                                  # and store that state in  
+                                                  # matrix m_M 
       ##########################################################################
       
       
@@ -672,7 +658,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       ## Ensure next_col updates are preserved after sampling
       #m_M[, t + 1] <- ifelse(next_col == "Survival", "Survival", m_M[, t + 1])
       ##########################################################################
-      
       
       
       ##########################################################################
@@ -690,8 +675,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       
       
       ##########################################################################    
-      ## Costs per CC diagnose at time t + 1.
-      
+      # Costs per CC diagnose at time t + 1.
       # Estimate costs per individual during cycle t + 1 conditional on treatment:
       m_C[, t + 1] <-                              
         Costs_per_Cancer_Diag(M_it = m_M[, t + 1],  
@@ -706,9 +690,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
               utilityCoefs = utilityCoefs)                   
     ############################################################################    
       
-      # Conditional on treatment
-      cat('\r', paste(round(t/n_t * 100),          # display the 
-                      "% done", sep = " "))        # progress of  the simulation                    
+      ## Conditional on treatment
+      #cat('\r', paste(round(t/n_t * 100),          # display the 
+      #                "% done", sep = " "))        # progress of  the simulation                    
       
     }##################### close loop for cycles ###############################  
     
@@ -828,7 +812,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
     
     ### add age to TR:
     TR <- as.data.frame(TR)
-    #TR <- TR %>% mutate(age = row_number() + 10)
     #TR <- TR %>% mutate(age = row_number() + 8)
     TR <- TR %>% mutate(age = row_number() + 9)
     TR$sim <- sim
@@ -848,51 +831,122 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 1,
       dplyr::select(sim, age, CC_Death_by_diff) %>% 
       dplyr::as_tibble()
     
+    # # Store the results from the simulation in a list
+    # results <- list(strategy = strategy,
+    #                 #seed = seeds[sim],
+    #                 seed = seed,
+    #                 sim_numb = sim, 
+    #                 #m_M = m_M, 
+    #                 #m_C = m_C, 
+    #                 #m_E = m_E, 
+    #                 #tc_disc = tc_disc, 
+    #                 #tc_undisc = tc_undisc,
+    #                 #te_disc = te_disc,
+    #                 #te_undisc = te_undisc,
+    #                 tc_hat_disc = tc_hat_disc,
+    #                 tc_hat_undisc = tc_hat_undisc,
+    #                 te_hat_disc = te_hat_undisc, 
+    #                 te_hat_undisc = te_hat_undisc, 
+    #                 #TS = TS,
+    #                 TR = TR, 
+    #                 #Tot_Trans_per_t = Tot_Trans_per_t, 
+    #                 #symptomatics = symptomatics,
+    #                 new_CIN1 = new_CIN1,
+    #                 new_CIN2 = new_CIN2,
+    #                 new_CIN3 = new_CIN3,
+    #                 new_Cancer = new_Cancer,
+    #                 new_CC_Death = new_CC_Death,
+    #                 CC_Death_by_diff = CC_Death_by_diff)  
+    # 
+    # #results$seed <- seeds[sim]
+    # simulation_results[sim] <- list(results)
     
-    # Store the results from the simulation in a list
-    results <- list(strategy = strategy,
-                    #seed = seeds[sim],
-                    seed = seed,
-                    sim_numb = sim, 
-                    #m_M = m_M, 
-                    #m_C = m_C, 
-                    #m_E = m_E, 
-                    #tc_disc = tc_disc, 
-                    #tc_undisc = tc_undisc,
-                    #te_disc = te_disc,
-                    #te_undisc = te_undisc,
-                    tc_hat_disc = tc_hat_disc,
-                    tc_hat_undisc = tc_hat_undisc,
-                    te_hat_disc = te_hat_undisc, 
-                    te_hat_undisc = te_hat_undisc, 
-                    #TS = TS,
-                    TR = TR, 
-                    #Tot_Trans_per_t = Tot_Trans_per_t, 
-                    #symptomatics = symptomatics,
-                    new_CIN1 = new_CIN1,
-                    new_CIN2 = new_CIN2,
-                    new_CIN3 = new_CIN3,
-                    new_Cancer = new_Cancer,
-                    new_CC_Death = new_CC_Death,
-                    CC_Death_by_diff = CC_Death_by_diff)  
+    return(list(strategy = strategy,
+                seed = seed, 
+                sim_numb = sim,
+                #m_M = m_M, 
+                #m_C = m_C, 
+                #m_E = m_E, 
+                #tc_disc = tc_disc, 
+                #tc_undisc = tc_undisc,
+                #te_disc = te_disc,
+                #te_undisc = te_undisc,
+                tc_hat_disc = tc_hat_disc,
+                tc_hat_undisc = tc_hat_undisc,
+                te_hat_disc = te_hat_undisc, 
+                te_hat_undisc = te_hat_undisc, 
+                TR = TR, 
+                #TS = TS
+                new_CIN1 = new_CIN1,
+                new_CIN2 = new_CIN2,
+                new_CIN3 = new_CIN3,
+                new_Cancer = new_Cancer,
+                new_CC_Death = new_CC_Death,
+                CC_Death_by_diff = CC_Death_by_diff
+    ))
     
-    #results$seed <- seeds[sim]
-    simulation_results[sim] <- list(results)
-  } # end of `numb_of sims` loop
+  } # end of `run_single_simulation` function
   
-  #}  # end of `numb_of_sims` loop
+  # Set up a cluster with a number of cores
+  no_cores <- detectCores() - 1  # Leave one core for the system
+  cl <- makeCluster(no_cores)  
   
-  #return(simulation_results)
+  # Export necessary variables and functions to the cluster
+  clusterExport(cl, 
+                varlist = c("v_M_1", 
+                            "n_i", 
+                            "n_t", 
+                            "v_n", 
+                            "d_c", 
+                            "d_e", 
+                            "TR_out", 
+                            "TS_out", 
+                            "Trt", 
+                            "Pmatrix", 
+                            "Probs", 
+                            "Costs_per_Cancer_Diag", 
+                            "Effs", 
+                            "samplev"))
   
-  # stack results
-  #source("./R/Sumarize_results_by_Strategy_Func.R")
-  stacked_results <- 
-    summarize_results_by_Strategy(results_list = simulation_results, 
-                                  numb_of_sims = numb_of_sims)
-  return(stacked_results)
-} # end of MicroSim function
+  # Run simulations in parallel
+  simulation_results <- parLapply(cl, 1:numb_of_sims, function(sim) {
+    run_single_simulation(sim = sim, 
+                          seed = seeds[sim], 
+                          strategy = strategy, 
+                          v_M_1 = v_M_1, 
+                          n_i = n_i, 
+                          n_t = n_t, 
+                          v_n = v_n, 
+                          d_c = d_c, 
+                          d_e = d_e, 
+                          TR_out = TR_out, 
+                          TS_out = TS_out, 
+                          Trt = Trt, 
+                          Pmatrix = Pmatrix)
+  })
+  
+  # Stop the cluster after completion
+  stopCluster(cl)
+  
+  return(simulation_results)
+  
+} # end of Para_MicroSim function
 ################################################################################
 
+################################################################################
+################### Run the parallelized simulation ############################
+
+result_microsim <- Para_MicroSim(numb_of_sims = 100, 
+                                 v_M_1 = v_M_1, 
+                                 n_i = 1000, 
+                                 n_t = 10, 
+                                 v_n = v_n,
+                                 d_c = 0.03,
+                                 d_e = 0.03,
+                                 TR_out = TRUE, 
+                                 TS_out = TRUE, 
+                                 Trt = FALSE,
+                                 Pmatrix = Pmatrix) 
 
 ################################################################################
 ########################## Run the simulation ##################################
