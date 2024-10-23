@@ -56,7 +56,7 @@ my_Probs$Larger <-
 
 
 ## ----model parameters
-n_i <- 10^5                 # number of simulated individuals
+n_i <- 10^6                 # number of simulated individuals
 n_t <- 75                   # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
@@ -511,22 +511,26 @@ is_slurm <- function() {
   return(nzchar(slurm_id))  # Returns TRUE only if SLURM_JOB_ID is a non-empty string
 }
 ################################################################################
-
 # Determine number of cores
 if (is_slurm()) {
   # In Slurm, use the cores requested by the job
   n_cores <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
+  cat("I'm in slurm!\n")
 } else {
+  cat("I'm NOT in slurm!\n")
   # On local machine, use all available cores (or limit if needed)
-  n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
+  #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
+  ## Register fewer cores (adjust based on server resources)
+  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
 }
+cat("Number of cores: ", n_cores, "\n")
 
 ################################################################################
 ## THE MICROSIMULATION MAIN FUNCTION
 ## ----MicroSim function
 # Mod: incorporate loop over simulations:
 # This version stacks solution of simulations but produces a list with stacked elements
-MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 1,
+MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 20,
                               v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE, 
                               TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix) {
   
@@ -534,7 +538,7 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 1,
   
   # Register the parallel backend
   #P <- my_Probs
-  cl <- makeCluster(n_cores)
+  cl <- makeCluster(n_cores, timeout = 6*60*60) # 1-hour timeout to prevent socket drop issues
   clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", 
                       "Probs","my_Probs", "utilityCoefs", "v_n", "samplev",
                       "diagnose_column", "states_to_check", "symptom_prob_vec",
@@ -848,7 +852,7 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 1,
 ## START SIMULATION
 p = Sys.time()
 # run for no treatment
-sim_no_trt  <- MicroSim_parallel(strategy = "natural_history",numb_of_sims = 60, 
+sim_no_trt  <- MicroSim_parallel(strategy = "natural_history",numb_of_sims = 20, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
@@ -858,6 +862,10 @@ sim_no_trt  <- MicroSim_parallel(strategy = "natural_history",numb_of_sims = 60,
 
 comp.time = Sys.time() - p
 comp.time %>% print()
+
+# adding runtime execution time:
+runtime <- comp.time %>% as_tibble() %>% `colnames<-`("runtime")
+sim_no_trt[[1]]$runtime <- runtime
 ################################################################################
 ################################################################################
 
@@ -1250,8 +1258,8 @@ other_mean_mortality_result <-
   other_mean_mortality_func(sim_stalked_result = 
                               other_mean_mortality_result, my_Probs = my_Probs)  
 
-## save the results
-#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_10x10E6x75_20241016.rds")
+# save the results
+saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E6x75_20241023_Parallel_2.rds")
 
 
 ### ----convert .Rmd to .R-----------------------------------------------------------------------------------------------------------------------------------------------------------------
