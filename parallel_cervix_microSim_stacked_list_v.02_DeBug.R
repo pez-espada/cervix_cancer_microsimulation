@@ -56,7 +56,7 @@ my_Probs$Larger <-
 
 
 ## ----model parameters
-n_i <- 10^6                 # number of simulated individuals
+n_i <- 10^5                 # number of simulated individuals
 n_t <- 75                   # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
@@ -258,23 +258,24 @@ Costs_per_Cancer_Diag <- function (M_it, cost_Vec, symptomatics, time_iteration,
 Effs <- function (M_it, Trt = FALSE, cl = 1, utilityCoefs) {
   # check length of vector of states and vector of utility/QALYs are the same:
   u_it <- 0                   # by default the utility for everyone is zero
-  #tryCatch(
-  #  for (i in 1:length(utilityCoefs)) {
-  #    u_it[M_it == v_n[i]] <- utilityCoefs[i]   # update the utility if healthy
-  #  },
-  #  error = function(e){
-  #    message("An error occurred:\n", e)
-  #    print("Check state vector and utility vector have the same dimensions:")
-  #    P %>% rownames() %>% print()
-  #  },
-  #  warning = function(w){
-  #    message("A warning occured:\n", w)
-  #  }
-  #)
-  #
+  tryCatch(
     for (i in 1:length(utilityCoefs)) {
       u_it[M_it == v_n[i]] <- utilityCoefs[i]   # update the utility if healthy
+    },
+    error = function(e){
+      message("An error occurred:\n", e)
+      print("Check state vector and utility vector have the same dimensions:")
+      P %>% rownames() %>% print()
+    },
+    warning = function(w){
+      message("A warning occured:\n", w)
     }
+  )
+  
+  # If the TryCatch gives proble, just overrate it:
+  #for (i in 1:length(utilityCoefs)) {
+  #  u_it[M_it == v_n[i]] <- utilityCoefs[i]   # update the utility if healthy
+  #}
   return(u_it)
 } #
 ################################################################################
@@ -505,7 +506,7 @@ library(parallel)
 ensure_library("doParallel")
 
 ################################################################################
-# Function to detect if running on SLURM
+# Function to detect if running on SLURM -NOT WORKING AS INTENDED"-
 is_slurm <- function() {
   slurm_id <- Sys.getenv("SLURM_JOB_ID")
   return(nzchar(slurm_id))  # Returns TRUE only if SLURM_JOB_ID is a non-empty string
@@ -532,13 +533,13 @@ cat("Number of cores: ", n_cores, "\n")
 # This version stacks solution of simulations but produces a list with stacked elements
 MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 20,
                               v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE, 
-                              TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix) {
-  
+                              TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix) 
+  #{
   seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
   
   # Register the parallel backend
   #P <- my_Probs
-  cl <- makeCluster(n_cores, timeout = 6*60*60) # 1-hour timeout to prevent socket drop issues
+  cl <- makeCluster(n_cores, timeout = 6*60*60) # 6-hour timeout to prevent socket drop issues
   clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", 
                       "Probs","my_Probs", "utilityCoefs", "v_n", "samplev",
                       "diagnose_column", "states_to_check", "symptom_prob_vec",
@@ -841,7 +842,7 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 20,
                                   numb_of_sims = numb_of_sims)
   return(stacked_results)
   
-} # end of MicroSim function
+#} # end of MicroSim function
 ################################################################################
 ################################################################################
 
@@ -1259,7 +1260,7 @@ other_mean_mortality_result <-
                               other_mean_mortality_result, my_Probs = my_Probs)  
 
 # save the results
-saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E6x75_20241023_Parallel_2.rds")
+#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E5x75_20241024_Parallel.rds")
 
 
 ### ----convert .Rmd to .R-----------------------------------------------------------------------------------------------------------------------------------------------------------------

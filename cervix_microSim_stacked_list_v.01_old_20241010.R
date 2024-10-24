@@ -61,7 +61,7 @@ my_Probs$Larger <-
 
 
 ## ----model parameters-------------------------------------------------------------------------------------------------------------------------------------------------------------------
-n_i <- 10^6                 # number of simulated individuals
+n_i <- 10^5                 # number of simulated individuals
 n_t <- 75                   # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
@@ -779,9 +779,9 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
 MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                      v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE, 
                      TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix) 
-{
+{ 
   seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
-  {
+ # { # what's this parenthesis doing?
     #simulation_results <- vector("list", numb_of_sims)
     simulation_results <- list() 
     ## Debuging:
@@ -845,13 +845,13 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
       #m_M <- m_C <- m_E <-  matrix(nrow = n_i, ncol = (n_t + 1), 
       m_M <- m_C <- m_E <-  matrix(nrow = n_i, ncol = (n_t), 
                                    dimnames = list( 1:n_i, 
-      #                                              paste0("cycle_", 1:(n_t + 1), sep = "")))  
+                                                    #                                              paste0("cycle_", 1:(n_t + 1), sep = "")))  
                                                     paste0("cycle_", 1:(n_t), sep = "")))  
       
       m_M[, 1] <- v_M_1  # indicate the initial health state   
       
       seed <- seeds[sim]
-      #seed <- 17
+      seed <- 17
       cat ("This is simulation's seed:  ", seed, "\n")
       set.seed(seed) # set the seed for every individual for the random number generator
       
@@ -863,9 +863,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                                         Trt)             
       
       m_E[, 1] <- Effs(m_M[, 1], Trt, utilityCoefs = utilityCoefs)  # estimate QALYs
-                                                                    # per individual 
-                                                                    # for the initial
-                                                                    # health state  
+      # per individual 
+      # for the initial
+      # health state  
       stored_list <- list()
       ######################## run over all the cycles ############################# 
       #for (t in 1:(n_t)) {
@@ -921,8 +921,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         }
         ######################################################################## 
         
-       
-         
+        
+        
         ########################################################################    
         my_age_prob_matrix <- 
           my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
@@ -940,7 +940,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
         
         m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
-                                                     # and store that state in  
+        # and store that state in  
         # matrix m_M 
         ########################################################################    
         
@@ -950,7 +950,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         
         # Ensure next_col updates are preserved after sampling
         m_M[, t + 1] <- ifelse(next_col == "Survival", "Survival", m_M[, t + 1])
-         
+        
         
         ########################################################################    
         ## Costs per CC diagnose at time t + 1.
@@ -1064,7 +1064,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                                              "FIGO.II", "FIGO.III", "FIGO.IV"),
                                   state2 = "CC_Death", 
                                   Tot_Trans_per_t = Tot_Trans_per_t)
-     
+      
       
       # Before sending back, some cleaning regarding cycle `n_t+1` which is 
       # computed but no needed as a result:
@@ -1100,9 +1100,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
       
       # Computing new cancer cases pert cycle using diff() function:
       CC_Death_by_diff <- c(0, TR %>% 
-                          select(CC_Death) %>% 
-                          as_vector() %>% 
-                          diff())
+                              select(CC_Death) %>% 
+                              as_vector() %>% 
+                              diff())
       TR$CC_Death_by_diff <- CC_Death_by_diff 
       TR$CC_Death_by_diff <- ifelse( TR$age==10, 0, TR$CC_Death_by_diff)
       
@@ -1138,11 +1138,11 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                       new_CC_Death = new_CC_Death,
                       CC_Death_by_diff = CC_Death_by_diff)  
       
-    #results$seed <- seeds[sim]
-    simulation_results[sim] <- list(results)
+      #results$seed <- seeds[sim]
+      simulation_results[sim] <- list(results)
     } # end of `n_t` loop
     
-  }  # end of `numb_of_sims` loop
+ # }  # end of `numb_of_sims` loop
   
   #return(simulation_results)
   
@@ -1150,7 +1150,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
   #source("./R/Sumarize_results_by_Strategy_Func.R")
   stacked_results <- 
     summarize_results_by_Strategy(results_list = simulation_results, 
-                                 numb_of_sims = numb_of_sims)
+                                  numb_of_sims = numb_of_sims)
   return(stacked_results)
 } # end of MicroSim function
 
@@ -1564,8 +1564,8 @@ other_mean_mortality_result <-
   other_mean_mortality_func(sim_stalked_result = 
                               other_mean_mortality_result, my_Probs = my_Probs)  
 
-# save the results
-saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E6x75_20241010_renewed_20241123_Serial.rds")
+## save the results
+#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E6x75_20241010_renewed_20241024_Serial.rds")
 
 
 ### ----convert .Rmd to .R-----------------------------------------------------------------------------------------------------------------------------------------------------------------
