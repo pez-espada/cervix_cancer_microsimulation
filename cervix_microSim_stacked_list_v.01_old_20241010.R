@@ -784,39 +784,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
  # { # what's this parenthesis doing?
     #simulation_results <- vector("list", numb_of_sims)
     simulation_results <- list() 
-    ## Debuging:
-    #TR_out = TRUE; TS_out = TRUE; Trt = FALSE; seed = 1
-    
-    #Arguments:
-    # v_M_1:   vector of initial states for individuals
-    # n_i:     number of individuals
-    # n_t:     total number of cycles to run the model
-    # v_n:     vector of health state names
-    # d_c:     discount rate for costs
-    # d_e:     discount rate for health outcome (QALYs)
-    # TR_out:  should the output include a Microsimulation trace? 
-    #          (default is TRUE)
-    # TS_out:  should the output include a matrix of transitions between states? 
-    #          (default is TRUE)
-    # Trt:     are the n.i individuals receiving treatment? (scalar with a Boolean
-    #          value, default is FALSE)
-    # seed:    starting seed number for random number generator (default is 1)
-    # Makes use of:
-    # Probs:   function for the estimation of transition probabilities
-    # Costs:   function for the estimation of cost state vamatrix: Matrix of 
-    # tranistion probabilities for each sim cycle.
-    # Effs:    function for the estimation of state specific health outcomes (QALYs)
-    # Pmatrix: Matrix of transition probabilities for each sim cycle.
-    
-    # Symptomatic individuals are those who, while in a cancer state (FIGO I-IV),
-    # develop symptoms according to the probability vector `figoSymProb`. It is 
-    # assumed that all individuals who develop symptoms will visit a doctor. This 
-    # event incurs a one-time, lifetime cost (applicable only once, upon diagnosis).
-    #symptomatics <- data.frame()
-    
-    ## Initialize an empty list to store results from each simulation
-    #simulation_results <- list()
-    #seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
+
     
     my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
       my_age_prob_matrix <- my_Prob_matrix %>% 
@@ -880,31 +848,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         #age_in_loop <- t + 8
         age_in_loop <- t + 9
         
-        # Choose corresponding transition matrix according current age:
-        ## DONT USE it for cycle_period = "1yr"
-        #my_age_prob_matrix <- my_Probs %>% 
-        #  dplyr::filter(Lower <= 
-        #                  (age_in_loop / age_factor(cycle_period)) &
-        #                  Larger >= (age_in_loop / age_factor(cycle_period)) %>%
-        #                  floor()) 
-        #my_age_prob_matrix <- my_Probs %>% 
-        #  dplyr::filter(Lower <= age_in_loop  &
-        #                  Larger >= age_in_loop) 
-        
-        #my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
-        #  my_age_prob_matrix <- my_Prob_matrix %>% 
-        #    dplyr::filter(Lower <= my_age_in_loop  &
-        #                    Larger >= my_age_in_loop) 
-        #}
-        
-        ## As we are moving states forward in the future, i.e. in t we decide
-        # what state we are going to observe in t + 1 then we need to use the 
-        # transition probability at t + 1 so it compares well with the Markov
-        #my_age_prob_matrix <- 
-        #  my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
-        #                          my_age_in_loop = (age_in_loop + 1))
-        
-        ########################################################################
         
         # update/correct n_s (<<- let change variable from inside a function):
         n_s  <<- length(v_n)  
@@ -927,6 +870,14 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         my_age_prob_matrix <- 
           my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
                                   my_age_in_loop = (age_in_loop + 1))
+        
+        #### T E S T I N G ############## 
+        ##my_age_prob_matrix <- Pmatrix %>%
+        #my_age_prob_matrix <- my_Probs %>%
+        #  dplyr::filter(Lower <= age_in_loop & Larger >= age_in_loop)
+        #### T E S T I N G ############## 
+        
+        
         # Add colnames and update `v_n`:
         rownames(my_age_prob_matrix) <- v_n <<- 
           my_age_prob_matrix %>%
@@ -1160,7 +1111,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
 ## START SIMULATION
 p = Sys.time()
 # run for no treatment
-sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 20, 
+sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 6, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
