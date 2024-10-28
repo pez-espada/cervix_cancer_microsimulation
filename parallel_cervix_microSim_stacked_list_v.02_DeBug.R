@@ -553,8 +553,6 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 20,
   simulation_results <- 
     foreach(sim = 1:numb_of_sims, .packages = c("dplyr", "tidyr", "purrr") ) %dopar% { 
       
-      # P <- my_Probs
-      
       cat("Running simulation", sim, "with seed", seeds[sim], "\n")
       symptomatics <-
         data.frame(ID = integer(), TimeStep = integer(), 
@@ -575,7 +573,7 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 20,
       m_M[, 1] <- v_M_1  # indicate the initial health state   
       
       seed <- seeds[sim]
-      #seed <- 17
+      seed <- 17
       cat ("This is simulation's seed:  ", seed, "\n")
       set.seed(seed) # set the seed for every individual for the random number generator
       
@@ -587,9 +585,9 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 20,
                                         Trt)             
       
       m_E[, 1] <- Effs(m_M[, 1], Trt, utilityCoefs = utilityCoefs) # estimate QALYs
-      # per individual 
-      # for the initial
-      # health state  
+                                                                   # per individual 
+                                                                   # for the initial
+                                                                   # health state  
       stored_list <- list()
       ###################### run over all the time/cycles ######################### 
       for (t in 1:(n_t - 1)) {
