@@ -541,9 +541,10 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 20,
   cl <- makeCluster(n_cores, timeout = 6*60*60) # 6-hours timeout to prevent socket drop issues
   clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", 
                       "Probs","my_Probs", "utilityCoefs", "v_n", "samplev",
-                      "diagnose_column", "states_to_check", "symptom_prob_vec",
+                      "diagnose_column", "update_column", "states_to_check", "symptom_prob_vec",
                       "survival_prob_vec", "global_diagnosed", "cost_Vec", "new_cases_2"))
-  registerDoParallel(cl)
+  #registerDoParallel(cl)
+  registerDoSEQ()
   
   simulation_results <- list() 
   
@@ -600,6 +601,20 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 20,
         # update/correct n_s (<<- let change variable from inside a function):
         n_s  <<- length(v_n)  
         
+        #### TESTING IN  
+        ######################################################################### 
+        ##new code:
+        #new_entries <- diagnose_column(m_M[, t], t)
+        #
+        #if (!is.null(new_entries)) {
+        #  stored_list[[t]] <- new_entries
+        #}
+        #if (nrow(new_entries) > 0) {
+        #  symptomatics <- bind_rows(symptomatics, new_entries)
+        #}
+        ######################################################################### 
+        
+        
         ########################################################################    
         #my_age_prob_matrix <- 
         #  my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
@@ -626,7 +641,7 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 20,
         m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
         ########################################################################    
         
-        
+        ## TESTING OUT
         ######################################################################## 
         # Diagnose (or appearance of symptomatics):
         new_entries <- diagnose_column(m_M[, t + 1], (t + 1))
@@ -639,6 +654,14 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 20,
         }
         ########################################################################## 
         
+        ### TESTING IN:
+        ######################################################################### 
+        ## m_M[, t + 1] <- update_column(m_M[, t], new_entries)
+        #next_col <- m_M[, t + 1]
+        #next_col <- update_column(m_M[, t], new_entries, next_col)
+        ## Ensure next_col updates are preserved after sampling
+        #m_M[, t + 1] <- ifelse(next_col == "Survival", "Survival", m_M[, t + 1])
+        ######################################################################### 
         
         ##########################################################################    
         # Costs per CC diagnose at time t + 1.
@@ -1015,9 +1038,6 @@ mean_CC_incidence_func <- function(sim_stalked_result, my_Probs) {
   
   # Create a vector of the breaks for the intervals
   breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
-  
-  ##cat("I'm still here, debugging! \n")
-  #browser()
   
   # Create labels for the intervals
   labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
@@ -1510,7 +1530,7 @@ plot_comparison <- function(data, measure_name) {
   ggplot(data %>% filter(grepl(measure_name, measure)), 
          aes(x = age, y = value, fill = model)) +
     geom_bar(stat = "identity", position = "dodge") +
-    labs(title = paste(measure_name, "Comparison"),
+    labs(title = paste(measure_name, "Comparison - Parallel"),
          x = "Age Group",
          y = measure_name) +
     theme_minimal() +
