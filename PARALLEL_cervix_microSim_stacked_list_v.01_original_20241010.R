@@ -910,6 +910,10 @@ sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 20,
 
 comp.time = Sys.time() - p
 comp.time %>% print()
+
+# adding runtime execution time:
+runtime <- comp.time %>% as_tibble() %>% `colnames<-`("runtime")
+sim_no_trt[[1]]$runtime <- runtime
 ################################################################################
 ################################################################################
 
