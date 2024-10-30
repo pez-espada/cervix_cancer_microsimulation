@@ -1,7 +1,3 @@
-## ----setup IT RUNS IN SANDRA'S LAPTOP
-
-library(tidyr) 
-library(dplyr)
 ## ----preamble
 ################################################################################
 # This code is a modified version of the original code from:
@@ -35,7 +31,6 @@ my_Probs <- readRDS(file = "./data/probs.rds")
 
 my_Probs <- # transition matrix (for all sim cycles) 
   my_Probs %>%
-  #dplyr::filter(Age.group == "25-29") %>% # choose one for test
   as_tibble() # I need a tibble to use 'rename' function down there:
 
 # tidying up a bit the transition matrix:
@@ -60,7 +55,7 @@ my_Probs$Larger <-
   ifelse(my_Probs$Larger == max(my_Probs$Larger), my_Probs$Larger + 1, my_Probs$Larger) 
 
 
-## ----model parameters
+## ----model parameters-------------------------------------------------------------------------------------------------------------------------------------------------------------------
 n_i <- 10^5                 # number of simulated individuals
 n_t <- 75                   # time horizon, 75 cycles (it starts from 1)
 
@@ -102,7 +97,7 @@ utilityCoefs = c(1, 1, 0.987, 0.87, 0.87, 0.76, 0.67, 0.67, 0.67, 0.938, 0, 0)
 
 
 
-## ----functions
+## ----functions, include=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------
 #### For extracting the probabilities of transitions given the transition matrix:
 ########### Probably the following function is not needed ######################
 #' Extract transition probability from Transition Matrix
@@ -121,28 +116,28 @@ trans_prb <- function(P, state1, state2) {
   # If the matrix of transition, P, is given:
   # the probability of an individual to go to state 'state2' the next time
   # step given the individual is currently in state 'state1' is computed by:
-  
-  # tryCatch(
-  #   transition_prob <- P %>%  
-  #     filter(row.names(P) %in% c(state1)) %>% # filter state1 row
-  #     dplyr::select(all_of(state2)) %>%   # select state2 column
-  #     as.numeric(),
-  #   error = function(e){
-  #     message("An error occurred:\n", e)
-  #     print("Remember the valid states are:")
-  #     P %>% rownames() %>% print()
-  #   },
-  #   warning = function(w){
-  #     message("A warning occured:\n", w)
-  #   }
-  # )
-  
+  #tryCatch(
+  #  transition_prob <- P %>%  
+  #    filter(row.names(P) %in% c(state1)) %>% # filter state1 row
+  #    dplyr::select(all_of(state2)) %>%   # select state2 column
+  #    as.numeric(),
+  #  error = function(e){
+  #    message("An error occurred:\n", e)
+  #    print("Remember the valid states are:")
+  #    P %>% rownames() %>% print()
+  #  },
+  #  warning = function(w){ 
+  #    message("A warning occured:\n", w)
+  #  }
+  #)
+  # Overriding the tryCatch() we gain execution speed but compromise safety,
+  # it's twice as faster for 20simsx10E5x75cycles!:
   transition_prob<-P[state1,state2]
   return(transition_prob)
 }
 
 
-## ----sampling function
+## ----sampling function------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # Efficient implementation of the rMultinom() function of the Hmisc package #### 
 samplev <- function (probs, m) {
   d <- dim(probs) # i.e. number of individuals times number of states: n_i x n_s
@@ -191,8 +186,10 @@ samplev <- function (probs, m) {
   }
   ran
 }
+################################################################################
 
 
+################################################################################
 ## ----probability function
 ######################### Probability function #################################
 ## The Probs function that updates the transition probabilities of every cycle:
@@ -210,6 +207,8 @@ Probs <- function(M_it, my_Probs) {
                                                 v_n[i], state2 = x)) %>%
         unlist()
     } else {
+      ## Debugging:
+      #cat("State", v_n[i], "is not present in M_it at this time step\n")
     }
   }
   if (any(is.na(m_P_it))) {
@@ -220,8 +219,9 @@ Probs <- function(M_it, my_Probs) {
          return(t(m_P_it)), 
          stop("Probabilities do not sum to 1"))
 }
+################################################################################
 
-
+################################################################################
 ## ----costs function
 ### Costs function
 # The `Costs_per_Cancer_Diag` function estimates the costs of a diagnose 
@@ -251,8 +251,10 @@ Costs_per_Cancer_Diag <- function (M_it, cost_Vec, symptomatics, time_iteration,
   }
   return(c_it)              		                           # return the costs
 }
+################################################################################
 
 
+################################################################################
 ## ----qalys function
 ### Health outcome function 
 Effs <- function (M_it, Trt = FALSE, cl = 1, utilityCoefs) {
@@ -271,8 +273,13 @@ Effs <- function (M_it, Trt = FALSE, cl = 1, utilityCoefs) {
       message("A warning occured:\n", w)
     }
   )
+  # If the TryCatch gives proble, just overrate it:
+  #for (i in 1:length(utilityCoefs)) {
+  #  u_it[M_it == v_n[i]] <- utilityCoefs[i]   # update the utility if healthy
+  #}
   return(u_it)
 }
+################################################################################
 
 
 ## ----time period related functions
@@ -327,7 +334,7 @@ convert_matrix_to_proper_transition <-
     ensure_library("ctmcd")
     TM_qo <- ctmcd::gm(TM_pracma$B, te=1, method = "QO") 
   }
-
+#### ! NOT USED ! ############################
 
 ## ----symptoms
 # An individual can be in cancer states, i.e. FIGO.I, FIGO.II. FIGO.III and FIGO.IV
@@ -494,11 +501,35 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
 }
 ################################################################################
 
+### Parallelize code ###
+library(parallel)
+ensure_library("doParallel")
 
+################################################################################
+# Function to detect if running on SLURM -NOT WORKING AS INTENDED"-
+is_slurm <- function() {
+  slurm_id <- Sys.getenv("SLURM_JOB_ID")
+  return(nzchar(slurm_id))  # Returns TRUE only if SLURM_JOB_ID is a non-empty string
+}
+################################################################################
+
+# Determine number of cores
+if (is_slurm()) {
+  # In Slurm, use the cores requested by the job
+  n_cores <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
+  cat("I'm in slurm!\n")
+} else {
+  cat("I'm NOT in slurm!\n")
+  # On local machine, use all available cores (or limit if needed)
+  #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
+  ## Register fewer cores (adjust based on server resources)
+  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+}
+cat("Number of cores: ", n_cores, "\n")
 
 ################################################################################
 ## THE MICROSIMULATION MAIN FUNCTION
-## ----MicroSim function
+## ----MicroSim function, tidy=TRUE-------------------------------------------------------------------------------------------------------------------------------------------------------
 # Mod: incorporate loop over simulations:
 # This version stacks solution of simulations but produces a list with stacked elements
 MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
@@ -506,49 +537,31 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                      TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix) 
 {
   seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
-  #{
-    #simulation_results <- vector("list", numb_of_sims)
-    simulation_results <- list() 
-    ## Debuging:
-    #TR_out = TRUE; TS_out = TRUE; Trt = FALSE; seed = 1
-    
-    #Arguments:
-    # v_M_1:   vector of initial states for individuals
-    # n_i:     number of individuals
-    # n_t:     total number of cycles to run the model
-    # v_n:     vector of health state names
-    # d_c:     discount rate for costs
-    # d_e:     discount rate for health outcome (QALYs)
-    # TR_out:  should the output include a Microsimulation trace? 
-    #          (default is TRUE)
-    # TS_out:  should the output include a matrix of transitions between states? 
-    #          (default is TRUE)
-    # Trt:     are the n.i individuals receiving treatment? (scalar with a Boolean
-    #          value, default is FALSE)
-    # seed:    starting seed number for random number generator (default is 1)
-    # Makes use of:
-    # Probs:   function for the estimation of transition probabilities
-    # Costs:   function for the estimation of cost state vamatrix: Matrix of 
-    # tranistion probabilities for each sim cycle.
-    # Effs:    function for the estimation of state specific health outcomes (QALYs)
-    # Pmatrix: Matrix of transition probabilities for each sim cycle.
-    
-    # Symptomatic individuals are those who, while in a cancer state (FIGO I-IV),
-    # develop symptoms according to the probability vector `figoSymProb`. It is 
-    # assumed that all individuals who develop symptoms will visit a doctor. This 
-    # event incurs a one-time, lifetime cost (applicable only once, upon diagnosis).
-    #symptomatics <- data.frame()
-    
-    ## Initialize an empty list to store results from each simulation
-    #simulation_results <- list()
-    #seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
-    
-    my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
-      my_age_prob_matrix <- my_Prob_matrix %>% 
-        dplyr::filter(Lower <= my_age_in_loop  &
-                        Larger >= my_age_in_loop) 
-    }
-    for(sim in 1:numb_of_sims) {
+  
+  # Register the parallel backend
+  cl <- makeCluster(n_cores, timeout = 6*60*60) # 6-hours timeout to prevent socket drop issues
+  clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", 
+                      "Probs","my_Probs", "utilityCoefs", "v_n", "samplev",
+                      "diagnose_column", "update_column", "states_to_check", "symptom_prob_vec",
+                      "survival_prob_vec", "global_diagnosed", "cost_Vec", "new_cases_2"))
+  registerDoParallel(cl)
+  #registerDoSEQ()
+  
+  simulation_results <- list() 
+  
+  
+  ##############################################################################
+  my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
+    my_age_prob_matrix <- my_Prob_matrix %>% 
+      dplyr::filter(Lower <= my_age_in_loop  &
+                      Larger >= my_age_in_loop) 
+  }
+  ##############################################################################
+  
+  #for(sim in 1:numb_of_sims) {
+  # Parallel processing using foreach
+  simulation_results <- 
+    foreach(sim = 1:numb_of_sims, .packages = c("dplyr", "tidyr", "purrr") ) %dopar% { 
       
       cat("Running simulation", sim, "with seed", seeds[sim], "\n")
       symptomatics <-
@@ -556,27 +569,25 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                    DiagnosedState = character(), 
                    RecoveredFromState = logical(), stringsAsFactors = FALSE)
       
-      #v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   # calculate the cost discount weight based
+      v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   # calculate the cost discount weight based
       #                                       # on the discount rate d_c 
-      # Debugging
-      v_dwc <- 1 / (1 + d_c) ^ (1:(n_t))   # calculate the cost discount weight based
-      
-      #v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   # calculate the QALY discount weight based 
+      #v_dwc <- 1 / (1 + d_c) ^ (1:(n_t))   # calculate the cost discount weight based
+      v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   # calculate the QALY discount weight based 
       #                                       # on the discount rate d.e
-      v_dwe <- 1 / (1 + d_e) ^ (1:(n_t))   # calculate the QALY discount weight based 
+      #v_dwe <- 1 / (1 + d_e) ^ (1:(n_t))   # calculate the QALY discount weight based 
       
       # Create the matrix capturing the state name/costs/health outcomes 
       # for all individuals at each time point:
       #m_M <- m_C <- m_E <-  matrix(nrow = n_i, ncol = (n_t + 1), 
       m_M <- m_C <- m_E <-  matrix(nrow = n_i, ncol = (n_t), 
                                    dimnames = list( 1:n_i, 
-      #                                              paste0("cycle_", 1:(n_t + 1), sep = "")))  
+                                                    #                                              paste0("cycle_", 1:(n_t + 1), sep = "")))  
                                                     paste0("cycle_", 1:(n_t), sep = "")))  
       
       m_M[, 1] <- v_M_1  # indicate the initial health state   
       
       seed <- seeds[sim]
-      seed <- 17
+      #seed <- 17
       cat ("This is simulation's seed:  ", seed, "\n")
       set.seed(seed) # set the seed for every individual for the random number generator
       
@@ -588,9 +599,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                                         Trt)             
       
       m_E[, 1] <- Effs(m_M[, 1], Trt, utilityCoefs = utilityCoefs)  # estimate QALYs
-                                                                    # per individual 
-                                                                    # for the initial
-                                                                    # health state  
+      # per individual 
+      # for the initial
+      # health state  
       stored_list <- list()
       ######################## run over all the cycles ############################# 
       #for (t in 1:(n_t)) {
@@ -600,7 +611,34 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         ############################################################################
         # Select the transition matrix based on the cycle `n_t`:
         # Since our age intervals start at 10 years old,
+        # `age_in_loop` is calculated as `t + 10 * age_factor(cycle_period)`.
+        #age_in_loop <- t + 10
+        #age_in_loop <- t + 8
         age_in_loop <- t + 9
+        
+        # Choose corresponding transition matrix according current age:
+        ## DONT USE it for cycle_period = "1yr"
+        #my_age_prob_matrix <- my_Probs %>% 
+        #  dplyr::filter(Lower <= 
+        #                  (age_in_loop / age_factor(cycle_period)) &
+        #                  Larger >= (age_in_loop / age_factor(cycle_period)) %>%
+        #                  floor()) 
+        #my_age_prob_matrix <- my_Probs %>% 
+        #  dplyr::filter(Lower <= age_in_loop  &
+        #                  Larger >= age_in_loop) 
+        
+        #my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
+        #  my_age_prob_matrix <- my_Prob_matrix %>% 
+        #    dplyr::filter(Lower <= my_age_in_loop  &
+        #                    Larger >= my_age_in_loop) 
+        #}
+        
+        ## As we are moving states forward in the future, i.e. in t we decide
+        # what state we are going to observe in t + 1 then we need to use the 
+        # transition probability at t + 1 so it compares well with the Markov
+        #my_age_prob_matrix <- 
+        #  my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
+        #                          my_age_in_loop = (age_in_loop + 1))
         
         ########################################################################
         
@@ -619,7 +657,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         }
         ######################################################################## 
         
-         
+        
+        
         ########################################################################    
         my_age_prob_matrix <- 
           my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
@@ -637,7 +676,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
         
         m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
-                                                     # and store that state in  
+        # and store that state in  
+        # matrix m_M 
         ########################################################################    
         
         # m_M[, t + 1] <- update_column(m_M[, t], new_entries)
@@ -646,7 +686,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         
         # Ensure next_col updates are preserved after sampling
         m_M[, t + 1] <- ifelse(next_col == "Survival", "Survival", m_M[, t + 1])
-         
+        
         
         ########################################################################    
         ## Costs per CC diagnose at time t + 1.
@@ -760,7 +800,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                                              "FIGO.II", "FIGO.III", "FIGO.IV"),
                                   state2 = "CC_Death", 
                                   Tot_Trans_per_t = Tot_Trans_per_t)
-     
+      
       
       # Before sending back, some cleaning regarding cycle `n_t+1` which is 
       # computed but no needed as a result:
@@ -796,9 +836,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
       
       # Computing new cancer cases pert cycle using diff() function:
       CC_Death_by_diff <- c(0, TR %>% 
-                          select(CC_Death) %>% 
-                          as.vector() %>% 
-                          diff())
+                              select(CC_Death) %>% 
+                              as_vector() %>% 
+                              diff())
       TR$CC_Death_by_diff <- CC_Death_by_diff 
       TR$CC_Death_by_diff <- ifelse( TR$age==10, 0, TR$CC_Death_by_diff)
       
@@ -834,11 +874,13 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                       new_CC_Death = new_CC_Death,
                       CC_Death_by_diff = CC_Death_by_diff)  
       
-    #results$seed <- seeds[sim]
-    simulation_results[sim] <- list(results)
+      #results$seed <- seeds[sim]
+      #simulation_results[sim] <- list(results)
+      return(results)
     } # end of `n_t` loop
-    
-  #}  # end of `numb_of_sims` loop
+  
+  # }  # end of `numb_of_sims` loop
+  stopCluster(cl)  # Stop the cluster when done
   
   #return(simulation_results)
   
@@ -846,17 +888,17 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
   #source("./R/Sumarize_results_by_Strategy_Func.R")
   stacked_results <- 
     summarize_results_by_Strategy(results_list = simulation_results, 
-                                 numb_of_sims = numb_of_sims)
+                                  numb_of_sims = numb_of_sims)
   return(stacked_results)
 } # end of MicroSim function
 
 ################################################################################
-## ----perform simulation
+## ----perform simulation, tidy=TRUE, echo=FALSE, include=FALSE, results='hide'-----------------------------------------------------------------------------------------------------------
 ########################## Run the simulation ##################################
 ## START SIMULATION
 p = Sys.time()
 # run for no treatment
-sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 10, 
+sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 20, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
@@ -868,10 +910,6 @@ sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 10,
 
 comp.time = Sys.time() - p
 comp.time %>% print()
-
-# adding runtime execution time:
-runtime <- comp.time %>% as_tibble() %>% `colnames<-`("runtime")
-sim_no_trt[[1]]$runtime <- runtime
 ################################################################################
 ################################################################################
 
@@ -879,7 +917,7 @@ sim_no_trt[[1]]$runtime <- runtime
 
 ################################################################################
 ################################################################################
-## ----post-simulation computations
+## ----post-simulation computations, tidy=TRUE, echo=FALSE, include=FALSE, results='hide'-------------------------------------------------------------------------------------------------
 ################################################################################
 ################################################################################
                   ###################################
@@ -1260,12 +1298,11 @@ other_mean_mortality_result <-
   other_mean_mortality_func(sim_stalked_result = 
                               other_mean_mortality_result, my_Probs = my_Probs)  
 
-## save the results
-#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E6x75_20241010_renewed_20241123_Serial.rds")
-#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E6x75_20241010_renewed_20241123_Serial.rds")
+# save the results
+#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E6x75_20241010.rds")
 
 
-### ----convert .Rmd to .R
+### ----convert .Rmd to .R-----------------------------------------------------------------------------------------------------------------------------------------------------------------
 #library(knitr)
 ## purl("your_script.Rmd", output = "your_script.R")
 ## example:
@@ -1273,7 +1310,7 @@ other_mean_mortality_result <-
 #purl("Cervix_MicroSim_RMarkdown_v.072_B.Rmd", output = "cervix_microSim_stacked_list_B.R")
 
 
-## ----cost-efectiveness
+## ----cost-efectiveness, tidy=TRUE-------------------------------------------------------------------------------------------------------------------------------------------------------
 ####################### Cost-effectiveness analysis #############################
 ## store the mean costs (and MCSE) of each strategy in a new variable C (vector costs)
 #v_C  <- c(sim_no_trt$tc_hat_disc, sim_trt$tc_hat_disc) 
@@ -1312,7 +1349,7 @@ other_mean_mortality_result <-
 #table_micro  # print the table 
 
 
-## ----plot curves
+## ----plot curves, fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth'-------------------------------------------------------------------------------------------------------
 ## This R chunk is a plot routine (not part of the main program):
 library(RColorBrewer)
 #ensure_library("RColorBrewer")
@@ -1351,7 +1388,7 @@ ggplot(long_micro_sim_df, aes(x = age, y = Average, color = Stage)) +
   theme_minimal()
 
 
-## ----loading markov result
+## ----loading markov result, fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth'---------------------------------------------------------------------------------------------
 if (!require("readxl")) install.packages("readxl")
 library(readxl)
 # This R chunk is a plot routine (not part of the main program):
@@ -1436,7 +1473,7 @@ microSim_CC_by_diff_mortality    <- other_mean_mortality_result[[1]]$CC_by_diff_
 
 
 
-## ----ploting incidences and prevalences
+## ----ploting incidences and prevalences, fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth,'-------------------------------------------------------------------------------
 # Load necessary libraries
 library(dplyr)
 library(ggplot2)
@@ -1519,7 +1556,7 @@ plot_comparison <- function(data, measure_name) {
   ggplot(data %>% filter(grepl(measure_name, measure)), 
          aes(x = age, y = value, fill = model)) +
     geom_bar(stat = "identity", position = "dodge") +
-    labs(title = paste(measure_name, "Comparison - Sandra's laptop approved"),
+    labs(title = paste(measure_name, "Comparison", " N=", n_i, " cycles=", n_t, "Parallelized"),
          x = "Age Group",
          y = measure_name) +
     theme_minimal() +
@@ -1543,3 +1580,4 @@ print(plot_CC_incidences)
 print(plot_HPV_prevalences)
 print(plot_CC_mortality)
 print(plot_CC_by_diff_mortality)
+

@@ -117,20 +117,25 @@ trans_prb <- function(P, state1, state2) {
   # If the matrix of transition, P, is given:
   # the probability of an individual to go to state 'state2' the next time
   # step given the individual is currently in state 'state1' is computed by:
-  tryCatch(
-    transition_prob <- P %>%  
-      filter(row.names(P) %in% c(state1)) %>% # filter state1 row
-      dplyr::select(all_of(state2)) %>%   # select state2 column
-      as.numeric(),
-    error = function(e){
-      message("An error occurred:\n", e)
-      print("Remember the valid states are:")
-      P %>% rownames() %>% print()
-    },
-    warning = function(w){
-      message("A warning occured:\n", w)
-    }
-  )
+  
+  #NOTE: eliminating the tryCatch and replacing by transition_prob<-P[state1,state2]
+  # is less safe but faster!
+  #tryCatch(
+  #  transition_prob <- P %>%  
+  #    filter(row.names(P) %in% c(state1)) %>% # filter state1 row
+  #    dplyr::select(all_of(state2)) %>%   # select state2 column
+  #    as.numeric(),
+  #  error = function(e){
+  #    message("An error occurred:\n", e)
+  #    print("Remember the valid states are:")
+  #    P %>% rownames() %>% print()
+  #  },
+  #  warning = function(w){
+  #    message("A warning occured:\n", w)
+  #  }
+  #)
+  
+  transition_prob<-P[state1,state2]
   return(transition_prob)
 }
 
@@ -491,19 +496,55 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
 ################################################################################
 
 
+################################################################################
+### Parallelize code ###
+library(parallel)
+ensure_library("doParallel")
+
+################################################################################
+# Function to detect if running on SLURM -NOT WORKING AS INTENDED"-
+is_slurm <- function() {
+  slurm_id <- Sys.getenv("SLURM_JOB_ID")
+  return(nzchar(slurm_id))  # Returns TRUE only if SLURM_JOB_ID is a non-empty string
+}
+################################################################################
+
+# Determine number of cores
+if (is_slurm()) {
+  # In Slurm, use the cores requested by the job
+  n_cores <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
+  cat("I'm in slurm!\n")
+} else {
+  cat("I'm NOT in slurm!\n")
+  # On local machine, use all available cores (or limit if needed)
+  #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
+  ## Register fewer cores (adjust based on server resources)
+  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+}
+cat("Number of cores: ", n_cores, "\n")
+################################################################################
+
 
 ################################################################################
 ## THE MICROSIMULATION MAIN FUNCTION
 ## ----MicroSim function, tidy=TRUE-------------------------------------------------------------------------------------------------------------------------------------------------------
 # Mod: incorporate loop over simulations:
 # This version stacks solution of simulations but produces a list with stacked elements
-MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
+MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
                      v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE, 
                      TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix) 
 { 
   seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
-  # { # what's this parenthesis doing?
-  #simulation_results <- vector("list", numb_of_sims)
+  
+  # Register the parallel backend
+  cl <- makeCluster(n_cores, timeout = 6*60*60) # 6-hours timeout to prevent socket drop issues
+  clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", 
+                      "Probs","my_Probs", "utilityCoefs", "v_n", "samplev",
+                      "diagnose_column", "update_column", "states_to_check", "symptom_prob_vec",
+                      "survival_prob_vec", "global_diagnosed", "cost_Vec", "new_cases_2"))
+  registerDoParallel(cl)
+  #registerDoSEQ()
+  
   simulation_results <- list()
   
   ##############################################################################
@@ -591,7 +632,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
       ########################################################################    
       my_age_prob_matrix <- 
         my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
-                                my_age_in_loop = (age_in_loop + 1))
+                                #my_age_in_loop = (age_in_loop + 1))
+                                my_age_in_loop = (age_in_loop ))
       ##my_age_prob_matrix <- Pmatrix %>%
       #my_age_prob_matrix <- my_Probs %>%
       #  dplyr::filter(Lower <= age_in_loop & Larger >= age_in_loop)
@@ -829,7 +871,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
 ## START SIMULATION
 p = Sys.time()
 # run for no treatment
-sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 6, 
+sim_no_trt  <- MicroSim(strategy = "natural_history",numb_of_sims = 20, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
