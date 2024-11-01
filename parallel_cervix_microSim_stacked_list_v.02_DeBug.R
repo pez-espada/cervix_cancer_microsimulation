@@ -116,20 +116,25 @@ trans_prb <- function(P, state1, state2) {
   # If the matrix of transition, P, is given:
   # the probability of an individual to go to state 'state2' the next time
   # step given the individual is currently in state 'state1' is computed by:
-  tryCatch(
-    transition_prob <- P %>%  
-      filter(row.names(P) %in% c(state1)) %>% # filter state1 row
-      dplyr::select(all_of(state2)) %>%   # select state2 column
-      as.numeric(),
-    error = function(e){
-      message("An error occurred:\n", e)
-      print("Remember the valid states are:")
-      P %>% rownames() %>% print()
-    },
-    warning = function(w){
-      message("A warning occured:\n", w)
-    }
-  )
+  
+  #NOTE: eliminating the tryCatch and replacing by transition_prob<-P[state1,state2]
+  # is less safe but faster!
+  #tryCatch(
+  #  transition_prob <- P %>%  
+  #    filter(row.names(P) %in% c(state1)) %>% # filter state1 row
+  #    dplyr::select(all_of(state2)) %>%   # select state2 column
+  #    as.numeric(),
+  #  error = function(e){
+  #    message("An error occurred:\n", e)
+  #    print("Remember the valid states are:")
+  #    P %>% rownames() %>% print()
+  #  },
+  #  warning = function(w){
+  #    message("A warning occured:\n", w)
+  #  }
+  #)
+  
+  transition_prob<-P[state1,state2]
   return(transition_prob)
 }
 
@@ -543,11 +548,19 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 20,
                       "Probs","my_Probs", "utilityCoefs", "v_n", "samplev",
                       "diagnose_column", "update_column", "states_to_check", "symptom_prob_vec",
                       "survival_prob_vec", "global_diagnosed", "cost_Vec", "new_cases_2"))
-  #registerDoParallel(cl)
-  registerDoSEQ()
+  registerDoParallel(cl)
+  #registerDoSEQ()
   
   simulation_results <- list() 
   
+  
+  ##############################################################################
+  my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
+    my_age_prob_matrix <- my_Prob_matrix %>% 
+      dplyr::filter(Lower <= my_age_in_loop  &
+                      Larger >= my_age_in_loop) 
+  }
+  ##############################################################################
   
   #for(sim in 1:numb_of_sims) {
   # Parallel processing using foreach
@@ -616,16 +629,16 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 20,
         
         
         ########################################################################    
-        #my_age_prob_matrix <- 
-        #  my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
-        #                          ## WHY add 1 to age_in_loop??
-        #                          #my_age_in_loop = (age_in_loop + 1))
-        #                          my_age_in_loop = (age_in_loop))
+        my_age_prob_matrix <- 
+          my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
+                                  ## WHY add 1 to age_in_loop??
+                                  #my_age_in_loop = (age_in_loop + 1))
+                                  my_age_in_loop = (age_in_loop))
         
         # Get transition matrix for the current age
-        #my_age_prob_matrix <- Pmatrix %>%
-        my_age_prob_matrix <- my_Probs %>%
-          dplyr::filter(Lower <= age_in_loop & Larger >= age_in_loop)
+        ##my_age_prob_matrix <- Pmatrix %>%
+        #my_age_prob_matrix <- my_Probs %>%
+        #  dplyr::filter(Lower <= age_in_loop & Larger >= age_in_loop)
         # Add colnames and update `v_n`:
         rownames(my_age_prob_matrix) <- v_n <<- 
           my_age_prob_matrix %>%
@@ -872,7 +885,7 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 20,
 ## START SIMULATION
 p = Sys.time()
 # run for no treatment
-sim_no_trt  <- MicroSim_parallel(strategy = "natural_history",numb_of_sims = 6, 
+sim_no_trt  <- MicroSim_parallel(strategy = "natural_history",numb_of_sims = 10, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
