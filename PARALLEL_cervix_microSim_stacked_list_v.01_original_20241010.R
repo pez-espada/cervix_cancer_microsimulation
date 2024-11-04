@@ -896,6 +896,8 @@ comp.time %>% print()
 runtime <- comp.time %>% as_tibble() %>% `colnames<-`("runtime")
 sim_no_trt[[1]]$runtime <- runtime
 sim_no_trt[[1]]$numb_of_sims <- numb_of_sims
+sim_no_trt[[1]]$numb_of_ind <- n_i
+sim_no_trt[[1]]$numb_of_cycles <- n_t
 ################################################################################
 ################################################################################
 
