@@ -501,6 +501,18 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
 }
 ################################################################################
 
+
+################################################################################
+  my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
+    my_age_prob_matrix <- my_Prob_matrix %>% 
+      dplyr::filter(Lower <= my_age_in_loop  &
+                      Larger >= my_age_in_loop) 
+  }
+################################################################################
+
+
+################################################################################
+################################################################################
 ### Parallelize code ###
 library(parallel)
 ensure_library("doParallel")
@@ -527,6 +539,9 @@ if (is_slurm()) {
   #n_cores <- 3  # Try using 8 or fewer cores
 }
 cat("Number of cores: ", n_cores, "\n")
+################################################################################
+################################################################################
+
 
 ################################################################################
 ## THE MICROSIMULATION MAIN FUNCTION
@@ -539,25 +554,27 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
 {
   seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
   
+  
   # Register the parallel backend
   cl <- makeCluster(n_cores, timeout = 6*60*60) # 6-hours timeout to prevent socket drop issues
-  clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", 
-                      "Probs","my_Probs", "utilityCoefs", "v_n", "samplev",
-                      "diagnose_column", "update_column", "states_to_check", "symptom_prob_vec",
-                      "survival_prob_vec", "global_diagnosed", "cost_Vec", "new_cases_2"))
-  registerDoParallel(cl)
-  #registerDoSEQ()
+  clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
+                      "my_Probs", "utilityCoefs", "v_n", "samplev", 
+                      "my_age_prob_matrix_func","diagnose_column", 
+                      "update_column", "states_to_check", "symptom_prob_vec",
+                      "survival_prob_vec", "global_diagnosed", 
+                      "cost_Vec", "new_cases_2"))
+  #registerDoParallel(cl)
+  registerDoSEQ()
   
   simulation_results <- list() 
   
-  
-  ##############################################################################
-  my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
-    my_age_prob_matrix <- my_Prob_matrix %>% 
-      dplyr::filter(Lower <= my_age_in_loop  &
-                      Larger >= my_age_in_loop) 
-  }
-  ##############################################################################
+  ###############################################################################
+  #my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
+  #  my_age_prob_matrix <- my_Prob_matrix %>% 
+  #    dplyr::filter(Lower <= my_age_in_loop  &
+  #                    Larger >= my_age_in_loop) 
+  #}
+  ###############################################################################
   
   #for(sim in 1:numb_of_sims) {
   # Parallel processing using foreach
@@ -590,8 +607,10 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
       
       seed <- seeds[sim]
       #seed <- 17
-      cat ("This is simulation's seed:  ", seed, "\n")
+      #cat ("This is simulation's seed:  ", seed, "\n")
       set.seed(seed) # set the seed for every individual for the random number generator
+      
+      #cat("This is the Cost vector: ", cost_Vec, "\n")
       
      
       m_C[, 1] <- Costs_per_Cancer_Diag(M_it = m_M[, 1], # estimate costs per individual for the 
@@ -600,10 +619,12 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                                         cost_Vec = cost_Vec, # initial health state
                                         Trt)             
       
+      # cat("This the initial m_C summary: ", m_C[,1] %>% table(), "\n")
+      
       m_E[, 1] <- Effs(m_M[, 1], Trt, utilityCoefs = utilityCoefs)  # estimate QALYs
-      # per individual 
-      # for the initial
-      # health state  
+                                                                    # per individual 
+                                                                    # for the initial
+                                                                    # health state  
       stored_list <- list()
       ######################## run over all the cycles ############################# 
       #for (t in 1:(n_t)) {
@@ -633,7 +654,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         
         
         
-        ########################################################################    
+        ########################################################################
+        # NOTE: if my_age_in_loop = age_in_loop (without adding 1), then the 
+        # microsim does not agree with the markov (for whatever reason)
         my_age_prob_matrix <- 
           my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
                                   my_age_in_loop = (age_in_loop + 1))
@@ -674,20 +697,25 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                                 time_iteration = t,
                                 cost_Vec = cost_Vec,    
                                 Trt)            
-        
+      
+      ## Debugging:    
+      #cat("This the m_C summary at t = ",t, " is: ", m_C[,t] %>% table(), "\n")
+      #cat("This the m_C summary at t + 1 = ", (t+1), " is: ", m_C[,(t+1)] %>% table(), "\n")
+      
         m_E[, t + 1] <- # estimate QALYs per individual during cycle t + 1
           Effs( m_M[, t + 1], Trt, 
                 utilityCoefs = utilityCoefs)                   
         ############################################################################    
         
-        # Conditional on treatment
-        cat('\r', paste(round(t/n_t * 100),          # display the 
-                        "% done", sep = " "))        # progress of  the simulation                    
+        ## Conditional on treatment
+        #cat('\r', paste(round(t/n_t * 100),          # display the 
+        #                "% done\n", sep = " "))        # progress of  the simulation                    
         
       }  
       ######################## close loop for cycles ############################### 
       
-      # Combine stored entries into a single data frame
+      # Combine stored entries in Debuto a single data frame
+      
       symptomatics <- bind_rows(stored_list)
       tc_disc <- m_C[,1:n_t] %*% v_dwc       # total (discounted) cost per individual
       te_disc <- m_E[,1:n_t] %*% v_dwe       # total (discounted) QALYs per individual 
@@ -697,8 +725,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
       
       tc_hat_disc <- mean(tc_disc)        # average (discounted) cost 
       te_hat_disc <- mean(te_disc)        # average (discounted) QALYs
-      tc_hat_undisc <- mean(tc_undisc)        # average (discounted) cost 
-      te_hat_undisc <- mean(te_undisc)        # average (discounted) QALYs
+      tc_hat_undisc <- mean(tc_undisc)    # average (discounted) cost 
+      te_hat_undisc <- mean(te_undisc)    # average (discounted) QALYs
       
       # Create a matrix of transitions across states transitions from one state to the other:
       if (TS_out == TRUE) {  
@@ -743,9 +771,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         as.list() %>%
         unlist()
       
-      #cat("I'm still here, debugging! \n")
-      #browser()
-
       if(TS_out == TRUE){
         Tot_Trans_per_t <- 
           t(apply(TS, 2, 
@@ -853,8 +878,15 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
       
       #results$seed <- seeds[sim]
       #simulation_results[sim] <- list(results)
+      cat("At sim number:", sim,  " tc_hat_undisc is ", tc_hat_undisc, "\n")
+      rm(symptomatics)
+      
+      #cat("I'm still here, debugging! \n")
+      #browser()
+      
       return(results)
       
+
      #gc() #Force memory cleanup after each sim/batch 
      
     } # end of `foreach/dopar` loop
@@ -873,12 +905,12 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
 } # end of MicroSim function
 
 ################################################################################
-## ----perform simulation, tidy=TRUE, echo=FALSE, include=FALSE, results='hide'-----------------------------------------------------------------------------------------------------------
+##     Perform simulation
 ########################## Run the simulation ##################################
 ## START SIMULATION
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 40
+numb_of_sims = 60
 sim_no_trt  <- MicroSim(strategy = "natural_history", numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
