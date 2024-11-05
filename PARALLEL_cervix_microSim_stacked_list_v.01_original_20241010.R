@@ -563,8 +563,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                       "update_column", "states_to_check", "symptom_prob_vec",
                       "survival_prob_vec", "global_diagnosed", 
                       "cost_Vec", "new_cases_2"))
-  #registerDoParallel(cl)
-  registerDoSEQ()
+  registerDoParallel(cl)
+  #registerDoSEQ()
   
   simulation_results <- list() 
   
