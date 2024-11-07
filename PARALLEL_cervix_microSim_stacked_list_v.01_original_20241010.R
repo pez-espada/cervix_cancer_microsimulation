@@ -538,6 +538,7 @@ if (is_slurm()) {
   n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
   #n_cores <- 3  # Try using 8 or fewer cores
 }
+#n_cores <- 1
 cat("Number of cores: ", n_cores, "\n")
 ################################################################################
 ################################################################################
@@ -546,13 +547,13 @@ cat("Number of cores: ", n_cores, "\n")
 ################################################################################
 ## THE MICROSIMULATION MAIN FUNCTION
 ## ----MicroSim function
-# Mod: incorporate loop over simulations:
 # This version stacks solution of simulations but produces a list with stacked elements
 MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                      v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE, 
                      TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix) 
 {
   seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
+  seeds <- sample(1:100000, numb_of_sims, replace = FALSE)  # Generate random seeds
   
   
   # Register the parallel backend
@@ -568,14 +569,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
   
   simulation_results <- list() 
   
-  ###############################################################################
-  #my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
-  #  my_age_prob_matrix <- my_Prob_matrix %>% 
-  #    dplyr::filter(Lower <= my_age_in_loop  &
-  #                    Larger >= my_age_in_loop) 
-  #}
-  ###############################################################################
-  
   #for(sim in 1:numb_of_sims) {
   # Parallel processing using foreach
   simulation_results <- 
@@ -589,10 +582,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
       
       v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   # calculate the cost discount weight based
       #                                       # on the discount rate d_c 
-      #v_dwc <- 1 / (1 + d_c) ^ (1:(n_t))   # calculate the cost discount weight based
       v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   # calculate the QALY discount weight based 
       #                                       # on the discount rate d.e
-      #v_dwe <- 1 / (1 + d_e) ^ (1:(n_t))   # calculate the QALY discount weight based 
       
       # Create the matrix capturing the state name/costs/health outcomes 
       # for all individuals at each time point:
@@ -607,34 +598,27 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
       
       seed <- seeds[sim]
       #seed <- 17
-      #cat ("This is simulation's seed:  ", seed, "\n")
       set.seed(seed) # set the seed for every individual for the random number generator
       
-      #cat("This is the Cost vector: ", cost_Vec, "\n")
       
-     
       m_C[, 1] <- Costs_per_Cancer_Diag(M_it = m_M[, 1], # estimate costs per individual for the 
                                         symptomatics = symptomatics,
                                         time_iteration = 1,
                                         cost_Vec = cost_Vec, # initial health state
                                         Trt)             
       
-      # cat("This the initial m_C summary: ", m_C[,1] %>% table(), "\n")
-      
       m_E[, 1] <- Effs(m_M[, 1], Trt, utilityCoefs = utilityCoefs)  # estimate QALYs
                                                                     # per individual 
                                                                     # for the initial
                                                                     # health state  
       stored_list <- list()
-      ######################## run over all the cycles ############################# 
+      ###################### run over all the cycles ########################### 
       #for (t in 1:(n_t)) {
       for (t in 1:(n_t-1)) {
-        ############################################################################
+        ########################################################################
         # Select the transition matrix based on the cycle `n_t`:
         # Since our age intervals start at 10 years old,
         age_in_loop <- t + 9
-        
-        
         ########################################################################
         
         # update/correct n_s (<<- let change variable from inside a function):
@@ -651,8 +635,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
           symptomatics <- bind_rows(symptomatics, new_entries)
         }
         ######################################################################## 
-        
-        
         
         ########################################################################
         # NOTE: if my_age_in_loop = age_in_loop (without adding 1), then the 
@@ -684,10 +666,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         # Ensure next_col updates are preserved after sampling
         m_M[, t + 1] <- ifelse(next_col == "Survival", "Survival", m_M[, t + 1])
         
-        
         ########################################################################    
         ## Costs per CC diagnose at time t + 1.
-        
         # Estimate costs per individual during cycle t + 1 conditional on treatment:
         # Debugging:
         #m_C[, t] <-                              
@@ -698,24 +678,17 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                                 cost_Vec = cost_Vec,    
                                 Trt)            
       
-      ## Debugging:    
-      #cat("This the m_C summary at t = ",t, " is: ", m_C[,t] %>% table(), "\n")
-      #cat("This the m_C summary at t + 1 = ", (t+1), " is: ", m_C[,(t+1)] %>% table(), "\n")
-      
         m_E[, t + 1] <- # estimate QALYs per individual during cycle t + 1
           Effs( m_M[, t + 1], Trt, 
                 utilityCoefs = utilityCoefs)                   
         ############################################################################    
-        
-        ## Conditional on treatment
-        #cat('\r', paste(round(t/n_t * 100),          # display the 
-        #                "% done\n", sep = " "))        # progress of  the simulation                    
+        cat('\r', paste(round(t/n_t * 100),          # display the 
+                        "% done\n", sep = " "))        # progress of  the simulation                    
         
       }  
       ######################## close loop for cycles ############################### 
       
-      # Combine stored entries in Debuto a single data frame
-      
+      # Combine stored entries in a single data frame
       symptomatics <- bind_rows(stored_list)
       tc_disc <- m_C[,1:n_t] %*% v_dwc       # total (discounted) cost per individual
       te_disc <- m_E[,1:n_t] %*% v_dwe       # total (discounted) QALYs per individual 
@@ -881,18 +854,13 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
       cat("At sim number:", sim,  " tc_hat_undisc is ", tc_hat_undisc, "\n")
       rm(symptomatics)
       
-      #cat("I'm still here, debugging! \n")
-      #browser()
-      
       return(results)
-      
-
      #gc() #Force memory cleanup after each sim/batch 
-     
+      
     } # end of `foreach/dopar` loop
   
-  # }  # end of `numb_of_sims` loop
-  stopCluster(cl)  # Stop the cluster when done
+  
+  #stopCluster(cl)  # Stop the cluster when done
   
   #return(simulation_results)
   
@@ -901,6 +869,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
   stacked_results <- 
     summarize_results_by_Strategy(results_list = simulation_results, 
                                   numb_of_sims = numb_of_sims)
+  
+  stopCluster(cl)  # Stop the cluster when done
   return(stacked_results)
 } # end of MicroSim function
 
@@ -910,7 +880,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
 ## START SIMULATION
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 60
+numb_of_sims = 200
 sim_no_trt  <- MicroSim(strategy = "natural_history", numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
