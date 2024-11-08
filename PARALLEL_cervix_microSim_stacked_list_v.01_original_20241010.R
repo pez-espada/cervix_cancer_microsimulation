@@ -56,7 +56,7 @@ my_Probs$Larger <-
 
 
 ## ----model parameters
-n_i <- 10^5                 # number of simulated individuals
+n_i <- (2.5)*10^5                 # number of simulated individuals
 n_t <- 75                   # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
@@ -188,7 +188,6 @@ samplev <- function (probs, m) {
 }
 ################################################################################
 
-
 ################################################################################
 ## ----probability function
 ######################### Probability function #################################
@@ -252,7 +251,6 @@ Costs_per_Cancer_Diag <- function (M_it, cost_Vec, symptomatics, time_iteration,
   return(c_it)              		                           # return the costs
 }
 ################################################################################
-
 
 ################################################################################
 ## ----qalys function
@@ -413,7 +411,6 @@ update_column <- function(col, new_entries, next_col) {
 }
 #################################################################################
 
-
 ################################################################################
 new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
   # Convert the data to a tibble for easier manipulation
@@ -501,7 +498,6 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
 }
 ################################################################################
 
-
 ################################################################################
   my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
     my_age_prob_matrix <- my_Prob_matrix %>% 
@@ -538,7 +534,7 @@ if (is_slurm()) {
   n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
   #n_cores <- 3  # Try using 8 or fewer cores
 }
-#n_cores <- 1
+n_cores <- 5
 cat("Number of cores: ", n_cores, "\n")
 ################################################################################
 ################################################################################
@@ -669,8 +665,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         ########################################################################    
         ## Costs per CC diagnose at time t + 1.
         # Estimate costs per individual during cycle t + 1 conditional on treatment:
-        # Debugging:
-        #m_C[, t] <-                              
         m_C[, t + 1] <-                              
           Costs_per_Cancer_Diag(M_it = m_M[, t + 1],  
                                 symptomatics = symptomatics,
@@ -771,8 +765,10 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
       new_Cancer <- new_cases_2(state1 = "CIN3", state2 = "FIGO.I", 
                                 Tot_Trans_per_t = Tot_Trans_per_t)
       
-      new_CC_Death <- new_cases_2(state1 = c("CIN1", "CIN2","CIN3","FIGO.I", 
-                                             "FIGO.II", "FIGO.III", "FIGO.IV"),
+      new_CC_Death <- new_cases_2(state1 = c("H", "HR.HPV.infection", "CIN1", 
+                                             "CIN2","CIN3","FIGO.I", 
+                                             "FIGO.II", "FIGO.III", "FIGO.IV", 
+                                             "Survival"),
                                   state2 = "CC_Death", 
                                   Tot_Trans_per_t = Tot_Trans_per_t)
       
@@ -821,7 +817,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
         dplyr::select(sim, age, CC_Death_by_diff) %>% 
         dplyr::as_tibble()
       
-      
       # Store the results from the simulation in a list
       results <- list(strategy = strategy,
                       #seed = seeds[sim],
@@ -853,9 +848,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
       #simulation_results[sim] <- list(results)
       cat("At sim number:", sim,  " tc_hat_undisc is ", tc_hat_undisc, "\n")
       rm(symptomatics)
-      
+      #rm(TS) 
       return(results)
-     #gc() #Force memory cleanup after each sim/batch 
+      #gc() #Force memory cleanup after each sim/batch 
       
     } # end of `foreach/dopar` loop
   
@@ -880,16 +875,16 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
 ## START SIMULATION
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 20
+numb_of_sims = 40
 sim_no_trt  <- MicroSim(strategy = "natural_history", numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
 
 # Load computed simulation if needed here:
-#sim_no_trt <- readRDS(file = "./data/stacked_sims_100x10E6x75_FULL_IMPLEMENTATION.rds")
 #sim_no_trt <- readRDS(file = "./data/stacked_sims_100x10E6x75.rds")
 #sim_no_trt <- readRDS(file = "./data/stacked_sims_10x10E6x75_20241002.rds")
+#sim_no_trt <- readRDS(file = "./data/stacked_sims_100x10E6x75_FULL_IMPLEMENTATION.rds")
 
 comp.time = Sys.time() - p
 comp.time %>% print()
@@ -897,8 +892,8 @@ comp.time %>% print()
 # adding runtime execution time:
 runtime <- comp.time %>% as_tibble() %>% `colnames<-`("runtime")
 sim_no_trt[[1]]$runtime <- runtime
-sim_no_trt[[1]]$numb_of_sims <- numb_of_sims
-sim_no_trt[[1]]$numb_of_ind <- n_i
+sim_no_trt[[1]]$numb_of_sims   <- numb_of_sims
+sim_no_trt[[1]]$numb_of_ind    <- n_i
 sim_no_trt[[1]]$numb_of_cycles <- n_t
 ################################################################################
 ################################################################################
@@ -1132,7 +1127,6 @@ mean_CC_mortality_func <- function(sim_stalked_result, my_Probs) {
   #  dplyr::summarise(CC_mean_mortality = mean(CC_mortality, na.rm = TRUE)) %>% 
   #  dplyr::ungroup()
   
-  ################# TESTING #################################################
   # Define the age range you want to keep
   age_range <- 10:84
   
@@ -1161,9 +1155,7 @@ mean_CC_mortality_func <- function(sim_stalked_result, my_Probs) {
     dplyr::group_by(age_interval) %>%
     dplyr::summarise(CC_mean_mortality = mean(CC_mortality, na.rm = TRUE)) %>%
     dplyr::ungroup()
-  ################# TESTING #################################################
   
-  #return(df)
   sim_stalked_result[[1]]$CC_mean_mortality <- df
   return(sim_stalked_result)
 }
@@ -1198,7 +1190,6 @@ mean_CC_mortality_by_diff_func <- function(sim_stalked_result, my_Probs) {
   # Create labels for the intervals
   labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
   
-  ################# TESTING #################################################
   # Define the age range you want to keep
   age_range <- 10:84
   
@@ -1227,7 +1218,6 @@ mean_CC_mortality_by_diff_func <- function(sim_stalked_result, my_Probs) {
     dplyr::group_by(age_interval) %>%
     dplyr::summarise(CC_by_diff_mean_mortality = mean(CC_by_diff_mortality, na.rm = TRUE)) %>%
     dplyr::ungroup()
-  ################# TESTING #################################################
   
   #return(df)
   sim_stalked_result[[1]]$CC_by_diff_mean_mortality <- df
@@ -1382,7 +1372,7 @@ ggplot(long_micro_sim_df, aes(x = age, y = Average, color = Stage)) +
   theme_minimal()
 
 
-## ----loading markov result, fig.width=10, fig.height=6, echo=FALSE, out.width='\\textwidth'---------------------------------------------------------------------------------------------
+## ----loading markov result
 if (!require("readxl")) install.packages("readxl")
 library(readxl)
 # This R chunk is a plot routine (not part of the main program):
@@ -1571,4 +1561,3 @@ print(plot_CC_incidences)
 print(plot_HPV_prevalences)
 print(plot_CC_mortality)
 print(plot_CC_by_diff_mortality)
-
