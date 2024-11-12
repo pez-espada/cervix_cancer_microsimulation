@@ -1,4 +1,4 @@
-## ----preamble
+## ----Preamble
 ################################################################################
 # This code is a modified version of the original code from:
 # [https://github.com/DARTH-git/Microsimulation-tutorial] (Krijkamp et al 2018 
@@ -55,8 +55,9 @@ my_Probs$Larger <-
   ifelse(my_Probs$Larger == max(my_Probs$Larger), my_Probs$Larger + 1, my_Probs$Larger) 
 
 
-## ----model parameters
+## ----Model Parameters
 n_i <- (2.5)*10^5                 # number of simulated individuals
+#n_i <- 10^6                # number of simulated individuals
 n_t <- 75                   # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
@@ -97,7 +98,7 @@ utilityCoefs = c(1, 1, 0.987, 0.87, 0.87, 0.76, 0.67, 0.67, 0.67, 0.938, 0, 0)
 
 
 
-## ----functions
+## ----Functions
 #### For extracting the probabilities of transitions given the transition matrix:
 ########### Probably the following function is not needed ######################
 #' Extract transition probability from Transition Matrix
@@ -137,7 +138,7 @@ trans_prb <- function(P, state1, state2) {
 }
 
 
-## ----sampling function
+## ----Sampling function
 # Efficient implementation of the rMultinom() function of the Hmisc package #### 
 samplev <- function (probs, m) {
   d <- dim(probs) # i.e. number of individuals times number of states: n_i x n_s
@@ -189,7 +190,7 @@ samplev <- function (probs, m) {
 ################################################################################
 
 ################################################################################
-## ----probability function
+## ----Probability Function
 ######################### Probability function #################################
 ## The Probs function that updates the transition probabilities of every cycle:
 Probs <- function(M_it, my_Probs) {
@@ -221,8 +222,8 @@ Probs <- function(M_it, my_Probs) {
 ################################################################################
 
 ################################################################################
-## ----costs function
-### Costs function
+## ----Costs Function
+### Costs Function
 # The `Costs_per_Cancer_Diag` function estimates the costs of a diagnose 
 # individual due to cancer symptoms (FIGO.I-IV) at every cycle. 
 # This cost is only charged once in the patient's lifetime.
@@ -253,7 +254,7 @@ Costs_per_Cancer_Diag <- function (M_it, cost_Vec, symptomatics, time_iteration,
 ################################################################################
 
 ################################################################################
-## ----qalys function
+## ----Qalys function
 ### Health outcome function 
 Effs <- function (M_it, Trt = FALSE, cl = 1, utilityCoefs) {
   # check length of vector of states and vector of utility/QALYs are the same:
@@ -280,7 +281,7 @@ Effs <- function (M_it, Trt = FALSE, cl = 1, utilityCoefs) {
 ################################################################################
 
 
-## ----time period related functions
+## ----Time period related functions
 ########### WORK IN PROGRESS #########################
 age_factor <- function(my_period) {
   # it receives a string with the period of the cycle, and it can be:
@@ -334,7 +335,7 @@ convert_matrix_to_proper_transition <-
   }
 #### ! NOT USED ! ############################
 
-## ----symptoms
+## ----Symptoms
 # An individual can be in cancer states, i.e. FIGO.I, FIGO.II. FIGO.III and FIGO.IV
 # (in the model) and yet no develop symptoms. Form th Markov cohort model we have
 # that the probability of developing symptoms are 0.11, 0.23, 0.66, and 0.9 for
@@ -534,6 +535,9 @@ if (is_slurm()) {
   n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
   #n_cores <- 3  # Try using 8 or fewer cores
 }
+# for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
+# five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
+# in 3.3-3.4 minutes but the system becomes unstable and leading to crash often.
 n_cores <- 5
 cat("Number of cores: ", n_cores, "\n")
 ################################################################################
@@ -804,6 +808,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
       
       #Remove large objects: 
       rm(m_M, m_C, m_E)
+      #rm(m_M, m_C, m_E, TS,tc_disc,tc_undisc,te_disc,te_undisc)
       
       # Computing new cancer cases pert cycle using diff() function:
       CC_Death_by_diff <- c(0, TR %>% 
@@ -875,7 +880,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
 ## START SIMULATION
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 40
+numb_of_sims = 60
 sim_no_trt  <- MicroSim(strategy = "natural_history", numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
@@ -903,7 +908,7 @@ sim_no_trt[[1]]$numb_of_cycles <- n_t
 
 ################################################################################
 ################################################################################
-## ----post-simulation computations
+## ----Post-simulation Computations
 ################################################################################
 ################################################################################
                   ###################################
@@ -1283,10 +1288,10 @@ other_mean_mortality_result <-
                               other_mean_mortality_result, my_Probs = my_Probs)  
 
 # save the results
-#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E6x75_20241010.rds")
+#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_40x10E5x75_20241i#010.rds")
 
 
-### ----convert .Rmd to .R
+### ----Convert .Rmd to .R
 #library(knitr)
 ## purl("your_script.Rmd", output = "your_script.R")
 ## example:
@@ -1294,7 +1299,7 @@ other_mean_mortality_result <-
 #purl("Cervix_MicroSim_RMarkdown_v.072_B.Rmd", output = "cervix_microSim_stacked_list_B.R")
 
 
-## ----cost-efectiveness
+## ----Cost-Efectiveness
 ####################### Cost-effectiveness analysis #############################
 ## store the mean costs (and MCSE) of each strategy in a new variable C (vector costs)
 #v_C  <- c(sim_no_trt$tc_hat_disc, sim_trt$tc_hat_disc) 
@@ -1333,7 +1338,7 @@ other_mean_mortality_result <-
 #table_micro  # print the table 
 
 
-## ----plot curves
+## ----Plot curves
 ## This R chunk is a plot routine (not part of the main program):
 library(RColorBrewer)
 #ensure_library("RColorBrewer")
@@ -1372,7 +1377,7 @@ ggplot(long_micro_sim_df, aes(x = age, y = Average, color = Stage)) +
   theme_minimal()
 
 
-## ----loading markov result
+## ----Loading Markov result
 if (!require("readxl")) install.packages("readxl")
 library(readxl)
 # This R chunk is a plot routine (not part of the main program):
@@ -1437,7 +1442,7 @@ ggplot(long_merged_data, aes(x = age, y = value, color = `Health state`)) +
 ################################################################################
 
 
-## ----incidences, prevalences, and mortalities
+## ----Incidences, Prevalences, and Mortalities
 # Markov:
 markov_CN1_incidences <- c(0.00000, 204.73492, 981.96179, 1368.24200, 3006.85782, 33.48096, 1362.96678, 459.48051, 697.84223, 794.33833, 223.00222, 246.23082, 176.02167, 126.22963, 53.70939)
 markov_CN2_incidences <- c(0.000000, 6.165629, 54.767952, 140.309815, 216.568392, 1476.306267, 1579.728160, 1298.914564, 466.596151, 637.661611, 442.298632, 304.784447, 250.953880, 165.628020, 116.925192)
@@ -1457,7 +1462,7 @@ microSim_CC_by_diff_mortality    <- other_mean_mortality_result[[1]]$CC_by_diff_
 
 
 
-## ----ploting incidences and prevalences
+## ----Ploting incidences and prevalences
 # Load necessary libraries
 library(dplyr)
 library(ggplot2)
