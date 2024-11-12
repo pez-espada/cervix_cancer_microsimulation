@@ -607,6 +607,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                                         cost_Vec = cost_Vec, # initial health state
                                         Trt)             
       
+      
       m_E[, 1] <- Effs(m_M[, 1], Trt, utilityCoefs = utilityCoefs)  # estimate QALYs
                                                                     # per individual 
                                                                     # for the initial
@@ -674,8 +675,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                                 symptomatics = symptomatics,
                                 time_iteration = t,
                                 cost_Vec = cost_Vec,    
-                                Trt)            
-      
+                                Trt) %>% round(., 4)            
+        #browser()
+
         m_E[, t + 1] <- # estimate QALYs per individual during cycle t + 1
           Effs( m_M[, t + 1], Trt, 
                 utilityCoefs = utilityCoefs)                   
@@ -880,7 +882,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
 ## START SIMULATION
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 60
+numb_of_sims = 40
 sim_no_trt  <- MicroSim(strategy = "natural_history", numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
@@ -1566,3 +1568,28 @@ print(plot_CC_incidences)
 print(plot_HPV_prevalences)
 print(plot_CC_mortality)
 print(plot_CC_by_diff_mortality)
+
+
+if (numb_of_sims >=60) {
+  ################################################################################
+  # For number of simulations of 60 we can analize the cost results to check
+  # whether there is a numerical artifact or logic code problem producing
+  # a tendency of decreas tc_hat_undisc along simulations:
+  average_cost <-
+    other_mean_mortality_result[["No Intervention"]]$tc_hat_undisc$`sim[[i]][[name_level_of_sim]]`
+  # Calculate confidence intervals for groups of 10 simulations
+  grouped_means <- tapply(average_cost, (seq_along(average_cost) - 1) %/% 10, mean)
+  grouped_sd <- tapply(average_cost, (seq_along(average_cost) - 1) %/% 10, sd)
+  group_size <- 10
+  z_value <- 1.96 # for 95% confidence
+  
+  # Calculate CI for each group
+  CI <- grouped_means + c(-1, 1) * (z_value * (grouped_sd / sqrt(group_size)))
+  
+  # Plot the moving average
+  library(zoo)
+  moving_avg <- rollmean(average_cost, 10, align = "center")
+  
+  plot(average_cost, type = "l", main = "Average Cost over Simulations")
+  lines(moving_avg, col = "red")
+}
