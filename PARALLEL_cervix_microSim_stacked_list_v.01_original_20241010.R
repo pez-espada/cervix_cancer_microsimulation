@@ -56,7 +56,8 @@ my_Probs$Larger <-
 
 
 ## ----Model Parameters
-n_i <- (2.5)*10^5                 # number of simulated individuals
+#n_i <- (2.5)*10^5                 # number of simulated individuals
+n_i <- 10^5                 # number of simulated individuals
 #n_i <- 10^6                # number of simulated individuals
 n_t <- 75                   # time horizon, 75 cycles (it starts from 1)
 
@@ -538,7 +539,8 @@ if (is_slurm()) {
 # for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
 # five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
 # in 3.3-3.4 minutes but the system becomes unstable and leading to crash often.
-n_cores <- 5
+# in the office desktop with 3 cores it takes 12.1434, that's roughly 3.6 times slower
+#n_cores <- 5 # for personal Lenovo .
 cat("Number of cores: ", n_cores, "\n")
 ################################################################################
 ################################################################################
@@ -554,7 +556,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
 {
   seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
   seeds <- sample(1:100000, numb_of_sims, replace = FALSE)  # Generate random seeds
-  
+  seeds <- C(38222, 52130, 92742, 733502, 41494, 43929, 94560, 72382, 13846, 94537) 
   
   # Register the parallel backend
   cl <- makeCluster(n_cores, timeout = 6*60*60) # 6-hours timeout to prevent socket drop issues
@@ -850,9 +852,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                       new_Cancer = new_Cancer,
                       new_CC_Death = new_CC_Death,
                       CC_Death_by_diff = CC_Death_by_diff)  
-      
-      #results$seed <- seeds[sim]
+      results$seed <- seeds[sim]
       #simulation_results[sim] <- list(results)
+      #simulation_results[sim] <- results
       cat("At sim number:", sim,  " tc_hat_undisc is ", tc_hat_undisc, "\n")
       rm(symptomatics)
       #rm(TS) 
@@ -867,13 +869,14 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
   #return(simulation_results)
   
   # stack results
-  #source("./R/Sumarize_results_by_Strategy_Func.R")
+  source("./R/Sumarize_results_by_Strategy_Func.R")
   stacked_results <- 
     summarize_results_by_Strategy(results_list = simulation_results, 
                                   numb_of_sims = numb_of_sims)
   
   stopCluster(cl)  # Stop the cluster when done
-  return(stacked_results)
+  #return(stacked_results)
+  return(simulation_results)
 } # end of MicroSim function
 
 ################################################################################
@@ -882,7 +885,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
 ## START SIMULATION
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 40
+numb_of_sims = 10
 sim_no_trt  <- MicroSim(strategy = "natural_history", numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
