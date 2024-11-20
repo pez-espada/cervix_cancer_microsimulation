@@ -10,11 +10,15 @@
 rm(list = ls())
 library(tidyverse)
 
+## to prevent conflicts in the parallel environment:
+#setwd(dir = "/home/07075107P/microSim/cervix_cancer_microsimulation")
+
 # Sources:
 # Sandra's function:
 source("./R/sumarize_results_by_Strategy_Func.R")
+#Sumarize_results_by_Strategy <- source("./R/sumarize_results_by_Strategy_Func.R")
 
-# Ensure necessary libraries are loaded
+
 ensure_library <- function(...) {
 pkgs <- unlist(list(...))
 pkgs <- gsub("[\"']", "", pkgs) # Remove quotes
@@ -525,16 +529,17 @@ return(nzchar(slurm_id))  # Returns TRUE only if SLURM_JOB_ID is a non-empty str
 
 # Determine number of cores
 if (is_slurm()) {
-# In Slurm, use the cores requested by the job
-n_cores <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
-cat("I'm in slurm!\n")
+  # In Slurm, use the cores requested by the job
+  n_cores <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
+  cat("I'm in slurm!\n")
 } else {
-cat("I'm NOT in slurm!\n")
-# On local machine, use all available cores (or limit if needed)
-#n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
-## Register fewer cores (adjust based on server resources)
-n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
-#n_cores <- 3  # Try using 8 or fewer cores
+  cat("I'm NOT in slurm!\n")
+  # On local machine, use all available cores (or limit if needed)
+  #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
+  ## Register fewer cores (adjust based on server resources)
+  #n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+  n_cores <- min(detectCores())  # Try using 8 or fewer cores
+  #n_cores <- 3  # Try using 8 or fewer cores
 }
 # for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
 # five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
@@ -546,7 +551,7 @@ cat("Number of cores: ", n_cores, "\n")
 ################################################################################
 
 
-################################################################################
+#########################################################
 ## THE MICROSIMULATION MAIN FUNCTION
 ## ----MicroSim function
 # This version stacks solution of simulations but produces a list with stacked elements
@@ -871,19 +876,21 @@ simulation_results <-
 
 # stack results
 #source("./R/Sumarize_results_by_Strategy_Func.R")
-#stacked_results <- 
-#  summarize_results_by_Strategy(results_list = simulation_results, 
-#                                numb_of_sims = numb_of_sims)
+#source("/home/07075107P/microSim/cervix_cancer_microsimulation/R/Sumarize_results_by_Strategy_Func.R")
+stacked_results <- 
+  summarize_results_by_Strategy(results_list = simulation_results, 
+                                numb_of_sims = numb_of_sims)
 
 stopCluster(cl)  # Stop the cluster when done
-#return(stacked_results)
-return(simulation_results)
+return(stacked_results)
+#return(simulation_results)
 } # end of MicroSim function
 
 ################################################################################
 ##     Perform simulation
 ########################## Run the simulation ##################################
 ## START SIMULATION
+Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
 numb_of_sims = 10
