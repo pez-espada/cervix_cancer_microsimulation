@@ -37,7 +37,7 @@ my_Probs <- # transition matrix (for all sim cycles)
 my_Probs %>%
 as_tibble() # I need a tibble to use 'rename' function down there:
 
-# tidying up a bit the transition matrix:
+# Tidying up a bit the transition matrix:
 my_Probs <- my_Probs %>% dplyr::rename("H" = "Well")
 
 my_Probs <- my_Probs %>% as.data.frame() # convert back to data.frame (no needed?)
@@ -60,10 +60,12 @@ ifelse(my_Probs$Larger == max(my_Probs$Larger), my_Probs$Larger + 1, my_Probs$La
 
 
 ## ----Model Parameters
-#n_i <- (2.5)*10^5                 # number of simulated individuals
-n_i <- 10^5                 # number of simulated individuals
-#n_i <- 10^6                # number of simulated individuals
-n_t <- 75                   # time horizon, 75 cycles (it starts from 1)
+#n_i <- (2.5)*10^5         # number of simulated individuals
+#n_i <- (5)*10^5            # number of simulated individuals
+n_i <- 10^6            # number of simulated individuals
+#n_i <- 10^5               # number of simulated individuals
+#n_i <- 10^6               # number of simulated individuals
+n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
 ### (THIS IS WORK IN PROGRESS):
@@ -561,7 +563,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
 {
 seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
 seeds <- sample(1:100000, numb_of_sims, replace = FALSE)  # Generate random seeds
-seeds <- c(38222, 52130, 92742, 73352, 41494, 43929, 94560, 72382, 13846, 94537) %>% 
+#seeds <- c(38222, 52130, 92742, 73352, 41494, 43929, 94560, 72382, 13846, 94537) %>% 
   as.integer()
 
 # Register the parallel backend
@@ -893,7 +895,7 @@ return(stacked_results)
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 10
+numb_of_sims = 40
 sim_no_trt  <- MicroSim(strategy = "natural_history", numb_of_sims = numb_of_sims, 
                       v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                       d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
@@ -1300,8 +1302,8 @@ other_mean_mortality_result <-
   other_mean_mortality_func(sim_stalked_result = 
                               other_mean_mortality_result, my_Probs = my_Probs)  
 
-# save the results
-#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_40x10E5x75_20241i#010.rds")
+## save the results
+saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_40x10E6x75_20241122_madeinPADO.rds")
 
 
 ### ----Convert .Rmd to .R
