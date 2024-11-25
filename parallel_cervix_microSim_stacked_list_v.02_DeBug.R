@@ -581,12 +581,12 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 20,
       #m_M <- m_C <- m_E <-  matrix(nrow = n_i, ncol = (n_t + 1), 
       m_M <- m_C <- m_E <- 
         matrix(nrow = n_i, ncol = (n_t), 
-               dimnames = list( 1:n_i, 
+               Dimnames = list( 1:n_i, 
                                 paste0("cycle_", 1:(n_t), sep = "")))  
       
       m_M[, 1] <- v_M_1  # indicate the initial health state   
       
-      seed <- seeds[sim]
+      Seed <- seeds[sim]
       seed <- 17
       cat ("This is simulation's seed:  ", seed, "\n")
       set.seed(seed) # set the seed for every individual for the random number generator
@@ -594,7 +594,7 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 20,
       
       m_C[, 1] <- Costs_per_Cancer_Diag(M_it = m_M[, 1], # estimate costs per individual for the 
                                         symptomatics = symptomatics,
-                                        time_iteration = 1,
+                                        Time_iteration = 1,
                                         cost_Vec = cost_Vec, # initial health state
                                         Trt)             
       
@@ -602,7 +602,7 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 20,
                                                                    # per individual 
                                                                    # for the initial
                                                                    # health state  
-      stored_list <- list()
+      Stored_list <- list()
       ###################### run over all the time/cycles ######################### 
       for (t in 1:(n_t - 1)) {
         ############################################################################
@@ -612,7 +612,7 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 20,
         
         
         # update/correct n_s (<<- let change variable from inside a function):
-        n_s  <<- length(v_n)  
+        N_s  <<- length(v_n)  
         
         #### TESTING IN  
         ######################################################################### 
@@ -629,11 +629,11 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 20,
         
         
         ########################################################################    
-        my_age_prob_matrix <- 
+        My_age_prob_matrix <- 
           my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
                                   ## WHY add 1 to age_in_loop??
                                   #my_age_in_loop = (age_in_loop + 1))
-                                  my_age_in_loop = (age_in_loop))
+                                  My_age_in_loop = (age_in_loop))
         
         # Get transition matrix for the current age
         ##my_age_prob_matrix <- Pmatrix %>%
@@ -642,7 +642,7 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 20,
         # Add colnames and update `v_n`:
         rownames(my_age_prob_matrix) <- v_n <<- 
           my_age_prob_matrix %>%
-          dplyr::select(-c(Age.group, Lower, Larger)) %>% 
+          Dplyr::select(-c(Age.group, Lower, Larger)) %>% 
           colnames()
         
         # Extract the transition probabilities of each individuals at cycle t
@@ -680,7 +680,7 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 20,
         # Costs per CC diagnose at time t + 1.
         # Estimate costs per individual during cycle t + 1 conditional on treatment:
         #m_C[, t] <-                              
-        m_C[, t + 1] <-                              
+        M_C[, t + 1] <-                              
           Costs_per_Cancer_Diag(M_it = m_M[, t + 1],  
                                 symptomatics = symptomatics,
                                 time_iteration = (t+1),
@@ -882,7 +882,7 @@ MicroSim_parallel <- function(strategy="natural_history", numb_of_sims = 20,
 ################################################################################
 ##     Perform simulation
 ########################## Run the simulation ##################################
-## START SIMULATION
+## 
 p = Sys.time()
 # run for no treatment
 sim_no_trt  <- MicroSim_parallel(strategy = "natural_history",numb_of_sims = 10, 
@@ -1289,7 +1289,7 @@ other_mean_mortality_result <-
                               other_mean_mortality_result, my_Probs = my_Probs)  
 
 # save the results
-#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E5x75_20241024_Parallel.rds")
+saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_10x10E5x75_20241122_Paralleli_testFrom_PADO.rds")
 
 
 ### ----convert .Rmd to .R-----------------------------------------------------------------------------------------------------------------------------------------------------------------

@@ -61,7 +61,7 @@ ifelse(my_Probs$Larger == max(my_Probs$Larger), my_Probs$Larger + 1, my_Probs$La
 
 ## ----Model Parameters
 #n_i <- (2.5)*10^5         # number of simulated individuals
-#n_i <- (5)*10^5            # number of simulated individuals
+n_i <- (5)*10^5            # number of simulated individuals
 n_i <- 10^6            # number of simulated individuals
 #n_i <- 10^5               # number of simulated individuals
 #n_i <- 10^6               # number of simulated individuals
@@ -584,6 +584,9 @@ simulation_results <- list()
 simulation_results <- 
   foreach(sim = 1:numb_of_sims, .packages = c("dplyr", "tidyr", "purrr") ) %dopar% { 
     
+    ## clean memory:
+    #if (step %% 10 == 0) gc()
+    
     cat("Running simulation", sim, "with seed", seeds[sim], "\n")
     symptomatics <-
       data.frame(ID = integer(), TimeStep = integer(), 
@@ -895,7 +898,7 @@ return(stacked_results)
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 40
+numb_of_sims = 20
 sim_no_trt  <- MicroSim(strategy = "natural_history", numb_of_sims = numb_of_sims, 
                       v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                       d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
@@ -1303,7 +1306,7 @@ other_mean_mortality_result <-
                               other_mean_mortality_result, my_Probs = my_Probs)  
 
 ## save the results
-saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_40x10E6x75_20241122_madeinPADO.rds")
+saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E6x75_20241125_madeinPADO_B.rds")
 
 
 ### ----Convert .Rmd to .R
