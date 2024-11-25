@@ -15,6 +15,7 @@ library(tidyverse)
 
 # Sources:
 # Sandra's function:
+
 source("./R/sumarize_results_by_Strategy_Func.R")
 #Sumarize_results_by_Strategy <- source("./R/sumarize_results_by_Strategy_Func.R")
 
@@ -1306,7 +1307,7 @@ other_mean_mortality_result <-
                               other_mean_mortality_result, my_Probs = my_Probs)  
 
 ## save the results
-saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E6x75_20241125_madeinPADO_B.rds")
+saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E6x75_20241125_madeinPADO_A.rds")
 
 
 ### ----Convert .Rmd to .R
