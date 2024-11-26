@@ -61,11 +61,11 @@ ifelse(my_Probs$Larger == max(my_Probs$Larger), my_Probs$Larger + 1, my_Probs$La
 
 
 ## ----Model Parameters
-#n_i <- (2.5)*10^5         # number of simulated individuals
-n_i <- (5)*10^5            # number of simulated individuals
-n_i <- 10^6            # number of simulated individuals
+n_i <- (2.5)*10^5         # number of simulated individuals
+#n_i <- (5)*10^5            # number of simulated individuals
+#n_i <- 10^6            # number of simulated individuals
 #n_i <- 10^5               # number of simulated individuals
-#n_i <- 10^6               # number of simulated individuals
+n_i <- 10^6               # number of simulated individuals
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
@@ -558,6 +558,7 @@ cat("Number of cores: ", n_cores, "\n")
 ## THE MICROSIMULATION MAIN FUNCTION
 ## ----MicroSim function
 # This version stacks solution of simulations but produces a list with stacked elements
+# check the `MicroSim` for any improvements or issues.
 MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                    v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE, 
                    TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix) 
@@ -892,6 +893,7 @@ return(stacked_results)
 #return(simulation_results)
 } # end of MicroSim function
 
+
 ################################################################################
 ##     Perform simulation
 ########################## Run the simulation ##################################
@@ -899,7 +901,7 @@ return(stacked_results)
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 40
+numb_of_sims = 20
 sim_no_trt  <- MicroSim(strategy = "natural_history", numb_of_sims = numb_of_sims, 
                       v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                       d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
@@ -1307,7 +1309,7 @@ other_mean_mortality_func(sim_stalked_result =
                               other_mean_mortality_result, my_Probs = my_Probs)  
 
 # save the results
-saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_40x10E6x75_20241125_madeinPADO.rds")
+saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E5x75_20241126_madeinPADO_TEST.rds")
 
 
 ### ----Convert .Rmd to .R
@@ -1511,7 +1513,7 @@ markov_data <- data.frame(
 )
 
 # Ensure all columns in markov_data are numeric
-markov_data[] <- lapply(markov_data, function(x) {
+markov_data[] <- lapply(markov_data, unction(x) {
   if (is.factor(x)) {
     as.character(x)
   } else {
