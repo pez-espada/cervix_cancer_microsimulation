@@ -57,15 +57,15 @@ my_Probs$Lower  <- sapply(my_Probs$Age.group, function(x) extract_numbers(x)[1])
 my_Probs$Larger <- sapply(my_Probs$Age.group, function(x) extract_numbers(x)[2])
 # For the last cycle/iteration we need to adjust the last transition matrix:
 my_Probs$Larger <- 
-ifelse(my_Probs$Larger == max(my_Probs$Larger), my_Probs$Larger + 1, my_Probs$Larger) 
+  ifelse(my_Probs$Larger == max(my_Probs$Larger), my_Probs$Larger + 1, my_Probs$Larger) 
 
 
 ## ----Model Parameters
-n_i <- (2.5)*10^5         # number of simulated individuals
-#n_i <- (5)*10^5            # number of simulated individuals
+#n_i <- (2.5)*10^5         # number of simulated individuals
+n_i <- (5)*10^5            # number of simulated individuals
 #n_i <- 10^6            # number of simulated individuals
 #n_i <- 10^5               # number of simulated individuals
-n_i <- 10^6               # number of simulated individuals
+#n_i <- 10^6               # number of simulated individuals
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
@@ -1309,7 +1309,7 @@ other_mean_mortality_func(sim_stalked_result =
                               other_mean_mortality_result, my_Probs = my_Probs)  
 
 # save the results
-saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E5x75_20241126_madeinPADO_TEST.rds")
+saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x5x10E5x75_20241127_madeinPADO_TEST_from_script_3.rds")
 
 
 ### ----Convert .Rmd to .R
@@ -1513,7 +1513,7 @@ markov_data <- data.frame(
 )
 
 # Ensure all columns in markov_data are numeric
-markov_data[] <- lapply(markov_data, unction(x) {
+markov_data[] <- lapply(markov_data, function(x) {
   if (is.factor(x)) {
     as.character(x)
   } else {
