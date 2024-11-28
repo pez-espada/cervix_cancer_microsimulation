@@ -62,8 +62,8 @@ my_Probs$Larger <-
 
 ## ----Model Parameters
 #n_i <- (2.5)*10^5         # number of simulated individuals
-n_i <- (5)*10^5            # number of simulated individuals
-#n_i <- 10^6            # number of simulated individuals
+#n_i <- (5)*10^5            # number of simulated individuals
+n_i <- 10^6            # number of simulated individuals
 #n_i <- 10^5               # number of simulated individuals
 #n_i <- 10^6               # number of simulated individuals
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
@@ -1310,7 +1310,11 @@ other_mean_mortality_func(sim_stalked_result =
 
 # save the results
 #saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x5x10E5x75_20241127_madeinPADO_TEST_from_script_3.rds")
-saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x5x10E5x75_20241128_madeinPADO_TEST_from_script_3.rds")
+saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E6x75_20241128_madeinPADO_TEST_from_script_4.rds")
+
+other_mean_mortality_result <-
+  readRDS(file = "./data/stacked_sims_20x10E6x75_20241128_madeinPADO_TEST_from_script_4.rds")
+
 
 
 ### ----Convert .Rmd to .R
@@ -1365,7 +1369,7 @@ saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x5x1
 library(RColorBrewer)
 #ensure_library("RColorBrewer")
 # Convert matrix to data frame
-micro_sim_df <- sim_no_trt[[1]]$TR
+#micro_sim_df <- sim_no_trt[[1]]$TR
 micro_sim_df <- other_mean_mortality_result[[1]]$TR
 
 # Load necessary libraries
@@ -1564,7 +1568,10 @@ plot_comparison <- function(data, measure_name) {
   ggplot(data %>% dplyr::filter(grepl(measure_name, measure)), 
          aes(x = age, y = value, fill = model)) +
     geom_bar(stat = "identity", position = "dodge") +
-    labs(title = paste(measure_name, "Comparison", " N=", n_i, " cycles=", n_t, "Parallelized"),
+    labs(title = paste(measure_name, "Comparison", 
+                       " N=", other_mean_mortality_result[[1]]$numb_of_ind, 
+                       " cycles=", other_mean_mortality_result[[1]]$numb_of_cycles,
+                       "Parallelized"),
          x = "Age Group",
          y = measure_name) +
     theme_minimal() +
