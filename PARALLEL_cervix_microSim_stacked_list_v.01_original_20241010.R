@@ -1309,7 +1309,8 @@ other_mean_mortality_func(sim_stalked_result =
                               other_mean_mortality_result, my_Probs = my_Probs)  
 
 # save the results
-saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x5x10E5x75_20241127_madeinPADO_TEST_from_script_3.rds")
+#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x5x10E5x75_20241127_madeinPADO_TEST_from_script_3.rds")
+saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x5x10E5x75_20241128_madeinPADO_TEST_from_script_3.rds")
 
 
 ### ----Convert .Rmd to .R
