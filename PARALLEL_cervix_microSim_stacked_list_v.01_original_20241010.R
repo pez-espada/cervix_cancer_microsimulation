@@ -64,7 +64,7 @@ my_Probs$Larger <-
 #n_i <- (2.5)*10^5         # number of simulated individuals
 #n_i <- (5)*10^5            # number of simulated individuals
 n_i <- 10^6            # number of simulated individuals
-#n_i <- 10^5               # number of simulated individuals
+n_i <- 10^5               # number of simulated individuals
 #n_i <- 10^6               # number of simulated individuals
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 
