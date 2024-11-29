@@ -64,7 +64,7 @@ my_Probs$Larger <-
 #n_i <- (2.5)*10^5         # number of simulated individuals
 #n_i <- (5)*10^5            # number of simulated individuals
 n_i <- 10^6            # number of simulated individuals
-n_i <- 10^5               # number of simulated individuals
+#n_i <- 10^5               # number of simulated individuals
 #n_i <- 10^6               # number of simulated individuals
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 
@@ -1308,9 +1308,10 @@ other_mean_mortality_result <-
 other_mean_mortality_func(sim_stalked_result = 
                               other_mean_mortality_result, my_Probs = my_Probs)  
 
-# save the results
-#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x5x10E5x75_20241127_madeinPADO_TEST_from_script_3.rds")
-#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E6x75_20241129_madeinPADO_TEST_from_script_6.rds")
+## save the results
+##saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x5x10E5x75_20241127_madeinPADO_TEST_from_script_3.rds")
+#saveRDS(object = other_mean_mortality_result, file = 
+#          "./data/stacked_sims_20x10E6x75_20241129_madeinPADO_TEST_from_script_7.rds")
 
 ## Load the results , if they have produced previously (comment the above lines)
 #other_mean_mortality_result <-
