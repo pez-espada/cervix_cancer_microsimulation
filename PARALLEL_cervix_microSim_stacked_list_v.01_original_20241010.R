@@ -1310,11 +1310,11 @@ other_mean_mortality_func(sim_stalked_result =
 
 # save the results
 #saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x5x10E5x75_20241127_madeinPADO_TEST_from_script_3.rds")
-saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E6x75_20241128_madeinPADO_TEST_from_script_4.rds")
+#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E6x75_20241129_madeinPADO_TEST_from_script_6.rds")
 
-other_mean_mortality_result <-
-  readRDS(file = "./data/stacked_sims_20x10E6x75_20241128_madeinPADO_TEST_from_script_4.rds")
-
+## Load the results , if they have produced previously (comment the above lines)
+#other_mean_mortality_result <-
+#  readRDS(file = "./data/stacked_sims_20x10E6x75_20241129_madeinPADO_TEST_from_script_6.rds")
 
 
 ### ----Convert .Rmd to .R
