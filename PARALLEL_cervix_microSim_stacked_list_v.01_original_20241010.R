@@ -901,7 +901,7 @@ return(stacked_results)
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 80
+numb_of_sims = 20
 sim_no_trt  <- MicroSim(strategy = "natural_history", numb_of_sims = numb_of_sims, 
                       v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                       d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
@@ -1310,7 +1310,7 @@ other_mean_mortality_func(sim_stalked_result =
 
 # save the results
 #saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x5x10E5x75_20241127_madeinPADO_TEST_from_script_3.rds")
-saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_80x10E6x75_20241128_madeinPADO_TEST_from_script_5.rds")
+saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x10E6x75_20241202_madeinPADO_TEST_from_script.rds")
 
 #other_mean_mortality_result <-
 #  readRDS(file = "./data/stacked_sims_20x10E6x75_20241128_madeinPADO_TEST_from_script_4.rds")
