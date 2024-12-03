@@ -906,6 +906,14 @@ sim_no_trt  <- MicroSim(strategy = "natural_history", numb_of_sims = numb_of_sim
                       v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                       d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                       Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
+# For stacking outside the function, we need to comment the stacking function
+# inside  de the MicroSim function, and return the results as a list by comenting
+# 'return(stacked_results)' and uncomment 'return(simulation_results)'. And then,
+# uncomment the following lines:
+#stacked_results <- 
+#  summarize_results_by_Strategy(results_list = sim_no_trt, 
+#                                numb_of_sims = numb_of_sims)
+#sim_no_trt <- stacked_results
 
 # Load computed simulation if needed here:
 #sim_no_trt <- readRDS(file = "./data/stacked_sims_100x10E6x75.rds")
