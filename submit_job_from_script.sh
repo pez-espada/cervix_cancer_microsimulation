@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=R-simulation       # Job name
 #SBATCH --cpus-per-task=20            # CPUs
-#SBATCH --mem=256gb                    # Job memory request
+#SBATCH --mem=256gb                   # Job memory request
 #SBATCH --time=48:0:0                 # Time limit
 #SBATCH --output=slurm-%j.out
 

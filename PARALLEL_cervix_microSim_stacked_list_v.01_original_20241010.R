@@ -540,8 +540,9 @@ if (is_slurm()) {
   # On local machine, use all available cores (or limit if needed)
   #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
   ## Register fewer cores (adjust based on server resources)
-  #n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
-  n_cores <- min(detectCores())  # Try using 8 or fewer cores
+  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+  #n_cores <- detectCores()  # Try using 8 or fewer cores
+  #n_cores <- min(detectCores())  # Try using 8 or fewer cores
   #n_cores <- 3  # Try using 8 or fewer cores
 }
 # for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
@@ -565,8 +566,14 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
 {
   seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
   seeds <- sample(1:100000, numb_of_sims, replace = FALSE)  # Generate random seeds
-  #seeds <- c(38222, 52130, 92742, 73352, 41494, 43929, 94560, 72382, 13846, 94537) %>% 
-  as.integer()
+  # fix the seeds for reproducibility::
+  seeds <- c(38222, 52130, 92742, 73352, 41494, 43929, 94560, 72382, 13846, 94537) %>% 
+    as.integer()
+  seeds <- c(20422, 63139, 3575,  9449,  4055,  
+             6931, 92384, 24048, 25109,  7757,
+             25889, 32227, 57572, 36484, 38944,  
+             4074, 45156, 93585, 48543, 57217) %>%
+    as.integer()
   
   # Register the parallel backend
   cl <- makeCluster(n_cores, timeout = 6*60*60) # 6-hours timeout to prevent socket drop issues
@@ -576,8 +583,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                       "update_column", "states_to_check", "symptom_prob_vec",
                       "survival_prob_vec", "global_diagnosed", 
                       "cost_Vec", "new_cases_2"))
-  #registerDoParallel(cl)
-  registerDoSEQ()
+  registerDoParallel(cl)
+  #registerDoSEQ()
   
   simulation_results <- list() 
   
@@ -884,13 +891,13 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
   # stack results
   #source("./R/Sumarize_results_by_Strategy_Func.R")
   #source("/home/07075107P/microSim/cervix_cancer_microsimulation/R/Sumarize_results_by_Strategy_Func.R")
-  stacked_results <- 
-    summarize_results_by_Strategy(results_list = simulation_results, 
-                                  numb_of_sims = numb_of_sims)
+  #stacked_results <- 
+  #  summarize_results_by_Strategy(results_list = simulation_results, 
+  #                                numb_of_sims = numb_of_sims)
   
   stopCluster(cl)  # Stop the cluster when done
-  return(stacked_results)
-  #return(simulation_results)
+  #return(stacked_results)
+  return(simulation_results)
 } # end of MicroSim function
 
 
@@ -906,14 +913,16 @@ sim_no_trt  <- MicroSim(strategy = "natural_history", numb_of_sims = numb_of_sim
                       v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                       d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                       Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
+
 # For stacking outside the function, we need to comment the stacking function
 # inside  de the MicroSim function, and return the results as a list by comenting
 # 'return(stacked_results)' and uncomment 'return(simulation_results)'. And then,
 # uncomment the following lines:
-#stacked_results <- 
-#  summarize_results_by_Strategy(results_list = sim_no_trt, 
-#                                numb_of_sims = numb_of_sims)
-#sim_no_trt <- stacked_results
+source("./R/sumarize_results_by_Strategy_Func.R")
+stacked_results <- 
+  summarize_results_by_Strategy(results_list = sim_no_trt, 
+                                numb_of_sims = numb_of_sims)
+sim_no_trt <- stacked_results
 
 # Load computed simulation if needed here:
 #sim_no_trt <- readRDS(file = "./data/stacked_sims_100x10E6x75.rds")
@@ -1315,9 +1324,34 @@ other_mean_mortality_result <-
 other_mean_mortality_func(sim_stalked_result = 
                               other_mean_mortality_result, my_Probs = my_Probs)  
 
+cat("Hey, I'm done,, and about to write out the results\n")
+
+# Save the results to a file
+# Get SLURM job ID from the environment variable
+slurm_job_id <- Sys.getenv("SLURM_JOB_ID", unset = NA)
+if (is.na(slurm_job_id)) {
+  slurm_job_id <- format(Sys.time(), "%Y%m%d%H%M%S")  # Fallback to timestamp if not running in SLURM
+}
+
+cat("SLURM job ID:", slurm_job_id, "\n")
+
+# Use job ID in file name
+output_file <-
+  paste0("data/testing_stability/stacked_sims_20x10E6x75_20241205_madeinPADO_PARA_from_script_stackedOutside_", slurm_job_id, ".rds")
+saveRDS(object = other_mean_mortality_result, file = output_file)
+
+
+
 # save the results
 #saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x5x10E5x75_20241127_madeinPADO_TEST_from_script_3.rds")
-saveRDS(object = other_mean_mortality_result, file = "data/stacked_sims_20x10E6x75_20241203_madeinPADO_seq_from_script.rds")
+#saveRDS(object = other_mean_mortality_result, file = 
+#          "data/TEST_STACKING/stacked_sims_40x10E6x75_20241203_madeinPADO_SEQ_from_script_stackedOutside.rds")
+#saveRDS(object = other_mean_mortality_result, file = 
+#          "data/stacked_sims_40x10E6x75_20241203_madeinPADO_SEQ_from_script_stackedOutside.rds")
+#saveRDS(object = other_mean_mortality_result, file = 
+#          "data/testing_stability/stacked_sims_20x10E6x75_20241205_madeinPADO_PARA_from_script_stackedOutside_03.rds")
+
+cat("I have written out the results\n")
 
 #other_mean_mortality_result <-
 #  readRDS(file = "./data/stacked_sims_20x10E6x75_20241128_madeinPADO_TEST_from_script_4.rds")
