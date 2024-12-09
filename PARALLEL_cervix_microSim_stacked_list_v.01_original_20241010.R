@@ -64,8 +64,8 @@ my_Probs$Larger <-
 #n_i <- (2.5)*10^5         # number of simulated individuals
 #n_i <- (5)*10^5            # number of simulated individuals
 #n_i <- 10^7            # number of simulated individuals
-#n_i <- 10^5               # number of simulated individuals
-n_i <- 10^6               # number of simulated individuals
+n_i <- 10^5               # number of simulated individuals
+#n_i <- 10^6               # number of simulated individuals
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
@@ -148,52 +148,54 @@ return(transition_prob)
 
 ## ----Sampling function
 # Efficient implementation of the rMultinom() function of the Hmisc package #### 
+# This function samples the next health state of each individual based on the
+# transition probabilities of the current health state of each individual.
 samplev <- function (probs, m) {
-d <- dim(probs) # i.e. number of individuals times number of states: n_i x n_s
-n <- d[1]       # number of individuals n_s
-k <- d[2]       # number of states
-lev <- dimnames(probs)[[2]] # vector with  names of health states
-if (!length(lev)) # checks if `lev` vector (states names) is empty 
-                  # or has length 0 
-  lev <- 1:k # if empty (evaluates to `TRUE`), it assigns numeric state labels
-             # (1:k) to `lev`
-ran <- 
-  matrix(lev[1], ncol = m, nrow = n) # create array n_s x m (m=1) 
-                                     # consisting in of health-state stored in
-                                     # `lev[1]`, "H" in our case.
-                                          
-##############################################################################
-########## Creating the matrix of cumulative distributions U #################
-U <- t(probs)    # transpose probs from (`n_i*n_s`) to (`n_s*n_i`)
-for(i in 2:k) {  
-  # This loop fills U with the cumulative probabilities of each individual
-  # across all its possible transitions (`v_s`or `lev` within thus function).
-  # That is each column of `U` represents the cumulative distribution for each
-  # individual across its corresponding transitions. 
-  # The last element of each column must sum 1 (or close enough:)
-  U[i, ] <- U[i, ] + U[i - 1, ]
-}
-if (any((U[k, ] - 1) > 1e-04))
-  stop("error in multinom: probabilities do not sum to 1")
-##############################################################################
-##############################################################################
-
-### Random sampling, binning, and moving states: 
-for (j in 1:m) {
-  un <- rep(runif(n), rep(k, n)) # repeat `runif(n)` `rep(k,n)`times
-                                 # this create a numeric of `n_i x n_s` that 
-                                 # sample  an uniformed distributed number 
-                                 # between 0 and 1. The generated random number
-                                 # repeats itself `n_s` times and then another 
-                                 # rand unif number is drawn. This process is 
-                                 # carried out `n_i` times. NOTE: every time
-                                 # runif() is run it produces a new random sample
-                                 # i.e. it does not seem dependent on the seed
+  d <- dim(probs) # i.e. number of individuals times number of states: n_i x n_s
+  n <- d[1]       # number of individuals n_s
+  k <- d[2]       # number of states
+  lev <- dimnames(probs)[[2]] # vector with  names of health states
+  if (!length(lev)) # checks if `lev` vector (states names) is empty 
+    # or has length 0 
+    lev <- 1:k # if empty (evaluates to `TRUE`), it assigns numeric state labels
+  # (1:k) to `lev`
+  ran <- 
+    matrix(lev[1], ncol = m, nrow = n) # create array n_s x m (m=1) 
+  # consisting in of health-state stored in
+  # `lev[1]`, "H" in our case.
   
-  # Here's where we choose the individuals' next states:
-  ran[, j] <- lev[1 + colSums(un > U)]
-}
-ran
+  ##############################################################################
+  ########## Creating the matrix of cumulative distributions U #################
+  U <- t(probs)    # transpose probs from (`n_i*n_s`) to (`n_s*n_i`)
+  for(i in 2:k) {  
+    # This loop fills U with the cumulative probabilities of each individual
+    # across all its possible transitions (`v_s`or `lev` within thus function).
+    # That is each column of `U` represents the cumulative distribution for each
+    # individual across its corresponding transitions. 
+    # The last element of each column must sum 1 (or close enough:)
+    U[i, ] <- U[i, ] + U[i - 1, ]
+  }
+  if (any((U[k, ] - 1) > 1e-04))
+    stop("error in multinom: probabilities do not sum to 1")
+  ##############################################################################
+  ##############################################################################
+  
+  ### Random sampling, binning, and moving states: 
+  for (j in 1:m) {
+    un <- rep(runif(n), rep(k, n)) # repeat `runif(n)` `rep(k,n)`times
+    # this create a numeric of `n_i x n_s` that 
+    # sample  an uniformed distributed number 
+    # between 0 and 1. The generated random number
+    # repeats itself `n_s` times and then another 
+    # rand unif number is drawn. This process is 
+    # carried out `n_i` times. NOTE: every time
+    # runif() is run it produces a new random sample
+    # i.e. it does not seem dependent on the seed
+    
+    # Here's where we choose the individuals' next states:
+    ran[, j] <- lev[1 + colSums(un > U)]
+  }
+  ran
 }
 ################################################################################
 
@@ -202,8 +204,8 @@ ran
 ######################### Probability function #################################
 ## The Probs function that updates the transition probabilities of every cycle:
 Probs <- function(M_it, my_Probs) {
-n_s <- length(v_n)
-n_i <- length(M_it)
+  n_s <- length(v_n)
+  n_i <- length(M_it)
 m_P_it <- matrix(NA, n_s, n_i) 
 rownames(m_P_it) <- v_n
 for (i in 1:length(v_n)) {
@@ -264,6 +266,7 @@ return(c_it)              		                           # return the costs
 ################################################################################
 ## ----Qalys function
 ### Health outcome function 
+# The `Effs` function estimates the QALYs of a diagnose individual due to cancer
 Effs <- function (M_it, Trt = FALSE, cl = 1, utilityCoefs) {
 # check length of vector of states and vector of utility/QALYs are the same:
 u_it <- 0                   # by default the utility for everyone is zero
@@ -366,7 +369,9 @@ global_diagnosed <- integer()
 
 ################################################################################
 # Function receives a column with current state of `n_i`individuals and gives
-# a dataframe with `ID, TimeStep`, `state`, and `RecoveredFromState` 
+# a dataframe with `ID, TimeStep`, `state`, and `RecoveredFromState` columns.
+# The function also updates the global vector `global_diagnosed` with the IDs of
+# individuals who have been diagnosed.
 diagnose_column <- function(col, time_step) {
 new_entries <- data.frame(ID = integer(), 
                           TimeStep = integer(), DiagnosedState = character(),
@@ -403,6 +408,10 @@ return(new_entries)
 ################################################################################
 
 ################################################################################
+# Function to update the next column based on the new entries
+# This function updates the next column based on the new entries of diagnosed
+# individuals. It also updates the state of individuals who have recovered.
+# The function returns the updated next column.
 update_column <- function(col, new_entries, next_col) {
 if (nrow(new_entries) > 0) {
   diagnosed_ids <- new_entries$ID
@@ -421,93 +430,100 @@ return(next_col)
 #################################################################################
 
 ################################################################################
+# Function to add new cases to the transition matrix
+# This function adds new rows to the transition matrix for individuals who have
+# been diagnosed with cancer. It also updates the age and cycle columns.
 new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
-# Convert the data to a tibble for easier manipulation
-Tot_Trans_per_t_tbl <- as_tibble(Tot_Trans_per_t)
-
-# Case when state1 is a single string
-if (length(state1) == 1) {
-  transition_column <- paste0(state1, "->", state2)  # Create the transition name
+  # Convert the data to a tibble for easier manipulation
+  Tot_Trans_per_t_tbl <- as_tibble(Tot_Trans_per_t)
   
-  # If the transition column exists, select it
-  if (transition_column %in% colnames(Tot_Trans_per_t_tbl)) {
-    transition_cases <- Tot_Trans_per_t_tbl %>%
-      dplyr::select(all_of(transition_column)) %>%  
-      dplyr::mutate(age = row_number() + 10,        
-                    cycle = age - 9) 
+  # Case when state1 is a single string
+  if (length(state1) == 1) {
+    transition_column <- paste0(state1, "->", state2)  # Create the transition name
     
-    # Modify the dataframe: Add a new row with age = 10 and transition column = 0, and delete the last row (age = 85)
-    transition_cases <- transition_cases %>%
-      add_row(!!transition_column := 0, age = 10, cycle = 1, .before = 1) %>%  # Add row at the beginning
-      slice(-n()) %>%  # Remove the last row
-      mutate(age = 10:(10 + n() - 1),  # Adjust age to start from 10
-             cycle = age - 9)  # Adjust cycle
-  } else {
-    # Handle missing transition columns
-    warning(paste0("Transition '", transition_column, "' not found! Using a column of zeros."))
-    transition_cases <- tibble(
-      !!transition_column := rep(0, nrow(Tot_Trans_per_t_tbl)),  
-      age = row_number() + 10,
-      cycle = age - 9
-    ) %>%
-      add_row(!!transition_column := 0, age = 10, cycle = 1, .before = 1) %>%  
+    # If the transition column exists, select it
+    if (transition_column %in% colnames(Tot_Trans_per_t_tbl)) {
+      transition_cases <- Tot_Trans_per_t_tbl %>%
+        dplyr::select(all_of(transition_column)) %>%  
+        dplyr::mutate(age = row_number() + 10,        
+                      cycle = age - 9) 
+      
+      # Modify the dataframe: Add a new row with age = 10 and
+      # transition column = 0, and delete the last row (age = 85)
+      transition_cases <- transition_cases %>%
+        # Add row at the beginning
+        add_row(!!transition_column := 0, age = 10, cycle = 1, .before = 1) %>%  
+        slice(-n()) %>%  
+        # Remove the last row
+        mutate(age = 10:(10 + n() - 1),  # Adjust age to start from 10
+               cycle = age - 9)  # Adjust cycle
+    } else {
+      # Handle missing transition columns
+      warning(paste0("Transition '", transition_column, "' not found! Using a column of zeros."))
+      transition_cases <- tibble(
+        !!transition_column := rep(0, nrow(Tot_Trans_per_t_tbl)),  
+        age = row_number() + 10,
+        cycle = age - 9
+      ) %>%
+        add_row(!!transition_column := 0, age = 10, cycle = 1, .before = 1) %>%  
+        slice(-n()) %>%
+        mutate(age = 10:(10 + n() - 1), 
+               cycle = age - 9)
+    }
+    return(transition_cases)
+    
+    # Case when state1 is a vector (length > 1)
+  } else if (length(state1) > 1) {
+    transition_columns <- paste0(state1, "->", state2)  
+    
+    # Handle missing columns and replace them with zeros
+    existing_cols <- intersect(transition_columns, colnames(Tot_Trans_per_t_tbl))
+    missing_cols <- setdiff(transition_columns, colnames(Tot_Trans_per_t_tbl))
+    
+    if (length(missing_cols) > 0) {
+      warning(paste0("Some transitions not found: ", paste(missing_cols, collapse = ", "), ". Using columns of zeros for these."))
+    }
+    
+    # Create missing columns (zeros)
+    # Create a tibble for the missing columns (zeros).
+    # The operator ' unquote-splice` ("!!!") splices or unpack (corte y pega) 
+    # a list or vector into multiple arguments (used with functions of `rlang`).
+    # in our case the !!! is used to unpack the list returned by setNames() 
+    # and pass it as individual arguments to tibble(). This way, each item in 
+    # the list becomes a separate column in the tibble, with the names provided
+    # by missing_cols.
+    missing_df <- tibble(
+      !!!setNames(lapply(missing_cols, function(x) rep(0, nrow(Tot_Trans_per_t_tbl))), missing_cols)
+    )
+    
+    # Combine and process
+    # The "unquote" operator unquotes a value or an expression, rather than 
+    # treating it as a literal symbol or character string.
+    # a) !! (Unquote): Injects a single value or expression into a function. 
+    # It is typically used when you want to reference or compute something based
+    # on a single variable or expression.
+    # b) !!! (Unquote-splice): Injects or "splices" multiple values or elements 
+    #from a list or vector into a function. It is used when you need to spread 
+    # a list of arguments across multiple positions or inputs.
+    transition_cases <- Tot_Trans_per_t_tbl %>%
+      dplyr::select(all_of(existing_cols)) %>%
+      bind_cols(missing_df) %>%  
+      rowwise() %>%
+      mutate(!!paste0(state2, "_per_t") := sum(c_across(everything()), na.rm = TRUE)) %>%
+      ungroup() %>%
+      dplyr::mutate(age = row_number() + 10,  
+                    cycle = age - 9) %>%
+      add_row(!!paste0(state2, "_per_t") := 0, age = 10, cycle = 1, .before = 1) %>%
       slice(-n()) %>%
       mutate(age = 10:(10 + n() - 1), 
              cycle = age - 9)
+    return(transition_cases)
   }
-  return(transition_cases)
-  
-  # Case when state1 is a vector (length > 1)
-} else if (length(state1) > 1) {
-  transition_columns <- paste0(state1, "->", state2)  
-  
-  # Handle missing columns and replace them with zeros
-  existing_cols <- intersect(transition_columns, colnames(Tot_Trans_per_t_tbl))
-  missing_cols <- setdiff(transition_columns, colnames(Tot_Trans_per_t_tbl))
-  
-  if (length(missing_cols) > 0) {
-    warning(paste0("Some transitions not found: ", paste(missing_cols, collapse = ", "), ". Using columns of zeros for these."))
-  }
-  
-  # Create missing columns (zeros)
-  # Create a tibble for the missing columns (zeros).
-  # The operator ' unquote-splice` ("!!!") splices or unpack (corte y pega) 
-  # a list or vector into multiple arguments (used with functions of `rlang`).
-  # in our case the !!! is used to unpack the list returned by setNames() 
-  # and pass it as individual arguments to tibble(). This way, each item in 
-  # the list becomes a separate column in the tibble, with the names provided
-  # by missing_cols.
-  missing_df <- tibble(
-    !!!setNames(lapply(missing_cols, function(x) rep(0, nrow(Tot_Trans_per_t_tbl))), missing_cols)
-  )
-  
-  # Combine and process
-  # The "unquote" operator unquotes a value or an expression, rather than 
-  # treating it as a literal symbol or character string.
-  # a) !! (Unquote): Injects a single value or expression into a function. 
-  # It is typically used when you want to reference or compute something based
-  # on a single variable or expression.
-  # b) !!! (Unquote-splice): Injects or "splices" multiple values or elements 
-  #from a list or vector into a function. It is used when you need to spread 
-  # a list of arguments across multiple positions or inputs.
-  transition_cases <- Tot_Trans_per_t_tbl %>%
-    dplyr::select(all_of(existing_cols)) %>%
-    bind_cols(missing_df) %>%  
-    rowwise() %>%
-    mutate(!!paste0(state2, "_per_t") := sum(c_across(everything()), na.rm = TRUE)) %>%
-    ungroup() %>%
-    dplyr::mutate(age = row_number() + 10,  
-                  cycle = age - 9) %>%
-    add_row(!!paste0(state2, "_per_t") := 0, age = 10, cycle = 1, .before = 1) %>%
-    slice(-n()) %>%
-    mutate(age = 10:(10 + n() - 1), 
-           cycle = age - 9)
-  return(transition_cases)
-}
 }
 ################################################################################
 
 ################################################################################
+# Function to update the transition matrix with new cases
 my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
   my_age_prob_matrix <- my_Prob_matrix %>% 
     dplyr::filter(Lower <= my_age_in_loop  &
@@ -516,47 +532,10 @@ my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
 ################################################################################
 
 
-################################################################################
-################################################################################
-### Parallelize code ###
-library(parallel)
-ensure_library("doParallel")
-
-################################################################################
-# Function to detect if running on SLURM -NOT WORKING AS INTENDED"-
-is_slurm <- function() {
-slurm_id <- Sys.getenv("SLURM_JOB_ID")
-return(nzchar(slurm_id))  # Returns TRUE only if SLURM_JOB_ID is a non-empty string
-}
-################################################################################
-
-# Determine number of cores
-if (is_slurm()) {
-  # In Slurm, use the cores requested by the job
-  n_cores <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
-  cat("I'm in slurm!\n")
-} else {
-  cat("I'm NOT in slurm!\n")
-  # On local machine, use all available cores (or limit if needed)
-  #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
-  ## Register fewer cores (adjust based on server resources)
-  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
-  #n_cores <- detectCores()  # Try using 8 or fewer cores
-  #n_cores <- min(detectCores())  # Try using 8 or fewer cores
-  #n_cores <- 3  # Try using 8 or fewer cores
-}
-# for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
-# five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
-# in 3.3-3.4 minutes but the system becomes unstable and leading to crash often.
-# in the office desktop with 3 cores it takes 12.1434, that's roughly 3.6 times slower
-#n_cores <- 5 # for personal Lenovo .
-cat("Number of cores: ", n_cores, "\n")
-################################################################################
-################################################################################
-
 
 #########################################################
 ## THE MICROSIMULATION MAIN FUNCTION
+# This version stacks solution of simulations but produces a list with stacked elements
 ## ----MicroSim function
 # This version stacks solution of simulations but produces a list with stacked elements
 # check the `MicroSim` for any improvements or issues.
@@ -576,15 +555,15 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
   #  as.integer()
   
   # Register the parallel backend
-  cl <- makeCluster(n_cores, timeout = 6*60*60) # 6-hours timeout to prevent socket drop issues
-  clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
-                      "my_Probs", "utilityCoefs", "v_n", "samplev", 
-                      "my_age_prob_matrix_func","diagnose_column", 
-                      "update_column", "states_to_check", "symptom_prob_vec",
-                      "survival_prob_vec", "global_diagnosed", 
-                      "cost_Vec", "new_cases_2"))
+  #cl <- makeCluster(n_cores, timeout = 6*60*60) # 6-hours timeout to prevent socket drop issues
+  #clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
+  #                    "my_Probs", "utilityCoefs", "v_n", "samplev", 
+  #                    "my_age_prob_matrix_func","diagnose_column", 
+  #                    "update_column", "states_to_check", "symptom_prob_vec",
+  #                    "survival_prob_vec", "global_diagnosed", 
+  #                    "cost_Vec", "new_cases_2"))
   #registerDoParallel(cl)
-  registerDoSEQ()
+  ##registerDoSEQ()
   
   simulation_results <- list() 
   
@@ -592,10 +571,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
   # Parallel processing using foreach
   simulation_results <- 
     foreach(sim = 1:numb_of_sims, .packages = c("dplyr", "tidyr", "purrr") ) %dopar% { 
-      
       ## clean memory:
       #if (step %% 10 == 0) gc()
-      
       cat("Running simulation", sim, "with seed", seeds[sim], "\n")
       symptomatics <-
         data.frame(ID = integer(), TimeStep = integer(), 
@@ -622,21 +599,22 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       #seed <- 17
       set.seed(seed) # set the seed for every individual for the random number generator
       
-      
-      m_C[, 1] <- Costs_per_Cancer_Diag(M_it = m_M[, 1], # estimate costs per individual for the 
+      # estimate costs per individual for the initial health state
+      m_C[, 1] <- Costs_per_Cancer_Diag(M_it = m_M[, 1], 
                                         symptomatics = symptomatics,
                                         time_iteration = 1,
-                                        cost_Vec = cost_Vec, # initial health state
+                                        cost_Vec = cost_Vec,  
                                         Trt)             
       
+      # estimate QALYs per individual for the initial health state 
+      m_E[, 1] <- Effs(m_M[, 1], Trt, utilityCoefs = utilityCoefs)  
       
-      m_E[, 1] <- Effs(m_M[, 1], Trt, utilityCoefs = utilityCoefs)  # estimate QALYs
-      # per individual 
-      # for the initial
-      # health state  
       stored_list <- list()
       ###################### run over all the cycles ########################### 
-      #for (t in 1:(n_t)) {
+      # This loop runs over all the cycles of the simulation. It updates the
+      # health state of each individual at each cycle, estimates the costs and
+      # QALYs per individual at each cycle, and stores the transitions across
+      # states for each individual at each cycle.
       for (t in 1:(n_t-1)) {
         ########################################################################
         # Select the transition matrix based on the cycle `n_t`:
@@ -645,6 +623,10 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         ########################################################################
         
         # update/correct n_s (<<- let change variable from inside a function):
+        # q: there is a bad practice to use <<- in a function?
+        # a: Yes, it is a bad practice to use <<- in a function.
+        # q: how can I avoid it in this case?
+        # a: You can avoid it by passing the variable as an argument to the function.
         n_s  <<- length(v_n)  
         
         ######################################################################## 
@@ -899,6 +881,61 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
   #return(stacked_results)
   return(simulation_results)
 } # end of MicroSim function
+################################################################################
+
+
+
+################################################################################
+################################################################################
+### Prepare Parallelize code ###
+library(parallel)
+ensure_library("doParallel")
+
+################################################################################
+# Function to detect if running on SLURM -NOT WORKING AS INTENDED"-
+is_slurm <- function() {
+  slurm_id <- Sys.getenv("SLURM_JOB_ID")
+  return(nzchar(slurm_id))  # Returns TRUE only if SLURM_JOB_ID is a non-empty string
+}
+################################################################################
+
+################################################################################
+# Determine number of cores
+if (is_slurm()) {
+  # In Slurm, use the cores requested by the job
+  n_cores <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
+  cat("I'm in slurm!\n")
+} else {
+  cat("I'm NOT in slurm!\n")
+  # On local machine, use all available cores (or limit if needed)
+  #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
+  ## Register fewer cores (adjust based on server resources)
+  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+  #n_cores <- detectCores()  # Try using 8 or fewer cores
+  #n_cores <- min(detectCores())  # Try using 8 or fewer cores
+  #n_cores <- 3  # Try using 8 or fewer cores
+}
+# for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
+# five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
+# in 3.3-3.4 minutes but the system becomes unstable and leading to crash often.
+# in the office desktop with 3 cores it takes 12.1434, that's roughly 3.6 times slower
+#n_cores <- 5 # for personal Lenovo .
+cat("Number of cores: ", n_cores, "\n")
+################################################################################
+
+################################################################################
+# 6-hours timeout to prevent socket drop issues
+cl <- makeCluster(n_cores, timeout = 6*60*60) 
+clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
+                    "my_Probs", "utilityCoefs", "v_n", "samplev", 
+                    "my_age_prob_matrix_func","diagnose_column", 
+                    "update_column", "states_to_check", "symptom_prob_vec",
+                    "survival_prob_vec", "global_diagnosed", 
+                    "cost_Vec", "new_cases_2"))
+registerDoParallel(cl)
+#registerDoSEQ()
+################################################################################
+################################################################################
 
 
 ################################################################################
