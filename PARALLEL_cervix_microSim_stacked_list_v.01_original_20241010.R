@@ -63,9 +63,9 @@ my_Probs$Larger <-
 ## ----Model Parameters
 #n_i <- (2.5)*10^5         # number of simulated individuals
 #n_i <- (5)*10^5            # number of simulated individuals
-n_i <- 10^6            # number of simulated individuals
+#n_i <- 10^7            # number of simulated individuals
 #n_i <- 10^5               # number of simulated individuals
-#n_i <- 10^6               # number of simulated individuals
+n_i <- 10^6               # number of simulated individuals
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
@@ -560,7 +560,7 @@ cat("Number of cores: ", n_cores, "\n")
 ## ----MicroSim function
 # This version stacks solution of simulations but produces a list with stacked elements
 # check the `MicroSim` for any improvements or issues.
-MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
+MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
                      v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE, 
                      TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix) 
 {
@@ -583,8 +583,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
                       "update_column", "states_to_check", "symptom_prob_vec",
                       "survival_prob_vec", "global_diagnosed", 
                       "cost_Vec", "new_cases_2"))
-  registerDoParallel(cl)
-  #registerDoSEQ()
+  #registerDoParallel(cl)
+  registerDoSEQ()
   
   simulation_results <- list() 
   
@@ -891,13 +891,13 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
   # stack results
   #source("./R/Sumarize_results_by_Strategy_Func.R")
   #source("/home/07075107P/microSim/cervix_cancer_microsimulation/R/Sumarize_results_by_Strategy_Func.R")
-  stacked_results <- 
-    summarize_results_by_Strategy(results_list = simulation_results, 
-                                  numb_of_sims = numb_of_sims)
+  #stacked_results <- 
+  #  summarize_results_by_Strategy(results_list = simulation_results, 
+  #                                numb_of_sims = numb_of_sims)
   
   stopCluster(cl)  # Stop the cluster when done
-  return(stacked_results)
-  #return(simulation_results)
+  #return(stacked_results)
+  return(simulation_results)
 } # end of MicroSim function
 
 
@@ -908,21 +908,21 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 30,
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 100
+numb_of_sims = 20
 sim_no_trt  <- MicroSim(strategy = "natural_history", numb_of_sims = numb_of_sims, 
                       v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                       d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                       Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
 
-## For stacking outside the function, we need to comment the stacking function
-## inside  de the MicroSim function, and return the results as a list by comenting
-## 'return(stacked_results)' and uncomment 'return(simulation_results)'. And then,
-## uncomment the following lines:
-#source("./R/sumarize_results_by_Strategy_Func.R")
-#stacked_results <- 
-#  summarize_results_by_Strategy(results_list = sim_no_trt, 
-#                                numb_of_sims = numb_of_sims)
-#sim_no_trt <- stacked_results
+# For stacking outside the function, we need to comment the stacking function
+# inside  de the MicroSim function, and return the results as a list by comenting
+# 'return(stacked_results)' and uncomment 'return(simulation_results)'. And then,
+# uncomment the following lines:
+source("./R/sumarize_results_by_Strategy_Func.R")
+stacked_results <- 
+  summarize_results_by_Strategy(results_list = sim_no_trt, 
+                                numb_of_sims = numb_of_sims)
+sim_no_trt <- stacked_results
 
 # Load computed simulation if needed here:
 #sim_no_trt <- readRDS(file = "./data/stacked_sims_100x10E6x75.rds")
@@ -1335,10 +1335,10 @@ if (is.na(slurm_job_id)) {
 
 cat("SLURM job ID:", slurm_job_id, "\n")
 
-# Use job ID in file name
-output_file <-
-  paste0("data/testing_stability/stacked_sims_100x10E6x75_20241205_madeinPADO_PARA_from_script_stackedInside_RND_seed", slurm_job_id, ".rds")
-saveRDS(object = other_mean_mortality_result, file = output_file)
+## Use job ID in file name
+#output_file <-
+#  paste0("data/testing_stability/stacked_sims_20x10E7x75_20241209_madeinPADO_SEQ_from_script_stackedOutside_RND_seed", slurm_job_id, ".rds")
+#saveRDS(object = other_mean_mortality_result, file = output_file)
 
 
 
