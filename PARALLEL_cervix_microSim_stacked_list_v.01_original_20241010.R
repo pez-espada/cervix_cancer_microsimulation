@@ -64,8 +64,8 @@ my_Probs$Larger <-
 #n_i <- (2.5)*10^5         # number of simulated individuals
 #n_i <- (5)*10^5            # number of simulated individuals
 #n_i <- 10^7            # number of simulated individuals
-n_i <- 10^5               # number of simulated individuals
-#n_i <- 10^6               # number of simulated individuals
+#n_i <- 10^5               # number of simulated individuals
+n_i <- 10^6               # number of simulated individuals
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
@@ -240,7 +240,7 @@ ifelse(colSums(m_P_it, na.rm = TRUE) >= .991,
 # NOTE: need to decide if the cost is applied on current time `t` or `t+1` as it is now.
 Costs_per_Cancer_Diag <- function (M_it, cost_Vec, symptomatics, time_iteration, Trt = FALSE) {
 c_it <- rep(0, length(M_it))
-ci_t <- 0
+#ci_t <- 0
 if(nrow(symptomatics) > 0 ) {
   c_it[symptomatics %>% 
          dplyr::filter(DiagnosedState == "FIGO.I" & TimeStep == time_iteration) %>% 
@@ -533,18 +533,17 @@ my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
 
 
 
-#########################################################
+################################################################################
 ## THE MICROSIMULATION MAIN FUNCTION
-# This version stacks solution of simulations but produces a list with stacked elements
-## ----MicroSim function
 # This version stacks solution of simulations but produces a list with stacked elements
 # check the `MicroSim` for any improvements or issues.
 MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
                      v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE, 
                      TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix) 
 {
-  seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  # Generate random seeds
-  seeds <- sample(1:100000, numb_of_sims, replace = FALSE)  # Generate random seeds
+  # Generate random seeds
+  seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  
+  seeds <- sample(1:100000, numb_of_sims, replace = FALSE)  
   ## fix the seeds for reproducibility::
   #seeds <- c(38222, 52130, 92742, 73352, 41494, 43929, 94560, 72382, 13846, 94537) %>% 
   #  as.integer()
@@ -554,20 +553,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
   #           4074, 45156, 93585, 48543, 57217) %>%
   #  as.integer()
   
-  # Register the parallel backend
-  #cl <- makeCluster(n_cores, timeout = 6*60*60) # 6-hours timeout to prevent socket drop issues
-  #clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
-  #                    "my_Probs", "utilityCoefs", "v_n", "samplev", 
-  #                    "my_age_prob_matrix_func","diagnose_column", 
-  #                    "update_column", "states_to_check", "symptom_prob_vec",
-  #                    "survival_prob_vec", "global_diagnosed", 
-  #                    "cost_Vec", "new_cases_2"))
-  #registerDoParallel(cl)
-  ##registerDoSEQ()
-  
   simulation_results <- list() 
   
-  #for(sim in 1:numb_of_sims) {
   # Parallel processing using foreach
   simulation_results <- 
     foreach(sim = 1:numb_of_sims, .packages = c("dplyr", "tidyr", "purrr") ) %dopar% { 
@@ -579,10 +566,11 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
                    DiagnosedState = character(), 
                    RecoveredFromState = logical(), stringsAsFactors = FALSE)
       
-      v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   # calculate the cost discount weight based
-      #                                       # on the discount rate d_c 
-      v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   # calculate the QALY discount weight based 
-      #                                       # on the discount rate d.e
+      # NOTA: PONER FUER DEL LOOP (??)
+      # calculate the cost discount weight based on the discount rate d_c 
+      v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   
+      # calculate the QALY discount weight based on the discount rate d_e                                             
+      v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   
       
       # Create the matrix capturing the state name/costs/health outcomes 
       # for all individuals at each time point:
@@ -590,7 +578,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       m_M <- m_C <- m_E <- 
         matrix(nrow = n_i, ncol = (n_t), 
                dimnames = list( 1:n_i, 
-                                #paste0("cycle_", 1:(n_t + 1), sep = "")))  
                                 paste0("cycle_", 1:(n_t), sep = "")))  
       
       m_M[, 1] <- v_M_1  # indicate the initial health state   
@@ -627,7 +614,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         # a: Yes, it is a bad practice to use <<- in a function.
         # q: how can I avoid it in this case?
         # a: You can avoid it by passing the variable as an argument to the function.
-        n_s  <<- length(v_n)  
+        #n_s  <<- length(v_n)  
         
         ######################################################################## 
         #new code:
@@ -866,7 +853,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
     } # end of `foreach/dopar` loop
   
   
-  #stopCluster(cl)  # Stop the cluster when done
   
   #return(simulation_results)
   
@@ -877,7 +863,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
   #  summarize_results_by_Strategy(results_list = simulation_results, 
   #                                numb_of_sims = numb_of_sims)
   
-  stopCluster(cl)  # Stop the cluster when done
+  #stopCluster(cl)  # Stop the cluster when done
   #return(stacked_results)
   return(simulation_results)
 } # end of MicroSim function
@@ -932,10 +918,11 @@ clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
                     "update_column", "states_to_check", "symptom_prob_vec",
                     "survival_prob_vec", "global_diagnosed", 
                     "cost_Vec", "new_cases_2"))
-registerDoParallel(cl)
-#registerDoSEQ()
+#registerDoParallel(cl)
+registerDoSEQ()
 ################################################################################
 ################################################################################
+
 
 
 ################################################################################
@@ -945,11 +932,13 @@ registerDoParallel(cl)
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 20
+numb_of_sims = 40
 sim_no_trt  <- MicroSim(strategy = "natural_history", numb_of_sims = numb_of_sims, 
-                      v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
-                      d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
-                      Trt = FALSE, seed = 1, Pmatrix = Pmatrix)
+                        v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
+                        d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
+                        Trt = FALSE, seed = 2, Pmatrix = Pmatrix)
+# Stop the cluster when done
+stopCluster(cl)  
 
 # For stacking outside the function, we need to comment the stacking function
 # inside  de the MicroSim function, and return the results as a list by comenting
@@ -982,7 +971,7 @@ sim_no_trt[[1]]$numb_of_cycles <- n_t
 
 ################################################################################
 ################################################################################
-## ----Post-simulation Computations
+## ----Post-Processing
 ################################################################################
 ################################################################################
                   ###################################
@@ -1372,10 +1361,10 @@ if (is.na(slurm_job_id)) {
 
 cat("SLURM job ID:", slurm_job_id, "\n")
 
-## Use job ID in file name
-#output_file <-
-#  paste0("data/testing_stability/stacked_sims_20x10E7x75_20241209_madeinPADO_SEQ_from_script_stackedOutside_RND_seed", slurm_job_id, ".rds")
-#saveRDS(object = other_mean_mortality_result, file = output_file)
+# Use job ID in file name
+output_file <-
+  paste0("data/testing_stability/stacked_sims_40x10E6x75_20241211_madeinPADO_SEQ_from_script_stackedOutside_RND_seed_COST_TEST", slurm_job_id, ".rds")
+saveRDS(object = other_mean_mortality_result, file = output_file)
 
 
 
@@ -1538,12 +1527,12 @@ long_merged_data <- merged_df %>%
                names_to = "Health state",
                values_to = "value")
 
-# Plot the data
-ggplot(long_merged_data, aes(x = age, y = value, color = `Health state`)) +
-  geom_line(linewidth=1, alpha=0.7) +
-  labs(x = "Age", y = "Value", color = "Health state") +
-  ggtitle(expression(paste("Markov cohort vs  Microsimulation for ", 10^6, " individuals"))) + 
-  theme_minimal()  # Optional: customize the theme
+## Plot the data
+#ggplot(long_merged_data, aes(x = age, y = value, color = `Health state`)) +
+#  geom_line(linewidth=1, alpha=0.7) +
+#  labs(x = "Age", y = "Value", color = "Health state") +
+#  ggtitle(expression(paste("Markov cohort vs  Microsimulation for ", 10^6, " individuals"))) + 
+#  theme_minimal()  # Optional: customize the theme
 
 ################################################################################
 
@@ -1665,7 +1654,7 @@ plot_CN3_incidences <- plot_comparison(combined_data, "CN3_incidences")
 plot_CC_incidences <- plot_comparison(combined_data, "CC_incidences")
 plot_HPV_prevalences <- plot_comparison(combined_data, "HPV_prevalences")
 plot_CC_mortality <- plot_comparison(combined_data, "CC_mortality")
-plot_CC_by_diff_mortality <- plot_comparison(combined_data, "CC_by_diff_mortality")
+#plot_CC_by_diff_mortality <- plot_comparison(combined_data, "CC_by_diff_mortality")
 
 # Display plots
 print(plot_CN1_incidences)
@@ -1674,7 +1663,7 @@ print(plot_CN3_incidences)
 print(plot_CC_incidences)
 print(plot_HPV_prevalences)
 print(plot_CC_mortality)
-print(plot_CC_by_diff_mortality)
+#print(plot_CC_by_diff_mortality)
 
 
 if (numb_of_sims >=60) {
