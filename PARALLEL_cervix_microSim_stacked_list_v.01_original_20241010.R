@@ -935,7 +935,7 @@ registerDoSEQ()
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 10
+numb_of_sims = 40
 sim_no_trt  <- MicroSim(strategy = "natural_history", numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
@@ -1384,7 +1384,7 @@ cat("I have written out the results\n")
 #  readRDS(file = "./data/stacked_sims_20x10E6x75_20241128_madeinPADO_TEST_from_script_4.rds")
 
 #other_mean_mortality_result <-
-#  readRDS(file = "./data/testing_stability/stacked_sims_20x10E6x75_20241205_madeinPADO_PARA_from_script_stackedOutside_3251.rds")
+#  readRDS(file = "./data/testing_stability/stacked_sims_40x10E6x75_20241218_madeinPADO_SEQ_from_script_stackedOutside_RND_CORRECTED3841.rds")
 
 
 ### ----Convert .Rmd to .R
