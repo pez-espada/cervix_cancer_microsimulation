@@ -365,7 +365,7 @@ states_to_check <- c("FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
 stored_list <- vector("list", n_t)
 
 # Initialize a global vector to store all diagnosed individuals
-global_diagnosed <- integer()
+#global_diagnosed <- integer()
 
 ################################################################################
 # Function receives a column with current state of `n_i`individuals and gives
@@ -561,13 +561,15 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       ## clean memory:
       #if (step %% 10 == 0) gc()
       cat("Running simulation", sim, "with seed", seeds[sim], "\n")
+      # Initialize a global vector to store all diagnosed individuals
+      global_diagnosed <<- integer()
       symptomatics <-
         data.frame(ID = integer(), TimeStep = integer(), 
                    DiagnosedState = character(), 
                    RecoveredFromState = logical(), stringsAsFactors = FALSE)
       
       # NOTA: PONER FUER DEL LOOP (??)
-      # calculate the cost discount weight based on the discount rate d_c 
+      #calculate the cost discount weight based on the discount rate d_c 
       v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   
       # calculate the QALY discount weight based on the discount rate d_e                                             
       v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   
@@ -597,6 +599,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       m_E[, 1] <- Effs(m_M[, 1], Trt, utilityCoefs = utilityCoefs)  
       
       stored_list <- list()
+       
       ###################### run over all the cycles ########################### 
       # This loop runs over all the cycles of the simulation. It updates the
       # health state of each individual at each cycle, estimates the costs and
@@ -916,7 +919,7 @@ clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
                     "my_Probs", "utilityCoefs", "v_n", "samplev", 
                     "my_age_prob_matrix_func","diagnose_column", 
                     "update_column", "states_to_check", "symptom_prob_vec",
-                    "survival_prob_vec", "global_diagnosed", 
+                    "survival_prob_vec", #"global_diagnosed", 
                     "cost_Vec", "new_cases_2"))
 #registerDoParallel(cl)
 registerDoSEQ()
@@ -932,7 +935,7 @@ registerDoSEQ()
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 40
+numb_of_sims = 10
 sim_no_trt  <- MicroSim(strategy = "natural_history", numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
@@ -1350,7 +1353,7 @@ other_mean_mortality_result <-
 other_mean_mortality_func(sim_stalked_result = 
                               other_mean_mortality_result, my_Probs = my_Probs)  
 
-cat("Hey, I'm done,, and about to write out the results\n")
+cat("Hey, I'm done, and about to write out the results\n")
 
 # Save the results to a file
 # Get SLURM job ID from the environment variable
@@ -1358,16 +1361,14 @@ slurm_job_id <- Sys.getenv("SLURM_JOB_ID", unset = NA)
 if (is.na(slurm_job_id)) {
   slurm_job_id <- format(Sys.time(), "%Y%m%d%H%M%S")  # Fallback to timestamp if not running in SLURM
 }
-
 cat("SLURM job ID:", slurm_job_id, "\n")
-
 # Use job ID in file name
 output_file <-
-  paste0("data/testing_stability/stacked_sims_40x10E6x75_20241211_madeinPADO_SEQ_from_script_stackedOutside_RND_seed_COST_TEST", slurm_job_id, ".rds")
+  paste0("data/testing_stability/stacked_sims_40x10E6x75_20241218_madeinPADO_SEQ_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
 saveRDS(object = other_mean_mortality_result, file = output_file)
 
 
-
+#
 # save the results
 #saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x5x10E5x75_20241127_madeinPADO_TEST_from_script_3.rds")
 #saveRDS(object = other_mean_mortality_result, file = 
