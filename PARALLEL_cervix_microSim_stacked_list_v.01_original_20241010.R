@@ -542,7 +542,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
                      TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix) 
 {
   # Generate random seeds
-  seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  
+  #seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  
   seeds <- sample(1:100000, numb_of_sims, replace = FALSE)  
   ## fix the seeds for reproducibility::
   #seeds <- c(38222, 52130, 92742, 73352, 41494, 43929, 94560, 72382, 13846, 94537) %>% 
@@ -675,12 +675,12 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         m_E[, t + 1] <- # estimate QALYs per individual during cycle t + 1
           Effs( m_M[, t + 1], Trt, 
                 utilityCoefs = utilityCoefs)                   
-        ############################################################################    
+        ########################################################################    
         cat('\r', paste(round(t/n_t * 100),          # display the 
                         "% done\n", sep = " "))        # progress of  the simulation                    
         
       }  
-      ######################## close loop for cycles ############################### 
+      #################### close loop for cycles ############################### 
       
       # Combine stored entries in a single data frame
       symptomatics <- bind_rows(stored_list)
@@ -855,10 +855,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       
     } # end of `foreach/dopar` loop
   
-  
-  
   #return(simulation_results)
-  
   # stack results
   #source("./R/Sumarize_results_by_Strategy_Func.R")
   #source("/home/07075107P/microSim/cervix_cancer_microsimulation/R/Sumarize_results_by_Strategy_Func.R")
@@ -1364,7 +1361,7 @@ if (is.na(slurm_job_id)) {
 cat("SLURM job ID:", slurm_job_id, "\n")
 # Use job ID in file name
 output_file <-
-  paste0("data/testing_stability/stacked_sims_40x10E6x75_20241218_madeinPADO_SEQ_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
+  paste0("data/testing_stability/stacked_sims_40x10E6x75_20241219_madeinPADO_SEQ_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
 saveRDS(object = other_mean_mortality_result, file = output_file)
 
 
