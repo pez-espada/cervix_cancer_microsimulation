@@ -61,11 +61,11 @@ my_Probs$Larger <-
 
 
 ## ----Model Parameters
-#n_i <- (2.5)*10^5         # number of simulated individuals
+n_i <- (2.5)*10^5         # number of simulated individuals
 #n_i <- (5)*10^5            # number of simulated individuals
 #n_i <- 10^7            # number of simulated individuals
-#n_i <- 10^5               # number of simulated individuals
-n_i <- 10^6               # number of simulated individuals
+n_i <- 10^5               # number of simulated individuals
+#n_i <- 10^6               # number of simulated individuals
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
@@ -818,11 +818,13 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         dplyr::select(sim, age, CC_Death_by_diff) %>% 
         dplyr::as_tibble()
       
+      cat("At sim number:", sim,  " reported strategy is ", strategy, "\n")
+      
       # Store the results from the simulation in a list
-      results <- list(strategy = strategy,
+     results <- list(#strategy = strategy,
                       #seed = seeds[sim],
                       seed = seed,
-                      sim_numb = sim, 
+                      #sim_numb = sim, 
                       #m_M = m_M, 
                       #m_C = m_C, 
                       #m_E = m_E, 
@@ -932,8 +934,9 @@ registerDoSEQ()
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 40
-sim_no_trt  <- MicroSim(strategy = "natural_history", numb_of_sims = numb_of_sims, 
+numb_of_sims = 3
+strategy <- "natural_history"
+sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 2, Pmatrix = Pmatrix)
@@ -961,9 +964,14 @@ comp.time %>% print()
 # adding runtime execution time:
 runtime <- comp.time %>% as_tibble() %>% `colnames<-`("runtime")
 sim_no_trt[[1]]$runtime <- runtime
+sim_no_trt[[1]]$strategy <- strategy
 sim_no_trt[[1]]$numb_of_sims   <- numb_of_sims
 sim_no_trt[[1]]$numb_of_ind    <- n_i
 sim_no_trt[[1]]$numb_of_cycles <- n_t
+sim_no_trt[[1]]$seed <- sim_no_trt[[1]]$seed %>% 
+  dplyr::select(-c("seed", "row_names")) %>% 
+  dplyr::rename("seed" = "sim[[i]][[name_level_of_sim]]")
+
 ################################################################################
 ################################################################################
 
@@ -1359,10 +1367,10 @@ if (is.na(slurm_job_id)) {
   slurm_job_id <- format(Sys.time(), "%Y%m%d%H%M%S")  # Fallback to timestamp if not running in SLURM
 }
 cat("SLURM job ID:", slurm_job_id, "\n")
-# Use job ID in file name
-output_file <-
-  paste0("data/testing_stability/stacked_sims_40x10E6x75_20241219_madeinPADO_SEQ_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
-saveRDS(object = other_mean_mortality_result, file = output_file)
+## Use job ID in file name
+#output_file <-
+#  paste0("data/testing_stability/stacked_sims_40x10E6x75_20241219_madeinPADO_SEQ_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
+#saveRDS(object = other_mean_mortality_result, file = output_file)
 
 
 #
@@ -1392,7 +1400,7 @@ cat("I have written out the results\n")
 #purl("Cervix_MicroSim_RMarkdown_v.072_B.Rmd", output = "cervix_microSim_stacked_list_B.R")
 
 
-## ----Cost-Efectiveness
+## ----Cost-Efectivenes
 ####################### Cost-effectiveness analysis #############################
 ## store the mean costs (and MCSE) of each strategy in a new variable C (vector costs)
 #v_C  <- c(sim_no_trt$tc_hat_disc, sim_trt$tc_hat_disc) 
