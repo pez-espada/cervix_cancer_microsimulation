@@ -64,8 +64,8 @@ my_Probs$Larger <-
 n_i <- (2.5)*10^5         # number of simulated individuals
 #n_i <- (5)*10^5            # number of simulated individuals
 #n_i <- 10^7            # number of simulated individuals
-#n_i <- 10^5               # number of simulated individuals
-n_i <- 10^6               # number of simulated individuals
+n_i <- 10^5               # number of simulated individuals
+#n_i <- 10^6               # number of simulated individuals
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
@@ -515,8 +515,10 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
                     cycle = age - 9) %>%
       add_row(!!paste0(state2, "_per_t") := 0, age = 10, cycle = 1, .before = 1) %>%
       slice(-n()) %>%
-      mutate(age = 10:(10 + n() - 1), 
-             cycle = age - 9)
+      mutate(age = 10:(10 + n() - 1), cycle = age - 9) #%>%
+      #dplyr::select(-matches("sim\\.x$")) %>%
+      #dplyr::select(-sim.1)
+    
     return(transition_cases)
   }
 }
@@ -934,7 +936,7 @@ registerDoSEQ()
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 40
+numb_of_sims = 2
 strategy <- "natural_history"
 sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
@@ -1367,10 +1369,10 @@ if (is.na(slurm_job_id)) {
   slurm_job_id <- format(Sys.time(), "%Y%m%d%H%M%S")  # Fallback to timestamp if not running in SLURM
 }
 cat("SLURM job ID:", slurm_job_id, "\n")
-# Use job ID in file name
-output_file <-
-  paste0("data/testing_stability/stacked_sims_40x10E6x75_20241220_madeinPADO_SEQ_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
-saveRDS(object = other_mean_mortality_result, file = output_file)
+## Use job ID in file name
+#output_file <-
+#  paste0("data/testing_stability/stacked_sims_40x10E6x75_20241219_madeinPADO_SEQ_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
+#saveRDS(object = other_mean_mortality_result, file = output_file)
 
 
 #
@@ -1638,20 +1640,45 @@ microSim_long <- microSim_data %>%
 # Combine data
 combined_data <- bind_rows(markov_long, microSim_long)
 
-# Plotting function
+## Plotting function
+#plot_comparison <- function(data, measure_name) {
+#  ggplot(data %>% dplyr::filter(grepl(measure_name, measure)), 
+#         aes(x = age, y = value, fill = model)) +
+#    geom_bar(stat = "identity", position = "dodge") +
+#    labs(title = paste(measure_name, "Comparison\n", 
+#                       " N=", other_mean_mortality_result[[1]]$numb_of_ind, 
+#                       " cycles=", other_mean_mortality_result[[1]]$numb_of_cycles,
+#                       "Parallelized\n",
+#                       "# Sims", numb_of_sims ),
+#         x = "Age Group",
+#         y = measure_name) +
+#    theme_minimal() +
+#    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+#}
+
 plot_comparison <- function(data, measure_name) {
   ggplot(data %>% dplyr::filter(grepl(measure_name, measure)), 
          aes(x = age, y = value, fill = model)) +
     geom_bar(stat = "identity", position = "dodge") +
-    labs(title = paste(measure_name, "Comparison", 
-                       " N=", other_mean_mortality_result[[1]]$numb_of_ind, 
-                       " cycles=", other_mean_mortality_result[[1]]$numb_of_cycles,
-                       "Parallelized"),
-         x = "Age Group",
-         y = measure_name) +
+    labs(
+      title = paste(
+        measure_name, "Comparison\n",
+        "N =",other_mean_mortality_result[[1]]$numb_of_ind, 
+        ";  cycles=", other_mean_mortality_result[[1]]$numb_of_cycles, 
+        "Parallelized\n", 
+        "Numb. of avg. sims =", numb_of_sims
+      ),
+      x = "Age Group",
+      y = measure_name
+    ) +
     theme_minimal() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(size = 15, hjust = 0.5),  # Adjust size and center the title
+      plot.margin = margin(15, 5, 5, 5)                   # Add extra margin
+    )
 }
+
 
 # Create plots for each measure
 plot_CN1_incidences <- plot_comparison(combined_data, "CN1_incidences")
