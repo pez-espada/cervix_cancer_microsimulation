@@ -946,7 +946,7 @@ sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims,
 stopCluster(cl)  
 
 # For stacking outside the function, we need to comment the stacking function
-# inside  de the MicroSim function, and return the results as a list by comenting
+# inside  de the MicroSim function, and return the results as a list by commenting
 # 'return(stacked_results)' and uncomment 'return(simulation_results)'. And then,
 # uncomment the following lines:
 source("./R/sumarize_results_by_Strategy_Func.R")

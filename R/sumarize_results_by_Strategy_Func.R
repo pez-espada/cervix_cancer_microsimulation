@@ -36,6 +36,13 @@ summarize_results_by_Strategy <- function(results_list, numb_of_sims) {
   for (name_level_of_sim in names_sim) {
     result[[Strategy_name]][[name_level_of_sim]] <- bind_rows(lapply(seq_along(sim), function(i) {
       df <- as.data.frame(sim[[i]][[name_level_of_sim]])  # Extraemos el data frame de cada lista
+      
+      # Remove pre-existing "sim" column if it exists (Carlos' mod)::w
+      
+      if ("sim" %in% colnames(df)) {
+        df <- df %>% select(-sim)
+      }
+      
       df["sim"] <- i       # Agregamos una columna con el numero de simulacion
       if(name_level_of_sim!="TR"){
         df["row_names"] <- as.numeric(rownames(df))
