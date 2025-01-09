@@ -3,16 +3,30 @@ summarize_results_by_Strategy <- function(results_list, numb_of_sims) {
   
   result<-list()
   
-  Strategy_name<-"No Intervention" #Sandra: en format funció ho passem com a variable incorporada als parametres de la estrategia.
+  Strategy_name <- "No Intervention" #Sandra: en format funció ho passem com a variable incorporada als parametres de la estrategia.
   result[[Strategy_name]]<-list()
-  #for(i in 1:numb_of_sims ){
-  for(i in 1:length(results_list)){
-    results_list[[i]]$tc_disc<-NULL
-    results_list[[i]]$tc_undisc<-NULL
-    results_list[[i]]$te_disc<-NULL
-    results_list[[i]]$te_undisc<-NULL
-    results_list[[i]][["Tot_Trans_per_t"]]<-NULL
-  }
+  
+  ##for(i in 1:numb_of_sims ){
+  #for(i in 1:length(results_list)){
+  #  results_list[[i]]$tc_disc<-NULL
+  #  results_list[[i]]$tc_undisc<-NULL
+  #  results_list[[i]]$te_disc<-NULL
+  #  results_list[[i]]$te_undisc<-NULL
+  #  results_list[[i]][["Tot_Trans_per_t"]]<-NULL
+  #}
+  
+  cat("I have entered the Sandra's function\n")
+  
+  
+  # Remove unwanted columns from results_list
+  results_list <- lapply(results_list, function(df) {
+    df$tc_disc <- NULL
+    df$tc_undisc <- NULL
+    df$te_disc <- NULL
+    df$te_undisc <- NULL
+    df$Tot_Trans_per_t <- NULL
+    return(df)
+  })
   
   sim<-results_list 
   names_sim<-names(sim[[1]])
@@ -39,9 +53,9 @@ summarize_results_by_Strategy <- function(results_list, numb_of_sims) {
       
       # Remove pre-existing "sim" column if it exists (Carlos' mod)::w
       
-      if ("sim" %in% colnames(df)) {
-        df <- df %>% select(-sim)
-      }
+      #if ("sim" %in% colnames(df)) {
+      #  df <- df %>% select(-sim)
+      #}
       
       df["sim"] <- i       # Agregamos una columna con el numero de simulacion
       if(name_level_of_sim!="TR"){

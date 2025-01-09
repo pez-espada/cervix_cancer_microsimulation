@@ -922,8 +922,8 @@ clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
                     "update_column", "states_to_check", "symptom_prob_vec",
                     "survival_prob_vec", #"global_diagnosed", 
                     "cost_Vec", "new_cases_2"))
-#registerDoParallel(cl)
-registerDoSEQ()
+registerDoParallel(cl)
+#registerDoSEQ()
 ################################################################################
 ################################################################################
 
@@ -949,7 +949,8 @@ stopCluster(cl)
 # inside  de the MicroSim function, and return the results as a list by commenting
 # 'return(stacked_results)' and uncomment 'return(simulation_results)'. And then,
 # uncomment the following lines:
-source("./R/sumarize_results_by_Strategy_Func.R")
+source("./R/sumarize_results_by_Strategy_Func_revised.R")
+#source("./R/sumarize_results_by_Strategy_Func.R")
 stacked_results <- 
   summarize_results_by_Strategy(results_list = sim_no_trt, 
                                 numb_of_sims = numb_of_sims)
