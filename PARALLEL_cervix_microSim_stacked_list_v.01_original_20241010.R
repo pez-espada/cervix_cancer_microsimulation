@@ -16,7 +16,7 @@ library(tidyverse)
 # Sources:
 # Sandra's function:
 
-source("./R/sumarize_results_by_Strategy_Func.R")
+#source("./R/sumarize_results_by_Strategy_Func.R")
 #Sumarize_results_by_Strategy <- source("./R/sumarize_results_by_Strategy_Func.R")
 
 
@@ -949,12 +949,18 @@ stopCluster(cl)
 # inside  de the MicroSim function, and return the results as a list by commenting
 # 'return(stacked_results)' and uncomment 'return(simulation_results)'. And then,
 # uncomment the following lines:
-source("./R/sumarize_results_by_Strategy_Func_revised.R")
-#source("./R/sumarize_results_by_Strategy_Func.R")
+#source("./R/sumarize_results_by_Strategy_Func_revised.R")
+source("./R/sumarize_results_by_Strategy_Func.R")
 stacked_results <- 
   summarize_results_by_Strategy(results_list = sim_no_trt, 
                                 numb_of_sims = numb_of_sims)
 sim_no_trt <- stacked_results
+
+# cleaning a bit:
+source("./R/remove_column_from_list_Func.R")
+stacked_results <- 
+  remove_column_from_list(complex_list = stacked_results, 
+                          column_to_remove = "sim.1")
 
 # Load computed simulation if needed here:
 #sim_no_trt <- readRDS(file = "./data/stacked_sims_100x10E6x75.rds")
@@ -977,7 +983,6 @@ sim_no_trt[[1]]$seed <- sim_no_trt[[1]]$seed %>%
 
 ################################################################################
 ################################################################################
-
 
 
 ################################################################################
@@ -1360,6 +1365,12 @@ other_mean_mortality_result <- mean_CC_mortality_by_diff_result
 other_mean_mortality_result <-
 other_mean_mortality_func(sim_stalked_result = 
                               other_mean_mortality_result, my_Probs = my_Probs)  
+
+# cleaning
+other_mean_mortality_result <- 
+  remove_column_from_list(complex_list = 
+                            other_mean_mortality_result, column_to_remove = 
+                            "sim.1")
 
 cat("Hey, I'm done, and about to write out the results\n")
 
