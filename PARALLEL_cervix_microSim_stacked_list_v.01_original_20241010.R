@@ -900,10 +900,10 @@ if (is_slurm()) {
   # On local machine, use all available cores (or limit if needed)
   #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
   ## Register fewer cores (adjust based on server resources)
-  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+  #n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
   #n_cores <- detectCores()  # Try using 8 or fewer cores
   #n_cores <- min(detectCores())  # Try using 8 or fewer cores
-  #n_cores <- 3  # Try using 8 or fewer cores
+  n_cores <- 6  # Try using 8 or fewer cores
 }
 # for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
 # five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
@@ -956,12 +956,16 @@ stacked_results <-
                                 numb_of_sims = numb_of_sims)
 sim_no_trt <- stacked_results
 
-# cleaning a bit:
-source("./R/remove_column_from_list_Func.R")
-stacked_results <- 
-  remove_column_from_list(complex_list = stacked_results, 
-                          column_to_remove = "sim.1")
+## cleaning a bit:
+#source("./R/remove_column_from_list_Func.R")
+#stacked_results <- 
+#  remove_column_from_list(complex_list = stacked_results, 
+#                          column_to_remove = "sim.1")
 
+source("./R/Remove_columnS_from_list_Func.R")
+stacked_results <- 
+  remove_columnS_from_list(complex_list = stacked_results, 
+                          column_to_remove = "sim.1")
 # Load computed simulation if needed here:
 #sim_no_trt <- readRDS(file = "./data/stacked_sims_100x10E6x75.rds")
 #sim_no_trt <- readRDS(file = "./data/stacked_sims_10x10E6x75_20241002.rds")
