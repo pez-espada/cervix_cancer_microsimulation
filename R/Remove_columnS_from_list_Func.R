@@ -1,4 +1,7 @@
-remove_columnS_from_list <- function(complex_list, columns_to_remove = c("col1", "col2")) {
+remove_columns_from_list <- function(complex_list, ...) {
+  # Capture column names as a character vector
+  columns_to_remove <- c(...)
+  
   lapply(complex_list, function(element) {
     if (is.data.frame(element)) {
       # Check if any of the specified columns exist and remove them
@@ -7,7 +10,7 @@ remove_columnS_from_list <- function(complex_list, columns_to_remove = c("col1",
       return(element)
     } else if (is.list(element)) {
       # Recursively process sub-lists
-      return(remove_columns_from_list(element, columns_to_remove))
+      return(remove_columns_from_list(element, ...))
     } else {
       # Return the element as-is if not a data frame or list
       return(element)
@@ -15,6 +18,5 @@ remove_columnS_from_list <- function(complex_list, columns_to_remove = c("col1",
   })
 }
 
-## Example usage:
-#columns_to_remove <- c("sim.1", "extra")
-#cleaned_list <- remove_columns_from_list(complex_list, columns_to_remove)
+# Example usage:
+# remove_columns_from_list(complex_list, "sim.1", "extra")

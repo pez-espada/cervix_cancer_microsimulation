@@ -900,10 +900,10 @@ if (is_slurm()) {
   # On local machine, use all available cores (or limit if needed)
   #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
   ## Register fewer cores (adjust based on server resources)
-  #n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
   #n_cores <- detectCores()  # Try using 8 or fewer cores
   #n_cores <- min(detectCores())  # Try using 8 or fewer cores
-  n_cores <- 6  # Try using 8 or fewer cores
+  #n_cores <- 6  # Try using 8 or fewer cores
 }
 # for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
 # five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
@@ -956,16 +956,6 @@ stacked_results <-
                                 numb_of_sims = numb_of_sims)
 sim_no_trt <- stacked_results
 
-## cleaning a bit:
-#source("./R/remove_column_from_list_Func.R")
-#stacked_results <- 
-#  remove_column_from_list(complex_list = stacked_results, 
-#                          column_to_remove = "sim.1")
-
-source("./R/Remove_columnS_from_list_Func.R")
-stacked_results <- 
-  remove_columnS_from_list(complex_list = stacked_results, 
-                          column_to_remove = "sim.1")
 # Load computed simulation if needed here:
 #sim_no_trt <- readRDS(file = "./data/stacked_sims_100x10E6x75.rds")
 #sim_no_trt <- readRDS(file = "./data/stacked_sims_10x10E6x75_20241002.rds")
@@ -1203,18 +1193,6 @@ mean_CC_mortality_func <- function(sim_stalked_result, my_Probs) {
   # Create labels for the intervals
   labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
   
-  ## Compute prevalence and average it by age intervals
-  #df <- sim_stalked_result[[1]]$TR %>% 
-  #  #dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
-  #  dplyr::select(everything()) %>% 
-  #  dplyr::mutate(total_alive = H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
-  #                  FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
-  #  dplyr::mutate(CC_mortality = (CC_Death / total_alive) * 10^5) %>% 
-  #  dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
-  #  dplyr::group_by(age_interval) %>% 
-  #  dplyr::summarise(CC_mean_mortality = mean(CC_mortality, na.rm = TRUE)) %>% 
-  #  dplyr::ungroup()
-  
   # Define the age range you want to keep
   age_range <- 10:84
   
@@ -1325,14 +1303,6 @@ mean_CC_mortality_by_diff_result <-
 # B. Cancer-unrelated Mortality
 other_mean_mortality_func <- function(sim_stalked_result, my_Probs) {
   
-  # Extract unique age intervals
-  #age_intervals <- my_Probs %>% 
-  #  select(Lower, Larger) %>% 
-  #  unique() %>% 
-  #  ## making larger interval equals 84
-  #  #dplyr::mutate(Larger = ifelse(Larger==85, 84, Larger)) %>%
-  #  arrange(Lower)
-  
   age_intervals <- my_Probs %>% 
     dplyr::select(Lower, Larger) %>% 
     unique() %>% 
@@ -1370,11 +1340,106 @@ other_mean_mortality_result <-
 other_mean_mortality_func(sim_stalked_result = 
                               other_mean_mortality_result, my_Probs = my_Probs)  
 
-# cleaning
-other_mean_mortality_result <- 
-  remove_column_from_list(complex_list = 
-                            other_mean_mortality_result, column_to_remove = 
-                            "sim.1")
+
+
+################################################################################
+# Mean FIGO states across simulations by age interval
+mean_FIGO_Func <- function(sim_stalked_result, my_Probs) {
+  
+ # age_intervals <- my_Probs %>% 
+ #   dplyr::select(Lower, Larger) %>% 
+ #   unique() %>% 
+ #   dplyr::mutate(Larger = ifelse(Larger == 85, 84, Larger)) %>%  # Cap at 84
+ #   arrange(Lower)
+ # 
+ # # Create a vector of the breaks for the intervals
+ # breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
+ # 
+ # # Create labels for the intervals
+ # labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
+ # 
+ # # Compute prevalence and average it by age intervals
+ # df <- sim_stalked_result[[1]]$TR %>% 
+ #   #dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
+ #   dplyr::select(everything()) %>% 
+ #   dplyr::mutate(total_alive = H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
+ #                   FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
+ #   #dplyr::mutate(other_mortality = (Other.Death / total_alive) * 10^5) %>% 
+ #   dplyr::mutate(FIGO.I_prev = (FIGO.I / total_alive) * 10^5) %>% 
+ #   
+ #   dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
+ #   dplyr::group_by(age_interval) %>% 
+ #   dplyr::summarise(mean_FIGO.I_prev = mean(FIGO.I_prev,
+ #                                            na.rm = TRUE)) %>% 
+ #   dplyr::ungroup()
+ # 
+ # #return(df)
+ # sim_stalked_result[[1]]$mean_FIGO.I <- df
+ # return(sim_stalked_result)
+  
+  age_intervals <- my_Probs %>% 
+    dplyr::select(Lower, Larger) %>% 
+    unique() %>% 
+    dplyr::mutate(Larger = ifelse(Larger == 85, 84, Larger)) %>%  # Cap at 84
+    arrange(Lower)
+  
+  # Create a vector of the breaks for the intervals
+  breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
+  
+  # Create labels for the intervals
+  labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
+  
+  # Compute prevalence and average it by age intervals
+  df <- sim_stalked_result[[1]]$TR %>% 
+    dplyr::select(everything()) %>% 
+    dplyr::mutate(total_alive = H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
+                    FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
+    # Prevalence for each FIGO state
+    dplyr::mutate(FIGO.I_prev = (FIGO.I / total_alive) * 10^5) %>% 
+    dplyr::mutate(FIGO.II_prev = (FIGO.II / total_alive) * 10^5) %>% 
+    dplyr::mutate(FIGO.III_prev = (FIGO.III / total_alive) * 10^5) %>% 
+    dplyr::mutate(FIGO.IV_prev = (FIGO.IV / total_alive) * 10^5) %>% 
+    # Assigning age intervals
+    dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
+    dplyr::group_by(age_interval) %>% 
+    # Summarizing the mean prevalence for each FIGO state
+    dplyr::summarise(mean_FIGO.I_prev = mean(FIGO.I_prev, na.rm = TRUE),
+                     mean_FIGO.II_prev = mean(FIGO.II_prev, na.rm = TRUE),
+                     mean_FIGO.III_prev = mean(FIGO.III_prev, na.rm = TRUE),
+                     mean_FIGO.IV_prev = mean(FIGO.IV_prev, na.rm = TRUE)) %>% 
+    dplyr::ungroup()
+  
+  # Storing the results in the simulation object
+  sim_stalked_result[[1]]$mean_FIGO_prevalence <- df
+  return(sim_stalked_result) 
+  
+}
+################################################################################
+
+# Initialize the result with the original structure
+sim_result <-  other_mean_mortality_result <- mean_CC_mortality_by_diff_result
+# Concatenate the prevalence to the sim result 
+other_mean_mortality_result <-
+other_mean_mortality_func(sim_stalked_result = 
+                              other_mean_mortality_result, my_Probs = my_Probs)  
+
+# Concatenate the prevalence to the sim result 
+sim_result <-
+mean_FIGO_Func(sim_stalked_result = 
+                              sim_result, my_Probs = my_Probs)  
+################################################################################
+
+
+################################################################################
+################################################################################
+## cleaning
+source("./R/Remove_columnS_from_list_Func.R")
+sim_result <- 
+  remove_columns_from_list(complex_list = sim_result, 
+                           ... = "sim.1", "row_names")
+################################################################################
+################################################################################
+
 
 cat("Hey, I'm done, and about to write out the results\n")
 
@@ -1463,7 +1528,8 @@ library(RColorBrewer)
 #ensure_library("RColorBrewer")
 # Convert matrix to data frame
 #micro_sim_df <- sim_no_trt[[1]]$TR
-micro_sim_df <- other_mean_mortality_result[[1]]$TR
+#micro_sim_df <- other_mean_mortality_result[[1]]$TR
+micro_sim_df <- sim_result[[1]]$TR
 
 # Load necessary libraries
 library(dplyr)
@@ -1570,15 +1636,22 @@ markov_CC_incidences  <- c(0.000000, 0.000000, 0.000000, 5.520938, 8.360544, 13.
 markov_HPV_prevalences <- c(0.000000000, 0.343480414, 0.377634762, 0.087223460, 0.307341403, 0.030196332, 0.050562845, 0.050151668, 0.082952596, 0.046644059, 0.018532077, 0.034193076, 0.016407832, 0.015039027, 0.003217326)
 markov_CC_mortality <- c(0.000000e+00, 0.000000e+00, 0.000000e+00, 2.977975e-06, 1.574920e-05, 2.715056e-05, 5.489929e-05, 7.284815e-05, 1.057494e-04, 5.076268e-05, 7.517773e-05, 4.960943e-05, 4.802468e-05, 4.210457e-05, 4.837655e-05) * 10^5
 
-# Micro im:
-microSim_CN1_incidences          <- other_mean_mortality_result[[1]]$mean_incidence_CIN1_per_age_interval
-microSim_CN2_incidences          <- other_mean_mortality_result[[1]]$mean_incidence_CIN2_per_age_interval
-microSim_CN3_incidences          <- other_mean_mortality_result[[1]]$mean_incidence_CIN3_per_age_interval
-microSim_CC_incidences           <- other_mean_mortality_result[[1]]$mean_CC_incidence
-microSim_HPV_prevalences         <- other_mean_mortality_result[[1]]$mean_HPV_prevalence_per_age_interval
-microSim_CC_mortality            <- other_mean_mortality_result[[1]]$CC_mean_mortality
-microSim_CC_by_diff_mortality    <- other_mean_mortality_result[[1]]$CC_by_diff_mean_mortality
+## MicroSim:
+#microSim_CN1_incidences          <- other_mean_mortality_result[[1]]$mean_incidence_CIN1_per_age_interval
+#microSim_CN2_incidences          <- other_mean_mortality_result[[1]]$mean_incidence_CIN2_per_age_interval
+#microSim_CN3_incidences          <- other_mean_mortality_result[[1]]$mean_incidence_CIN3_per_age_interval
+#microSim_CC_incidences           <- other_mean_mortality_result[[1]]$mean_CC_incidence
+#microSim_HPV_prevalences         <- other_mean_mortality_result[[1]]$mean_HPV_prevalence_per_age_interval
+#microSim_CC_mortality            <- other_mean_mortality_result[[1]]$CC_mean_mortality
+#microSim_CC_by_diff_mortality    <- other_mean_mortality_result[[1]]$CC_by_diff_mean_mortality
 
+microSim_CN1_incidences          <-sim_result[[1]]$mean_incidence_CIN1_per_age_interval
+microSim_CN2_incidences          <-sim_result[[1]]$mean_incidence_CIN2_per_age_interval
+microSim_CN3_incidences          <-sim_result[[1]]$mean_incidence_CIN3_per_age_interval
+microSim_CC_incidences           <-sim_result[[1]]$mean_CC_incidence
+microSim_HPV_prevalences         <-sim_result[[1]]$mean_HPV_prevalence_per_age_interval
+microSim_CC_mortality            <-sim_result[[1]]$CC_mean_mortality
+microSim_CC_by_diff_mortality    <-sim_result[[1]]$CC_by_diff_mean_mortality
 
 
 ## ----Ploting incidences and prevalences
@@ -1596,7 +1669,6 @@ age_groups <- factor(c("10-14", "15-19", "20-24", "25-29", "30-34", "35-39", "40
                                  "70-74", "75-79", "80-84"))
 
 # Create data frames from your vectors and the MicroSim data
-# Replace `microSim_...` with the actual data from your `other_mean_mortality_result`
 
 markov_data <- data.frame(
   age = age_groups,
@@ -1626,13 +1698,21 @@ markov_data[] <- lapply(markov_data, function(x) {
 # Example conversion if you have microSim data as tibbles
 microSim_data <- data.frame(
   age = age_groups,
-  microSim_CN1_incidences = as.numeric(other_mean_mortality_result[[1]]$mean_incidence_CIN1_per_age_interval$mean_incidence_CIN1),
-  microSim_CN2_incidences = as.numeric(other_mean_mortality_result[[1]]$mean_incidence_CIN2_per_age_interval$mean_incidence_CIN2),
-  microSim_CN3_incidences = as.numeric(other_mean_mortality_result[[1]]$mean_incidence_CIN3_per_age_interval$mean_incidence_CIN3),
-  microSim_CC_incidences = as.numeric(other_mean_mortality_result[[1]]$mean_CC_incidence$CC_mean_incidence),
-  microSim_HPV_prevalences = as.numeric(other_mean_mortality_result[[1]]$mean_HPV_prevalence_per_age_interval$prevalence),
-  microSim_CC_mortality = as.numeric(other_mean_mortality_result[[1]]$CC_mean_mortality$CC_mean_mortality),
-  microSim_CC_by_diff_mortality = as.numeric(other_mean_mortality_result[[1]]$CC_by_diff_mean_mortality$CC_by_diff_mean_mortality)
+  #microSim_CN1_incidences = as.numeric(other_mean_mortality_result[[1]]$mean_incidence_CIN1_per_age_interval$mean_incidence_CIN1),
+  #microSim_CN2_incidences = as.numeric(other_mean_mortality_result[[1]]$mean_incidence_CIN2_per_age_interval$mean_incidence_CIN2),
+  #microSim_CN3_incidences = as.numeric(other_mean_mortality_result[[1]]$mean_incidence_CIN3_per_age_interval$mean_incidence_CIN3),
+  #microSim_CC_incidences = as.numeric(other_mean_mortality_result[[1]]$mean_CC_incidence$CC_mean_incidence),
+  #microSim_HPV_prevalences = as.numeric(other_mean_mortality_result[[1]]$mean_HPV_prevalence_per_age_interval$prevalence),
+  #microSim_CC_mortality = as.numeric(other_mean_mortality_result[[1]]$CC_mean_mortality$CC_mean_mortality),
+  #microSim_CC_by_diff_mortality = as.numeric(other_mean_mortality_result[[1]]$CC_by_diff_mean_mortality$CC_by_diff_mean_mortality)
+  
+  microSim_CN1_incidences  = as.numeric(sim_result[[1]]$mean_incidence_CIN1_per_age_interval$mean_incidence_CIN1),
+  microSim_CN2_incidences  = as.numeric(sim_result[[1]]$mean_incidence_CIN2_per_age_interval$mean_incidence_CIN2),
+  microSim_CN3_incidences  = as.numeric(sim_result[[1]]$mean_incidence_CIN3_per_age_interval$mean_incidence_CIN3),
+  microSim_CC_incidences   = as.numeric(sim_result[[1]]$mean_CC_incidence$CC_mean_incidence),
+  microSim_HPV_prevalences = as.numeric(sim_result[[1]]$mean_HPV_prevalence_per_age_interval$prevalence),
+  microSim_CC_mortality    = as.numeric(sim_result[[1]]$CC_mean_mortality$CC_mean_mortality),
+  microSim_CC_by_diff_mortality = as.numeric(sim_result[[1]]$CC_by_diff_mean_mortality$CC_by_diff_mean_mortality)
 )
 
 # Ensure all columns in microSim_data are numeric
@@ -1656,20 +1736,28 @@ microSim_long <- microSim_data %>%
 # Combine data
 combined_data <- bind_rows(markov_long, microSim_long)
 
-## Plotting function
+
 #plot_comparison <- function(data, measure_name) {
 #  ggplot(data %>% dplyr::filter(grepl(measure_name, measure)), 
 #         aes(x = age, y = value, fill = model)) +
 #    geom_bar(stat = "identity", position = "dodge") +
-#    labs(title = paste(measure_name, "Comparison\n", 
-#                       " N=", other_mean_mortality_result[[1]]$numb_of_ind, 
-#                       " cycles=", other_mean_mortality_result[[1]]$numb_of_cycles,
-#                       "Parallelized\n",
-#                       "# Sims", numb_of_sims ),
-#         x = "Age Group",
-#         y = measure_name) +
+#    labs(
+#      title = paste(
+#        measure_name, "Comparison\n",
+#        "N =",other_mean_mortality_result[[1]]$numb_of_ind, 
+#        ";  cycles=", other_mean_mortality_result[[1]]$numb_of_cycles, 
+#        "Parallelized\n", 
+#        "Numb. of avg. sims =", numb_of_sims
+#      ),
+#      x = "Age Group",
+#      y = measure_name
+#    ) +
 #    theme_minimal() +
-#    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+#    theme(
+#      axis.text.x = element_text(angle = 45, hjust = 1),
+#      plot.title = element_text(size = 15, hjust = 0.5),  # Adjust size and center the title
+#      plot.margin = margin(15, 5, 5, 5)                   # Add extra margin
+#    )
 #}
 
 plot_comparison <- function(data, measure_name) {
@@ -1679,8 +1767,8 @@ plot_comparison <- function(data, measure_name) {
     labs(
       title = paste(
         measure_name, "Comparison\n",
-        "N =",other_mean_mortality_result[[1]]$numb_of_ind, 
-        ";  cycles=", other_mean_mortality_result[[1]]$numb_of_cycles, 
+        "N =", sim_result[[1]]$numb_of_ind, 
+        ";  cycles=", sim_result[[1]]$numb_of_cycles, 
         "Parallelized\n", 
         "Numb. of avg. sims =", numb_of_sims
       ),
@@ -1720,8 +1808,11 @@ if (numb_of_sims >=60) {
   # For number of simulations of 60 we can analize the cost results to check
   # whether there is a numerical artifact or logic code problem producing
   # a tendency of decreas tc_hat_undisc along simulations:
+  #average_cost <-
+  #  other_mean_mortality_result[["No Intervention"]]$tc_hat_undisc$`sim[[i]][[name_level_of_sim]]`
   average_cost <-
-    other_mean_mortality_result[["No Intervention"]]$tc_hat_undisc$`sim[[i]][[name_level_of_sim]]`
+    sim_result[["No Intervention"]]$tc_hat_undisc$`sim[[i]][[name_level_of_sim]]`
+  
   # Calculate confidence intervals for groups of 10 simulations
   grouped_means <- tapply(average_cost, (seq_along(average_cost) - 1) %/% 10, mean)
   grouped_sd <- tapply(average_cost, (seq_along(average_cost) - 1) %/% 10, sd)
