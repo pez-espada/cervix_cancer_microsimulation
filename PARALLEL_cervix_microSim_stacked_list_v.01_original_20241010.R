@@ -64,7 +64,7 @@ my_Probs$Larger <-
 n_i <- (2.5)*10^5         # number of simulated individuals
 #n_i <- (5)*10^5            # number of simulated individuals
 #n_i <- 10^7            # number of simulated individuals
-n_i <- 10^5               # number of simulated individuals
+#n_i <- 10^5               # number of simulated individuals
 #n_i <- 10^6               # number of simulated individuals
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 
@@ -144,8 +144,10 @@ trans_prb <- function(P, state1, state2) {
 transition_prob<-P[state1,state2]
 return(transition_prob)
 }
+################################################################################
 
 
+################################################################################
 ## ----Sampling function
 # Efficient implementation of the rMultinom() function of the Hmisc package #### 
 # This function samples the next health state of each individual based on the
@@ -199,6 +201,7 @@ samplev <- function (probs, m) {
 }
 ################################################################################
 
+
 ################################################################################
 ## ----Probability Function
 ######################### Probability function #################################
@@ -231,6 +234,7 @@ ifelse(colSums(m_P_it, na.rm = TRUE) >= .991,
 }
 ################################################################################
 
+
 ################################################################################
 ## ----Costs Function
 ### Costs Function
@@ -262,6 +266,7 @@ if(nrow(symptomatics) > 0 ) {
 return(c_it)              		                           # return the costs
 }
 ################################################################################
+
 
 ################################################################################
 ## ----Qalys function
@@ -319,6 +324,8 @@ return(my_factor)
 ######### WORK IN PROGRESS #################
 ############################################
 
+
+############################################
 #### ! NOT USED ! ############################
 convert_matrix_to_proper_transition <- 
 function(my_age_prob_matrix, cycle_period) {
@@ -345,6 +352,8 @@ function(my_age_prob_matrix, cycle_period) {
   TM_qo <- ctmcd::gm(TM_pracma$B, te=1, method = "QO") 
 }
 #### ! NOT USED ! ############################
+############################################
+
 
 ## ----Symptoms
 # An individual can be in cancer states, i.e. FIGO.I, FIGO.II. FIGO.III and FIGO.IV
@@ -366,6 +375,7 @@ stored_list <- vector("list", n_t)
 
 # Initialize a global vector to store all diagnosed individuals
 #global_diagnosed <- integer()
+
 
 ################################################################################
 # Function receives a column with current state of `n_i`individuals and gives
@@ -407,6 +417,7 @@ return(new_entries)
 }
 ################################################################################
 
+
 ################################################################################
 # Function to update the next column based on the new entries
 # This function updates the next column based on the new entries of diagnosed
@@ -428,6 +439,7 @@ if (nrow(new_entries) > 0) {
 return(next_col)
 }
 #################################################################################
+
 
 ################################################################################
 # Function to add new cases to the transition matrix
@@ -523,6 +535,7 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
   }
 }
 ################################################################################
+
 
 ################################################################################
 # Function to update the transition matrix with new cases
@@ -836,7 +849,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
                       #te_undisc = te_undisc,
                       tc_hat_disc = tc_hat_disc,
                       tc_hat_undisc = tc_hat_undisc,
-                      te_hat_disc = te_hat_undisc, 
+                      te_hat_disc = te_hat_disc, 
                       te_hat_undisc = te_hat_undisc, 
                       #TS = TS,
                       TR = TR, 
@@ -881,6 +894,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
 library(parallel)
 ensure_library("doParallel")
 
+
 ################################################################################
 # Function to detect if running on SLURM -NOT WORKING AS INTENDED"-
 is_slurm <- function() {
@@ -889,6 +903,7 @@ is_slurm <- function() {
 }
 ################################################################################
 
+ 
 ################################################################################
 # Determine number of cores
 if (is_slurm()) {
@@ -912,6 +927,7 @@ if (is_slurm()) {
 #n_cores <- 5 # for personal Lenovo .
 cat("Number of cores: ", n_cores, "\n")
 ################################################################################
+ 
 
 ################################################################################
 # 6-hours timeout to prevent socket drop issues
@@ -936,7 +952,7 @@ registerDoParallel(cl)
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 2
+numb_of_sims = 20
 strategy <- "natural_history"
 sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
@@ -975,13 +991,26 @@ sim_no_trt[[1]]$seed <- sim_no_trt[[1]]$seed %>%
   dplyr::select(-c("seed", "row_names")) %>% 
   dplyr::rename("seed" = "sim[[i]][[name_level_of_sim]]")
 
+sim_no_trt[[1]]$tc_hat_undisc <- sim_no_trt[[1]]$tc_hat_undisc %>%
+  dplyr::select(-c(tc_hat_undisc)) %>% 
+  dplyr::rename("tc_hat_undisc" = "sim[[i]][[name_level_of_sim]]")
+
+sim_no_trt[[1]]$tc_hat_disc <- sim_no_trt[[1]]$tc_hat_disc %>%
+  dplyr::select(-c(tc_hat_disc)) %>% 
+  dplyr::rename("tc_hat_disc" = "sim[[i]][[name_level_of_sim]]")
+
+sim_no_trt[[1]]$te_hat_undisc <- sim_no_trt[[1]]$te_hat_undisc %>%
+  dplyr::select(-c(te_hat_undisc)) %>% 
+  dplyr::rename("te_hat_undisc" = "sim[[i]][[name_level_of_sim]]")
+
+sim_no_trt[[1]]$te_hat_disc <- sim_no_trt[[1]]$te_hat_disc %>%
+  dplyr::select(-c(te_hat_disc)) %>% 
+  dplyr::rename("te_hat_undisc" = "sim[[i]][[name_level_of_sim]]")
+
 ################################################################################
 ################################################################################
 
 
-################################################################################
-################################################################################
-## ----Post-Processing
 ################################################################################
 ################################################################################
                   ###################################
@@ -991,6 +1020,7 @@ sim_no_trt[[1]]$seed <- sim_no_trt[[1]]$seed %>%
 ################################################################################
 # # Prevalence is defined as number of infected divided by total alive individuals
 # # for that cycle/time step
+################################################################################
 mean_prevalence_func <- function(sim_stalked_result, my_Probs) {
   # Extract unique age intervals and ensure Larger doesn't exceed 84
   age_intervals <- my_Probs %>% 
@@ -1021,6 +1051,8 @@ mean_prevalence_func <- function(sim_stalked_result, my_Probs) {
   sim_stalked_result[[1]]$mean_HPV_prevalence_per_age_interval <- df
   return(sim_stalked_result)
 }
+################################################################################
+
 
 # Concatenate the prevalence to the sim result 
 mean_prevalence_result <-
@@ -1092,6 +1124,7 @@ mean_incidence_func <- function(sim_stalked_result, state, my_Probs) {
 }
 ################################################################################
 
+
 # Computing incidences:
 incidence_states_to_compute <- c("CIN1", "CIN2", "CIN3") 
 
@@ -1156,6 +1189,7 @@ mean_CC_incidence_func <- function(sim_stalked_result, my_Probs) {
   return(sim_stalked_result)
 }
 ################################################################################
+
 
 # Initialize the result with the original structure
 mean_CC_incidence_result <- mean_incidence_result
@@ -1226,6 +1260,7 @@ mean_CC_mortality_func <- function(sim_stalked_result, my_Probs) {
   return(sim_stalked_result)
 }
 ################################################################################
+
 
 # Initialize the result with the original structure
 mean_CC_mortality_result <- mean_CC_incidence_result 
@@ -1333,6 +1368,7 @@ other_mean_mortality_func <- function(sim_stalked_result, my_Probs) {
 }
 ################################################################################
 
+
 # Initialize the result with the original structure
 other_mean_mortality_result <- mean_CC_mortality_by_diff_result
 # Concatenate the prevalence to the sim result 
@@ -1416,6 +1452,7 @@ mean_FIGO_Func <- function(sim_stalked_result, my_Probs) {
 }
 ################################################################################
 
+
 # Initialize the result with the original structure
 sim_result <-  other_mean_mortality_result <- mean_CC_mortality_by_diff_result
 # Concatenate the prevalence to the sim result 
@@ -1452,8 +1489,8 @@ if (is.na(slurm_job_id)) {
 cat("SLURM job ID:", slurm_job_id, "\n")
 ## Use job ID in file name
 #output_file <-
-#  paste0("data/testing_stability/stacked_sims_40x10E6x75_20241219_madeinPADO_SEQ_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
-#saveRDS(object = other_mean_mortality_result, file = output_file)
+#  paste0("data/testing_stability/stacked_sims_20x10E6x75_20250114_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
+#saveRDS(object = sim_result, file = output_file)
 
 
 #
@@ -1474,6 +1511,8 @@ cat("I have written out the results\n")
 #other_mean_mortality_result <-
 #  readRDS(file = "./data/testing_stability/stacked_sims_40x10E6x75_20241218_madeinPADO_SEQ_from_script_stackedOutside_RND_CORRECTED3841.rds")
 
+#sim_result <-
+#  readRDS(file = "./data/testing_stability/stacked_sims_20x10E6x75_20250114_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED4417.rds")
 
 ### ----Convert .Rmd to .R
 #library(knitr)
@@ -1810,8 +1849,11 @@ if (numb_of_sims >=60) {
   # a tendency of decreas tc_hat_undisc along simulations:
   #average_cost <-
   #  other_mean_mortality_result[["No Intervention"]]$tc_hat_undisc$`sim[[i]][[name_level_of_sim]]`
+  #average_cost <-
+  #  sim_result[["No Intervention"]]$tc_hat_undisc$`sim[[i]][[name_level_of_sim]]`
+  
   average_cost <-
-    sim_result[["No Intervention"]]$tc_hat_undisc$`sim[[i]][[name_level_of_sim]]`
+    sim_result[["No Intervention"]]$tc_hat_undisc$tc_hat_undisc
   
   # Calculate confidence intervals for groups of 10 simulations
   grouped_means <- tapply(average_cost, (seq_along(average_cost) - 1) %/% 10, mean)
