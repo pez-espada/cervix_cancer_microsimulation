@@ -36,14 +36,14 @@ my_Probs <- my_Probs %>% dplyr::rename("H" = "Well")
 
 my_Probs <- my_Probs %>% as.data.frame() #convert back to data.frame (no needed?)
 
-###############################################################
+################################################################################
 # Function to extract and convert numbers from factor levels
 extract_numbers <- function(range_factor) {
 range_string <- as.character(range_factor)
 numbers <- as.numeric(unlist(strsplit(range_string, "-")))
 return(numbers)
 }
-###############################################################
+################################################################################
 
 # Apply the function to the Range column and create new columns
 my_Probs$Lower  <- sapply(my_Probs$Age.group, function(x) extract_numbers(x)[1])
@@ -58,7 +58,7 @@ n_i <- (2.5)*10^5         # number of simulated individuals
 #n_i <- (5)*10^5            # number of simulated individuals
 #n_i <- 10^7            # number of simulated individuals
 #n_i <- 10^5               # number of simulated individuals
-#n_i <- 10^6               # number of simulated individuals
+n_i <- 10^6               # number of simulated individuals
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
@@ -947,7 +947,7 @@ registerDoParallel(cl)
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 20
+numb_of_sims = 80
 strategy <- "natural_history"
 sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
@@ -1482,10 +1482,10 @@ if (is.na(slurm_job_id)) {
   slurm_job_id <- format(Sys.time(), "%Y%m%d%H%M%S")  # Fallback to timestamp if not running in SLURM
 }
 cat("SLURM job ID:", slurm_job_id, "\n")
-## Use job ID in file name
-#output_file <-
-#  paste0("data/testing_stability/stacked_sims_20x10E6x75_20250114_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
-#saveRDS(object = sim_result, file = output_file)
+# Use job ID in file name
+output_file <-
+  paste0("data/testing_stability/stacked_sims_80x10E6x75_20250115_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
+saveRDS(object = sim_result, file = output_file)
 
 
 #
@@ -1823,7 +1823,7 @@ figo_data_prevalence <- sim_result[["No Intervention"]]$mean_FIGO_prevalence
 
 # Reshape the data into a long format
 data_long <- tidyr::pivot_longer(
-  data,
+  figo_data_prevalence,
   cols = starts_with("mean_FIGO"),
   names_to = "FIGO_stage",
   values_to = "prevalence"
@@ -1835,7 +1835,7 @@ data_long$FIGO_stage <- gsub("mean_FIGO_", "FIGO ", data_long$FIGO_stage)
 # Create the plot
 plot_FIGO_prevalence <- 
   ggplot(data_long, aes(x = age_interval, y = prevalence, color = FIGO_stage, group = FIGO_stage)) +
-  geom_line(size = 1) +
+  geom_line(linewidth = 1) +
   geom_point(size = 2) +
   labs(
     title = "Mean FIGO Prevalence by Age Interval",
