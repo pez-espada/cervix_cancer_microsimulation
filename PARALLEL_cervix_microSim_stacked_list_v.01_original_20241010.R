@@ -58,7 +58,7 @@ n_i <- (2.5)*10^5         # number of simulated individuals
 #n_i <- (5)*10^5            # number of simulated individuals
 #n_i <- 10^7            # number of simulated individuals
 #n_i <- 10^5               # number of simulated individuals
-n_i <- 10^6               # number of simulated individuals
+#n_i <- 10^6               # number of simulated individuals
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 
 ################################################################################
@@ -947,7 +947,7 @@ registerDoParallel(cl)
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 80
+numb_of_sims = 20
 strategy <- "natural_history"
 sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
@@ -1482,10 +1482,10 @@ if (is.na(slurm_job_id)) {
   slurm_job_id <- format(Sys.time(), "%Y%m%d%H%M%S")  # Fallback to timestamp if not running in SLURM
 }
 cat("SLURM job ID:", slurm_job_id, "\n")
-# Use job ID in file name
-output_file <-
-  paste0("data/testing_stability/stacked_sims_80x10E6x75_20250115_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
-saveRDS(object = sim_result, file = output_file)
+## Use job ID in file name
+#output_file <-
+#  paste0("data/testing_stability/stacked_sims_60x10E6x75_20250115_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
+#saveRDS(object = sim_result, file = output_file)
 
 
 #
