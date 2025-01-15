@@ -13,13 +13,6 @@ library(tidyverse)
 ## to prevent conflicts in the parallel environment:
 #setwd(dir = "/home/07075107P/microSim/cervix_cancer_microsimulation")
 
-# Sources:
-# Sandra's function:
-
-#source("./R/sumarize_results_by_Strategy_Func.R")
-#Sumarize_results_by_Strategy <- source("./R/sumarize_results_by_Strategy_Func.R")
-
-
 ensure_library <- function(...) {
 pkgs <- unlist(list(...))
 pkgs <- gsub("[\"']", "", pkgs) # Remove quotes
@@ -41,7 +34,7 @@ as_tibble() # I need a tibble to use 'rename' function down there:
 # Tidying up a bit the transition matrix:
 my_Probs <- my_Probs %>% dplyr::rename("H" = "Well")
 
-my_Probs <- my_Probs %>% as.data.frame() # convert back to data.frame (no needed?)
+my_Probs <- my_Probs %>% as.data.frame() #convert back to data.frame (no needed?)
 
 ###############################################################
 # Function to extract and convert numbers from factor levels
@@ -204,7 +197,6 @@ samplev <- function (probs, m) {
 
 ################################################################################
 ## ----Probability Function
-######################### Probability function #################################
 ## The Probs function that updates the transition probabilities of every cycle:
 Probs <- function(M_it, my_Probs) {
   n_s <- length(v_n)
@@ -297,6 +289,7 @@ return(u_it)
 ################################################################################
 
 
+################################################################################
 ## ----Time period related functions
 ########### WORK IN PROGRESS #########################
 age_factor <- function(my_period) {
@@ -322,10 +315,10 @@ return(my_factor)
 }
 
 ######### WORK IN PROGRESS #################
-############################################
+################################################################################
 
 
-############################################
+################################################################################
 #### ! NOT USED ! ############################
 convert_matrix_to_proper_transition <- 
 function(my_age_prob_matrix, cycle_period) {
@@ -352,8 +345,7 @@ function(my_age_prob_matrix, cycle_period) {
   TM_qo <- ctmcd::gm(TM_pracma$B, te=1, method = "QO") 
 }
 #### ! NOT USED ! ############################
-############################################
-
+################################################################################
 
 ## ----Symptoms
 # An individual can be in cancer states, i.e. FIGO.I, FIGO.II. FIGO.III and FIGO.IV
@@ -378,7 +370,7 @@ stored_list <- vector("list", n_t)
 
 
 ################################################################################
-# Function receives a column with current state of `n_i`individuals and gives
+# --- Function receives a column with current state of `n_i`individuals and gives
 # a dataframe with `ID, TimeStep`, `state`, and `RecoveredFromState` columns.
 # The function also updates the global vector `global_diagnosed` with the IDs of
 # individuals who have been diagnosed.
@@ -419,7 +411,7 @@ return(new_entries)
 
 
 ################################################################################
-# Function to update the next column based on the new entries
+# --- Function to update the next column based on the new entries
 # This function updates the next column based on the new entries of diagnosed
 # individuals. It also updates the state of individuals who have recovered.
 # The function returns the updated next column.
@@ -442,7 +434,7 @@ return(next_col)
 
 
 ################################################################################
-# Function to add new cases to the transition matrix
+# --- Function to add new cases to the transition matrix
 # This function adds new rows to the transition matrix for individuals who have
 # been diagnosed with cancer. It also updates the age and cycle columns.
 new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
@@ -471,7 +463,8 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
                cycle = age - 9)  # Adjust cycle
     } else {
       # Handle missing transition columns
-      warning(paste0("Transition '", transition_column, "' not found! Using a column of zeros."))
+      warning(paste0("Transition '", transition_column,
+                     "' not found! Using a column of zeros."))
       transition_cases <- tibble(
         !!transition_column := rep(0, nrow(Tot_Trans_per_t_tbl)),  
         age = row_number() + 10,
@@ -505,7 +498,9 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
     # the list becomes a separate column in the tibble, with the names provided
     # by missing_cols.
     missing_df <- tibble(
-      !!!setNames(lapply(missing_cols, function(x) rep(0, nrow(Tot_Trans_per_t_tbl))), missing_cols)
+      !!!setNames(lapply(missing_cols, 
+                         function(x) rep(0, nrow(Tot_Trans_per_t_tbl))), 
+                  missing_cols)
     )
     
     # Combine and process
@@ -601,7 +596,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       
       seed <- seeds[sim]
       #seed <- 17
-      set.seed(seed) # set the seed for every individual for the random number generator
+      set.seed(seed) # set the seed for every individual 
       
       # estimate costs per individual for the initial health state
       m_C[, 1] <- Costs_per_Cancer_Diag(M_it = m_M[, 1], 
@@ -1823,6 +1818,36 @@ plot_comparison <- function(data, measure_name) {
 }
 
 
+## Plotting FIGO prevalences
+figo_data_prevalence <- sim_result[["No Intervention"]]$mean_FIGO_prevalence
+
+# Reshape the data into a long format
+data_long <- tidyr::pivot_longer(
+  data,
+  cols = starts_with("mean_FIGO"),
+  names_to = "FIGO_stage",
+  values_to = "prevalence"
+)
+
+# Update the FIGO_stage names for better readability
+data_long$FIGO_stage <- gsub("mean_FIGO_", "FIGO ", data_long$FIGO_stage)
+
+# Create the plot
+plot_FIGO_prevalence <- 
+  ggplot(data_long, aes(x = age_interval, y = prevalence, color = FIGO_stage, group = FIGO_stage)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(
+    title = "Mean FIGO Prevalence by Age Interval",
+    x = "Age Interval",
+    y = "Mean Prevalence (%)",
+    color = "FIGO Stage"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
 # Create plots for each measure
 plot_CN1_incidences <- plot_comparison(combined_data, "CN1_incidences")
 plot_CN2_incidences <- plot_comparison(combined_data, "CN2_incidences")
@@ -1839,6 +1864,7 @@ print(plot_CN3_incidences)
 print(plot_CC_incidences)
 print(plot_HPV_prevalences)
 print(plot_CC_mortality)
+print(plot_FIGO_prevalence)
 #print(plot_CC_by_diff_mortality)
 
 
