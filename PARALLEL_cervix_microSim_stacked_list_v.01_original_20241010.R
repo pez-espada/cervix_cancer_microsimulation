@@ -565,6 +565,11 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
   
   simulation_results <- list() 
   
+  #calculate the cost discount weight based on the discount rate d_c 
+  v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   
+  # calculate the QALY discount weight based on the discount rate d_e                                             
+  v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   
+  
   # Parallel processing using foreach
   simulation_results <- 
     foreach(sim = 1:numb_of_sims, .packages = c("dplyr", "tidyr", "purrr") ) %dopar% { 
@@ -578,11 +583,11 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
                    DiagnosedState = character(), 
                    RecoveredFromState = logical(), stringsAsFactors = FALSE)
       
-      # NOTA: PONER FUER DEL LOOP (??)
-      #calculate the cost discount weight based on the discount rate d_c 
-      v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   
-      # calculate the QALY discount weight based on the discount rate d_e                                             
-      v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   
+      ## NOTA: PONER FUER DEL LOOP (??)
+      ##calculate the cost discount weight based on the discount rate d_c 
+      #v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   
+      ## calculate the QALY discount weight based on the discount rate d_e                                             
+      #v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   
       
       # Create the matrix capturing the state name/costs/health outcomes 
       # for all individuals at each time point:
@@ -1139,13 +1144,6 @@ for (my_state in incidence_states_to_compute) {
 ################################################################################
 # Computing Cervix Cancer incidence:
 mean_CC_incidence_func <- function(sim_stalked_result, my_Probs) {
-  # Extract unique age intervals
-  #age_intervals <- my_Probs %>% 
-  #  select(Lower, Larger) %>% 
-  #  unique() %>% 
-  #  ## making larger interval equals 84
-  #  #dplyr::mutate(Larger = ifelse(Larger==85, 84, Larger)) %>%
-  #  arrange(Lower)
   
   age_intervals <- my_Probs %>% 
     dplyr::select(Lower, Larger) %>% 
@@ -1202,13 +1200,6 @@ mean_CC_incidence_result <-
 ################################################################################
 # A. Cancer-related Deaths per age
 mean_CC_mortality_func <- function(sim_stalked_result, my_Probs) {
-  # Extract unique age intervals
-  #age_intervals <- my_Probs %>% 
-  #  select(Lower, Larger) %>% 
-  #  unique() %>% 
-  #  ## making larger interval equals 84
-  #  #dplyr::mutate(Larger = ifelse(Larger==85, 84, Larger)) %>%
-  #  arrange(Lower)
   
   age_intervals <- my_Probs %>% 
     dplyr::select(Lower, Larger) %>% 
@@ -1266,13 +1257,6 @@ mean_CC_mortality_result <-
 ################################################################################
 # A.2 Cancer-related Deaths (per differences) per age
 mean_CC_mortality_by_diff_func <- function(sim_stalked_result, my_Probs) {
-  # Extract unique age intervals
-  #age_intervals <- my_Probs %>% 
-  #  select(Lower, Larger) %>% 
-  #  unique() %>% 
-  #  ## making larger interval equals 84
-  #  #dplyr::mutate(Larger = ifelse(Larger==85, 84, Larger)) %>%
-  #  arrange(Lower)
   
   age_intervals <- my_Probs %>% 
     dplyr::select(Lower, Larger) %>% 
@@ -1326,8 +1310,8 @@ mean_CC_mortality_by_diff_func <- function(sim_stalked_result, my_Probs) {
 mean_CC_mortality_by_diff_result <- mean_CC_mortality_result
 mean_CC_mortality_by_diff_result <-
   mean_CC_mortality_by_diff_func(sim_stalked_result =
-                                   mean_CC_mortality_by_diff_result, my_Probs = 
-                                   my_Probs)  
+                                   mean_CC_mortality_by_diff_result,
+                                 my_Probs = my_Probs)  
  
 ################################################################################
 # B. Cancer-unrelated Mortality
@@ -1368,7 +1352,7 @@ other_mean_mortality_func <- function(sim_stalked_result, my_Probs) {
 other_mean_mortality_result <- mean_CC_mortality_by_diff_result
 # Concatenate the prevalence to the sim result 
 other_mean_mortality_result <-
-other_mean_mortality_func(sim_stalked_result = 
+  other_mean_mortality_func(sim_stalked_result = 
                               other_mean_mortality_result, my_Probs = my_Probs)  
 
 
@@ -1376,38 +1360,6 @@ other_mean_mortality_func(sim_stalked_result =
 ################################################################################
 # Mean FIGO states across simulations by age interval
 mean_FIGO_Func <- function(sim_stalked_result, my_Probs) {
-  
- # age_intervals <- my_Probs %>% 
- #   dplyr::select(Lower, Larger) %>% 
- #   unique() %>% 
- #   dplyr::mutate(Larger = ifelse(Larger == 85, 84, Larger)) %>%  # Cap at 84
- #   arrange(Lower)
- # 
- # # Create a vector of the breaks for the intervals
- # breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
- # 
- # # Create labels for the intervals
- # labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
- # 
- # # Compute prevalence and average it by age intervals
- # df <- sim_stalked_result[[1]]$TR %>% 
- #   #dplyr::select(sim, cycle, age, H, HR.HPV.infection) %>% 
- #   dplyr::select(everything()) %>% 
- #   dplyr::mutate(total_alive = H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
- #                   FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
- #   #dplyr::mutate(other_mortality = (Other.Death / total_alive) * 10^5) %>% 
- #   dplyr::mutate(FIGO.I_prev = (FIGO.I / total_alive) * 10^5) %>% 
- #   
- #   dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
- #   dplyr::group_by(age_interval) %>% 
- #   dplyr::summarise(mean_FIGO.I_prev = mean(FIGO.I_prev,
- #                                            na.rm = TRUE)) %>% 
- #   dplyr::ungroup()
- # 
- # #return(df)
- # sim_stalked_result[[1]]$mean_FIGO.I <- df
- # return(sim_stalked_result)
-  
   age_intervals <- my_Probs %>% 
     dplyr::select(Lower, Larger) %>% 
     unique() %>% 
@@ -1443,22 +1395,79 @@ mean_FIGO_Func <- function(sim_stalked_result, my_Probs) {
   # Storing the results in the simulation object
   sim_stalked_result[[1]]$mean_FIGO_prevalence <- df
   return(sim_stalked_result) 
-  
 }
 ################################################################################
 
 
 # Initialize the result with the original structure
-sim_result <-  other_mean_mortality_result <- mean_CC_mortality_by_diff_result
-# Concatenate the prevalence to the sim result 
-other_mean_mortality_result <-
-other_mean_mortality_func(sim_stalked_result = 
-                              other_mean_mortality_result, my_Probs = my_Probs)  
+sim_result <-  other_mean_mortality_result 
+## Concatenate the prevalence to the sim result 
+#other_mean_mortality_result <-
+#  other_mean_mortality_func(sim_stalked_result = 
+#                              other_mean_mortality_result, my_Probs = my_Probs)  
 
 # Concatenate the prevalence to the sim result 
 sim_result <-
 mean_FIGO_Func(sim_stalked_result = 
                               sim_result, my_Probs = my_Probs)  
+################################################################################
+
+
+
+################################################################################
+# Mean (accross simulations) of Cancer diagnosed (FIGO.I-.IV)
+diag_by_Symp  <- function (sim_stalked_result, my_Probs) {
+  age_intervals <- my_Probs %>% 
+    dplyr::select(Lower, Larger) %>% 
+    unique() %>% 
+    dplyr::mutate(Larger = ifelse(Larger == 85, 84, Larger)) %>%  # Cap at 84
+    arrange(Lower)
+  
+  # Create a vector of the breaks for the intervals
+  breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
+  
+  # Create labels for the intervals
+  labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
+  
+  # Compute prevalence and average it by age intervals
+  df <- sim_stalked_result[[1]]$TR %>% 
+    dplyr::select(everything()) %>% 
+    #dplyr::mutate(total_alive = H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
+    #                FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
+    # Prevalence for each FIGO state
+    dplyr::mutate(FIGO.I   = (FIGO.I)) %>% # / total_alive) * 10^5) %>% 
+    dplyr::mutate(FIGO.II  = (FIGO.II)) %>% # / total_alive) * 10^5) %>% 
+    dplyr::mutate(FIGO.III = (FIGO.III)) %>% # / total_alive) * 10^5) %>% 
+    dplyr::mutate(FIGO.IV  = (FIGO.IV)) %>% # / total_alive) * 10^5) %>% 
+    # Assigning age intervals
+    dplyr::mutate(age_interval = 
+                    cut(age, breaks = 
+                          breaks, labels = labels, right = FALSE)) %>% 
+    dplyr::group_by(age_interval) %>% 
+    # Summarizing the mean prevalence for each FIGO state
+    dplyr::summarise(mean_FIGO.I = mean(FIGO.I, na.rm = TRUE),
+                     mean_FIGO.II = mean(FIGO.II, na.rm = TRUE),
+                     mean_FIGO.III = mean(FIGO.III, na.rm = TRUE),
+                     mean_FIGO.IV = mean(FIGO.IV, na.rm = TRUE)) %>% 
+    dplyr::ungroup()
+  
+  # Storing the results in the simulation object
+  sim_stalked_result[[1]]$mean_FIGO <- df
+  return(sim_stalked_result) 
+}
+################################################################################
+
+# Initialize the result with the original structure
+#sim_result <-  other_mean_mortality_result <- mean_CC_mortality_by_diff_result
+## Concatenate the averaged FIGOs to the sim result 
+#other_mean_mortality_result <-
+#other_mean_mortality_func(sim_stalked_result = 
+#                              sim_result, my_Probs = my_Probs)  
+
+# Concatenate the prevalence to the sim result 
+sim_result <-
+  diag_by_Symp(sim_stalked_result = 
+                   sim_result, my_Probs = my_Probs)  
 ################################################################################
 
 
@@ -1482,32 +1491,25 @@ if (is.na(slurm_job_id)) {
   slurm_job_id <- format(Sys.time(), "%Y%m%d%H%M%S")  # Fallback to timestamp if not running in SLURM
 }
 cat("SLURM job ID:", slurm_job_id, "\n")
+
+# Save simulation result:
 ## Use job ID in file name
 #output_file <-
-#  paste0("data/testing_stability/stacked_sims_60x10E6x75_20250115_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
+#  paste0("data/testing_stability/stacked_sims_20x10E6x75_20250116_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
 #saveRDS(object = sim_result, file = output_file)
-
-
-#
-# save the results
-#saveRDS(object = other_mean_mortality_result, file = "./data/stacked_sims_20x5x10E5x75_20241127_madeinPADO_TEST_from_script_3.rds")
-#saveRDS(object = other_mean_mortality_result, file = 
-#          "data/TEST_STACKING/stacked_sims_40x10E6x75_20241203_madeinPADO_SEQ_from_script_stackedOutside.rds")
-#saveRDS(object = other_mean_mortality_result, file = 
-#          "data/stacked_sims_40x10E6x75_20241203_madeinPADO_SEQ_from_script_stackedOutside.rds")
-#saveRDS(object = other_mean_mortality_result, file = 
-#          "data/testing_stability/stacked_sims_20x10E6x75_20241205_madeinPADO_PARA_from_script_stackedOutside_03.rds")
 
 cat("I have written out the results\n")
 
-#other_mean_mortality_result <-
-#  readRDS(file = "./data/stacked_sims_20x10E6x75_20241128_madeinPADO_TEST_from_script_4.rds")
 
-#other_mean_mortality_result <-
-#  readRDS(file = "./data/testing_stability/stacked_sims_40x10E6x75_20241218_madeinPADO_SEQ_from_script_stackedOutside_RND_CORRECTED3841.rds")
 
 #sim_result <-
 #  readRDS(file = "./data/testing_stability/stacked_sims_20x10E6x75_20250114_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED4417.rds")
+
+## Read and load previously computed results (run from here to the end to visualize results):
+#library(dplyr)
+#sim_result <- 
+#  readRDS(file = "data/testing_stability/stacked_sims_80x10E6x75_20250115_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED4431.rds")
+
 
 ### ----Convert .Rmd to .R
 #library(knitr)
