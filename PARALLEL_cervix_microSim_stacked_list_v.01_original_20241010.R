@@ -54,7 +54,7 @@ my_Probs$Larger <-
 
 
 ## ----Model Parameters
-n_i <- (2.5)*10^5         # number of simulated individuals
+n_i <- (2.1)*10^5         # number of simulated individuals
 #n_i <- (5)*10^5            # number of simulated individuals
 #n_i <- 10^7            # number of simulated individuals
 #n_i <- 10^5               # number of simulated individuals
@@ -915,10 +915,10 @@ if (is_slurm()) {
   # On local machine, use all available cores (or limit if needed)
   #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
   ## Register fewer cores (adjust based on server resources)
-  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+  #n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
   #n_cores <- detectCores()  # Try using 8 or fewer cores
   #n_cores <- min(detectCores())  # Try using 8 or fewer cores
-  #n_cores <- 6  # Try using 8 or fewer cores
+  n_cores <- 6  # Try using 8 or fewer cores
 }
 # for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
 # five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
