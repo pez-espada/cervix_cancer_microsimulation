@@ -115,25 +115,6 @@ utilityCoefs = c(1, 1, 0.987, 0.87, 0.87, 0.76, 0.67, 0.67, 0.67, 0.938, 0, 0)
 #' trans_prb(P = my_Probs, state1 = "Well", state2 = "HR.HPV.infection") 
 #' trans_prb(P = my_Probs, state1 = "CIN1", state2 = "CIN2") 
 trans_prb <- function(P, state1, state2) {
-# If the matrix of transition, P, is given:
-# the probability of an individual to go to state 'state2' the next time
-# step given the individual is currently in state 'state1' is computed by:
-#tryCatch(
-#  transition_prob <- P %>%  
-#    dplyr::filter(row.names(P) %in% c(state1)) %>% # filter state1 row
-#    dplyr::select(all_of(state2)) %>%   # select state2 column
-#    as.numeric(),
-#  error = function(e){
-#    message("An error occurred:\n", e)
-#    print("Remember the valid states are:")
-#    P %>% rownames() %>% print()
-#  },
-#  warning = function(w){ 
-#    message("A warning occured:\n", w)
-#  }
-#)
-# Overriding the tryCatch() we gain execution speed but compromise safety,
-# it's twice as faster for 20simsx10E5x75cycles!:
 transition_prob<-P[state1,state2]
 return(transition_prob)
 }
@@ -370,14 +351,16 @@ stored_list <- vector("list", n_t)
 
 
 ################################################################################
-# --- Function receives a column with current state of `n_i`individuals and gives
+# --- Function receives a column with current state of `n_i` individuals and gives
 # a dataframe with `ID, TimeStep`, `state`, and `RecoveredFromState` columns.
 # The function also updates the global vector `global_diagnosed` with the IDs of
 # individuals who have been diagnosed.
 diagnose_column <- function(col, time_step) {
 new_entries <- data.frame(ID = integer(), 
-                          TimeStep = integer(), DiagnosedState = character(),
+                          TimeStep = integer(),
+                          DiagnosedState = character(),
                           RecoveredFromState = logical())
+
 for (state_idx in seq_along(states_to_check)) {
   state <- states_to_check[state_idx]
   prob_symptom <- symptom_prob_vec[state_idx]
@@ -549,7 +532,7 @@ my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
 # check the `MicroSim` for any improvements or issues.
 MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
                      v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE, 
-                     TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix) 
+                     TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix, vaccination = FALSE) 
 {
   # Generate random seeds
   #seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  
@@ -790,9 +773,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       
       # Before sending back, some cleaning regarding cycle `n_t+1` which is 
       # computed but no needed as a result:
-      m_M <-m_M[, 1:n_t]
-      m_C <-m_C[, 1:n_t]
-      m_E <-m_E[, 1:n_t]
+      m_M <- m_M[ , 1:n_t]
+      m_C <- m_C[ , 1:n_t]
+      m_E <- m_E[ , 1:n_t]
       new_CIN1 <- new_CIN1 %>% dplyr::slice(c(1:n_t))
       new_CIN2 <- new_CIN2 %>% dplyr::slice(c(1:n_t))
       new_CIN3 <- new_CIN3 %>% dplyr::slice(c(1:n_t))
@@ -818,7 +801,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       TR$sim <- sim
       
       #Remove large objects: 
-      rm(m_M, m_C, m_E)
+      #rm(m_M, m_C, m_E)
       #rm(m_M, m_C, m_E, TS,tc_disc,tc_undisc,te_disc,te_undisc)
       
       # Computing new cancer cases pert cycle using diff() function:
@@ -840,7 +823,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
                       #seed = seeds[sim],
                       seed = seed,
                       #sim_numb = sim, 
-                      #m_M = m_M, 
+                      m_M = m_M, 
                       #m_C = m_C, 
                       #m_E = m_E, 
                       #tc_disc = tc_disc, 
@@ -854,7 +837,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
                       #TS = TS,
                       TR = TR, 
                       #Tot_Trans_per_t = Tot_Trans_per_t, 
-                      #symptomatics = symptomatics,
+                      symptomatics = symptomatics,
                       new_CIN1 = new_CIN1,
                       new_CIN2 = new_CIN2,
                       new_CIN3 = new_CIN3,
@@ -915,10 +898,10 @@ if (is_slurm()) {
   # On local machine, use all available cores (or limit if needed)
   #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
   ## Register fewer cores (adjust based on server resources)
-  #n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
   #n_cores <- detectCores()  # Try using 8 or fewer cores
   #n_cores <- min(detectCores())  # Try using 8 or fewer cores
-  n_cores <- 6  # Try using 8 or fewer cores
+  #n_cores <- 6  # Try using 8 or fewer cores
 }
 # for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
 # five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
@@ -952,7 +935,7 @@ registerDoParallel(cl)
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 20
+numb_of_sims = 2
 strategy <- "natural_history"
 sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
@@ -1452,7 +1435,7 @@ diag_by_Symp  <- function (sim_stalked_result, my_Probs) {
     dplyr::ungroup()
   
   # Storing the results in the simulation object
-  sim_stalked_result[[1]]$mean_FIGO <- df
+  sim_stalked_result[[1]]$diag_by_sympt <- df
   return(sim_stalked_result) 
 }
 ################################################################################
@@ -1820,6 +1803,7 @@ plot_comparison <- function(data, measure_name) {
 }
 
 
+################################################################################
 ## Plotting FIGO prevalences
 figo_data_prevalence <- sim_result[["No Intervention"]]$mean_FIGO_prevalence
 
@@ -1849,6 +1833,38 @@ plot_FIGO_prevalence <-
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
+################################################################################
+## Plotting diag_by_Symp "Diagnosed by Symptoms":
+Diagnosed_by_Sympt <- sim_result[["No Intervention"]]$diag_by_sympt
+
+# Reshape the data into a long format
+data_long <- tidyr::pivot_longer(
+  Diagnosed_by_Sympt,
+  cols = starts_with("mean_FIGO"),
+  names_to = "FIGO_stage",
+  values_to = "diagnosed"
+)
+
+# Update the FIGO_stage names for better readability
+data_long$FIGO_stage <- gsub("diag_FIGO_", "FIGO ", data_long$FIGO_stage)
+
+# Create the plot
+Diagnosed_by_Sympt <- 
+  ggplot(data_long, aes(x = age_interval, y = diagnosed, color = FIGO_stage, group = FIGO_stage)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  labs(
+    title = "Mean diagnosed FIGO by Age Interval",
+    x = "Age Interval",
+    y = "Mean Diagnosed",
+    color = "FIGO Stage"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+################################################################################
+
+
+
 
 # Create plots for each measure
 plot_CN1_incidences <- plot_comparison(combined_data, "CN1_incidences")
@@ -1867,6 +1883,7 @@ print(plot_CC_incidences)
 print(plot_HPV_prevalences)
 print(plot_CC_mortality)
 print(plot_FIGO_prevalence)
+print(Diagnosed_by_Sympt)
 #print(plot_CC_by_diff_mortality)
 
 
