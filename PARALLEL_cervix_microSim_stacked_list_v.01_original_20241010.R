@@ -1854,9 +1854,9 @@ Diagnosed_by_Sympt <-
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
   labs(
-    title = "Mean diagnosed FIGO by Age Interval",
+    title = "Mean FIGO by Age Interval",
     x = "Age Interval",
-    y = "Mean Diagnosed",
+    y = "Mean",
     color = "FIGO Stage"
   ) +
   theme_minimal(base_size = 14) +
