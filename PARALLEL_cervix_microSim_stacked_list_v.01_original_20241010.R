@@ -54,7 +54,7 @@ my_Probs$Larger <-
 
 
 ## ----Model Parameters
-n_i <- (2.1)*10^5         # number of simulated individuals
+n_i <- (2)*10^5         # number of simulated individuals
 #n_i <- (5)*10^5            # number of simulated individuals
 #n_i <- 10^7            # number of simulated individuals
 #n_i <- 10^5               # number of simulated individuals
@@ -182,28 +182,28 @@ samplev <- function (probs, m) {
 Probs <- function(M_it, my_Probs) {
   n_s <- length(v_n)
   n_i <- length(M_it)
-m_P_it <- matrix(NA, n_s, n_i) 
-rownames(m_P_it) <- v_n
-for (i in 1:length(v_n)) {
-  state_mask <- !is.na(M_it) & M_it == v_n[i]
-  
-  if (sum(state_mask) > 0) {
-    m_P_it[, state_mask] <- 
-      lapply(X = v_n, function(x) trans_prb(P = my_Probs, state1 =
-                                              v_n[i], state2 = x)) %>%
-      unlist()
-  } else {
-    ## Debugging:
-    #cat("State", v_n[i], "is not present in M_it at this time step\n")
+  m_P_it <- matrix(NA, n_s, n_i) 
+  rownames(m_P_it) <- v_n
+  for (i in 1:length(v_n)) {
+    state_mask <- !is.na(M_it) & M_it == v_n[i]
+    
+    if (sum(state_mask) > 0) {
+      m_P_it[, state_mask] <- 
+        lapply(X = v_n, function(x) trans_prb(P = my_Probs, state1 =
+                                                v_n[i], state2 = x)) %>%
+        unlist()
+    } else {
+      ## Debugging:
+      #cat("State", v_n[i], "is not present in M_it at this time step\n")
+    }
   }
-}
-if (any(is.na(m_P_it))) {
-  # Diagnostic message
-  cat("Transition probabilities contain NA values\n")
-}
-ifelse(colSums(m_P_it, na.rm = TRUE) >= .991, 
-       return(t(m_P_it)), 
-       stop("Probabilities do not sum to 1"))
+  if (any(is.na(m_P_it))) {
+    # Diagnostic message
+    cat("Transition probabilities contain NA values\n")
+  }
+  ifelse(colSums(m_P_it, na.rm = TRUE) >= .991, 
+         return(t(m_P_it)), 
+         stop("Probabilities do not sum to 1"))
 }
 ################################################################################
 
@@ -935,7 +935,7 @@ registerDoParallel(cl)
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 2
+numb_of_sims = 3
 strategy <- "natural_history"
 sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
@@ -1342,7 +1342,7 @@ other_mean_mortality_result <-
 
 ################################################################################
 # Mean FIGO states across simulations by age interval
-mean_FIGO_Func <- function(sim_stalked_result, my_Probs) {
+mean_FIGO_prevalence_Func <- function(sim_stalked_result, my_Probs) {
   age_intervals <- my_Probs %>% 
     dplyr::select(Lower, Larger) %>% 
     unique() %>% 
@@ -1391,15 +1391,15 @@ sim_result <-  other_mean_mortality_result
 
 # Concatenate the prevalence to the sim result 
 sim_result <-
-mean_FIGO_Func(sim_stalked_result = 
+mean_FIGO_prevalence_Func(sim_stalked_result = 
                               sim_result, my_Probs = my_Probs)  
 ################################################################################
 
 
 
 ################################################################################
-# Mean (accross simulations) of Cancer diagnosed (FIGO.I-.IV)
-diag_by_Symp  <- function (sim_stalked_result, my_Probs) {
+# Mean (accross simulations) of Cancer (FIGO.I-.IV)
+mean_Figo_Func  <- function (sim_stalked_result, my_Probs) {
   age_intervals <- my_Probs %>% 
     dplyr::select(Lower, Larger) %>% 
     unique() %>% 
@@ -1435,7 +1435,7 @@ diag_by_Symp  <- function (sim_stalked_result, my_Probs) {
     dplyr::ungroup()
   
   # Storing the results in the simulation object
-  sim_stalked_result[[1]]$diag_by_sympt <- df
+  sim_stalked_result[[1]]$mean_FIGO <- df
   return(sim_stalked_result) 
 }
 ################################################################################
@@ -1449,8 +1449,12 @@ diag_by_Symp  <- function (sim_stalked_result, my_Probs) {
 
 # Concatenate the prevalence to the sim result 
 sim_result <-
-  diag_by_Symp(sim_stalked_result = 
+  mean_Figo_Func(sim_stalked_result = 
                    sim_result, my_Probs = my_Probs)  
+################################################################################
+
+
+
 ################################################################################
 
 
@@ -1482,17 +1486,6 @@ cat("SLURM job ID:", slurm_job_id, "\n")
 #saveRDS(object = sim_result, file = output_file)
 
 cat("I have written out the results\n")
-
-
-
-#sim_result <-
-#  readRDS(file = "./data/testing_stability/stacked_sims_20x10E6x75_20250114_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED4417.rds")
-
-## Read and load previously computed results (run from here to the end to visualize results):
-#library(dplyr)
-#sim_result <- 
-#  readRDS(file = "data/testing_stability/stacked_sims_80x10E6x75_20250115_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED4431.rds")
-
 
 ### ----Convert .Rmd to .R
 #library(knitr)
@@ -1835,11 +1828,11 @@ plot_FIGO_prevalence <-
 
 ################################################################################
 ## Plotting diag_by_Symp "Diagnosed by Symptoms":
-Diagnosed_by_Sympt <- sim_result[["No Intervention"]]$diag_by_sympt
+mean_FIGO <- sim_result[["No Intervention"]]$mean_FIGO
 
 # Reshape the data into a long format
 data_long <- tidyr::pivot_longer(
-  Diagnosed_by_Sympt,
+  mean_FIGO,
   cols = starts_with("mean_FIGO"),
   names_to = "FIGO_stage",
   values_to = "diagnosed"
@@ -1849,7 +1842,7 @@ data_long <- tidyr::pivot_longer(
 data_long$FIGO_stage <- gsub("diag_FIGO_", "FIGO ", data_long$FIGO_stage)
 
 # Create the plot
-Diagnosed_by_Sympt <- 
+mean_FIGO <- 
   ggplot(data_long, aes(x = age_interval, y = diagnosed, color = FIGO_stage, group = FIGO_stage)) +
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
@@ -1882,8 +1875,8 @@ print(plot_CN3_incidences)
 print(plot_CC_incidences)
 print(plot_HPV_prevalences)
 print(plot_CC_mortality)
-print(plot_FIGO_prevalence)
-print(Diagnosed_by_Sympt)
+#print(plot_FIGO_prevalence)
+print(mean_FIGO)
 #print(plot_CC_by_diff_mortality)
 
 
@@ -1916,3 +1909,4 @@ if (numb_of_sims >=60) {
   plot(average_cost, type = "l", main = "Average Cost over Simulations")
   lines(moving_avg, col = "red")
 }
+  
