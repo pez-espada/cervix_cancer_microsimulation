@@ -3,7 +3,7 @@
 # This code is a modified version of the original code from:
 # [https://github.com/DARTH-git/Microsimulation-tutorial] (Krijkamp et al 2018 
 # Sick-Sicker model).
-# Modifications by: Carlos Dommar D'Lima - carlos.dommar@gmail.com
+# programmed by Carlos Dommar D'Lima - carlos.dommar@gmail.com
 # This code extends the "sick-sicker" model of the original authors to a
 # multi-state cervix cancer model
 ################################################################################
@@ -25,11 +25,11 @@ sapply(pkgs, function(pkg) {
 }
 ################################################################################
 
-my_Probs <- readRDS(file = "./data/probs.rds")
+my_Probs <- readRDS(file = "./data/probs.rds") # natural history
 
 my_Probs <- # transition matrix (for all sim cycles) 
-my_Probs %>%
-as_tibble() # I need a tibble to use 'rename' function down there:
+  my_Probs %>%
+  as_tibble() # I need a tibble to use 'rename' function down there:
 
 # Tidying up a bit the transition matrix:
 my_Probs <- my_Probs %>% dplyr::rename("H" = "Well")
@@ -49,8 +49,8 @@ return(numbers)
 my_Probs$Lower  <- sapply(my_Probs$Age.group, function(x) extract_numbers(x)[1])
 my_Probs$Larger <- sapply(my_Probs$Age.group, function(x) extract_numbers(x)[2])
 # For the last cycle/iteration we need to adjust the last transition matrix:
-my_Probs$Larger <- 
-  ifelse(my_Probs$Larger == max(my_Probs$Larger), my_Probs$Larger + 1, my_Probs$Larger) 
+#my_Probs$Larger <- 
+#  ifelse(my_Probs$Larger == max(my_Probs$Larger), my_Probs$Larger + 1, my_Probs$Larger) 
 
 
 ## ----Model Parameters
@@ -60,6 +60,7 @@ n_i <- (2)*10^5         # number of simulated individuals
 #n_i <- 10^5               # number of simulated individuals
 #n_i <- 10^6               # number of simulated individuals
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
+ 
 
 ################################################################################
 ### (THIS IS WORK IN PROGRESS):
@@ -80,6 +81,8 @@ n_t <- n_t * 1
 }
 ################################################################################
 
+
+################################################################################
 v_n <- rownames(my_Probs)
 v_n <- colnames(my_Probs)
 v_n <- v_n[-c(1,14,15)]
@@ -91,15 +94,17 @@ v_Trt <-
 c("No Treatment", "Treatment")    # store the strategy names
 ################################################################################
 
+################################################################################
 # Cost and utility inputs 
 # From our Markov cervix model (CC's natural history?):
 cost_Vec = c(0, 39.54, 288.91, 1552.27, 1552.27, 
            5759.81, 12903.63, 23032.41, 35323.14, 0, 0, 0)
 utilityCoefs = c(1, 1, 0.987, 0.87, 0.87, 0.76, 0.67, 0.67, 0.67, 0.938, 0, 0)
+################################################################################
 
 
-
-## ----Functions
+################################################################################
+## ---- FUNCTIONS -----                                                       ##  
 #### For extracting the probabilities of transitions given the transition matrix:
 ########### Probably the following function is not needed ######################
 #' Extract transition probability from Transition Matrix
@@ -177,7 +182,7 @@ samplev <- function (probs, m) {
 
 
 ################################################################################
-## ----Probability Function
+## ---- Probability Function ----                                             ##
 ## The Probs function that updates the transition probabilities of every cycle:
 Probs <- function(M_it, my_Probs) {
   n_s <- length(v_n)
@@ -209,7 +214,7 @@ Probs <- function(M_it, my_Probs) {
 
 
 ################################################################################
-## ----Costs Function
+## ---- Costs Function ----                                                   ##
 ### Costs Function
 # The `Costs_per_Cancer_Diag` function estimates the costs of a diagnose 
 # individual due to cancer symptoms (FIGO.I-IV) at every cycle. 
@@ -236,13 +241,13 @@ if(nrow(symptomatics) > 0 ) {
          select(ID) %>% as.list() %>% 
          unlist()] <- cost_Vec[which(v_n %in% "FIGO.IV")]
 }
-return(c_it)              		                           # return the costs
+return(c_it) # return the costs
 }
 ################################################################################
 
 
 ################################################################################
-## ----Qalys function
+## ---- Qalys Function ----                                                   ##
 ### Health outcome function 
 # The `Effs` function estimates the QALYs of a diagnose individual due to cancer
 Effs <- function (M_it, Trt = FALSE, cl = 1, utilityCoefs) {
@@ -294,7 +299,6 @@ if (my_period == "1yr") {
 } else {print("Cycle period can only be: '1yr', '6mth','4mth', '3mth' and '12mth'")}
 return(my_factor)
 }
-
 ######### WORK IN PROGRESS #################
 ################################################################################
 
@@ -328,7 +332,8 @@ function(my_age_prob_matrix, cycle_period) {
 #### ! NOT USED ! ############################
 ################################################################################
 
-## ----Symptoms
+
+## ---- Symptomatic Individuals ----                                                         ##
 # An individual can be in cancer states, i.e. FIGO.I, FIGO.II. FIGO.III and FIGO.IV
 # (in the model) and yet no develop symptoms. Form th Markov cohort model we have
 # that the probability of developing symptoms are 0.11, 0.23, 0.66, and 0.9 for
@@ -394,30 +399,30 @@ return(new_entries)
 
 
 ################################################################################
-# --- Function to update the next column based on the new entries
+# ---- Function to update the next column based on the new entries ----       ##
 # This function updates the next column based on the new entries of diagnosed
 # individuals. It also updates the state of individuals who have recovered.
 # The function returns the updated next column.
 update_column <- function(col, new_entries, next_col) {
-if (nrow(new_entries) > 0) {
-  diagnosed_ids <- new_entries$ID
-  recovered_ids <- new_entries$ID[new_entries$RecoveredFromState]
-  
-  # Update the states in the next column for recovered individuals
-  next_col[recovered_ids] <- "Survival"
-  
-  # Ensure that individuals who were diagnosed but not recovered retain their diagnosed state
-  non_recovered_ids <- diagnosed_ids[!diagnosed_ids %in% recovered_ids]
-  next_col[non_recovered_ids] <-
-    new_entries$DiagnosedState[!diagnosed_ids %in% recovered_ids]
-}
-return(next_col)
+  if (nrow(new_entries) > 0) {
+    diagnosed_ids <- new_entries$ID
+    recovered_ids <- new_entries$ID[new_entries$RecoveredFromState]
+    
+    # Update the states in the next column for recovered individuals
+    next_col[recovered_ids] <- "Survival"
+    
+    # Ensure that individuals who were diagnosed but not recovered retain their diagnosed state
+    non_recovered_ids <- diagnosed_ids[!diagnosed_ids %in% recovered_ids]
+    next_col[non_recovered_ids] <-
+      new_entries$DiagnosedState[!diagnosed_ids %in% recovered_ids]
+  }
+  return(next_col)
 }
 #################################################################################
 
 
 ################################################################################
-# --- Function to add new cases to the transition matrix
+# ---- Function to add new cases to the transition matrix ----                ##
 # This function adds new rows to the transition matrix for individuals who have
 # been diagnosed with cancer. It also updates the age and cycle columns.
 new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
@@ -469,7 +474,9 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
     missing_cols <- setdiff(transition_columns, colnames(Tot_Trans_per_t_tbl))
     
     if (length(missing_cols) > 0) {
-      warning(paste0("Some transitions not found: ", paste(missing_cols, collapse = ", "), ". Using columns of zeros for these."))
+      warning(paste0("Some transitions not found: ",
+                     paste(missing_cols, collapse = ", "),
+                     ". Using columns of zeros for these."))
     }
     
     # Create missing columns (zeros)
@@ -506,8 +513,8 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
       add_row(!!paste0(state2, "_per_t") := 0, age = 10, cycle = 1, .before = 1) %>%
       slice(-n()) %>%
       mutate(age = 10:(10 + n() - 1), cycle = age - 9) #%>%
-      #dplyr::select(-matches("sim\\.x$")) %>%
-      #dplyr::select(-sim.1)
+    #dplyr::select(-matches("sim\\.x$")) %>%
+    #dplyr::select(-sim.1)
     
     return(transition_cases)
   }
@@ -523,7 +530,6 @@ my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
                     Larger >= my_age_in_loop) 
 }
 ################################################################################
-
 
 
 ################################################################################
@@ -566,7 +572,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
                    DiagnosedState = character(), 
                    RecoveredFromState = logical(), stringsAsFactors = FALSE)
       
-      ## NOTA: PONER FUER DEL LOOP (??)
+      ## NOTA: PONER FUERA DEL LOOP (??)
       ##calculate the cost discount weight based on the discount rate d_c 
       #v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   
       ## calculate the QALY discount weight based on the discount rate d_e                                             
@@ -599,7 +605,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       stored_list <- list()
        
       ###################### run over all the cycles ########################### 
-      # This loop runs over all the cycles of the simulation. It updates the
+      # loop runs over all the cycles of the simulation. It updates the
       # health state of each individual at each cycle, estimates the costs and
       # QALYs per individual at each cycle, and stores the transitions across
       # states for each individual at each cycle.
@@ -699,7 +705,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         
         TS <- matrix(TS, nrow = n_i)
         rownames(TS) <- paste("Ind",   1:n_i, sep = " ")   # name the rows 
-        #colnames(TS) <- paste0("cycle_", 1:(n_t + 1), sep = "")   # name the columns 
         colnames(TS) <- paste0("cycle_", 1:(n_t), sep = "")   # name the columns 
       } else {
         TS <- NULL
@@ -711,7 +716,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         #TR <- TR / n_i                                   # create a distribution 
         # trace
         
-        #rownames(TR) <- paste("cycle", 1:(n_t + 1), sep = "_") # name the rows 
         rownames(TR) <- paste("cycle", 1:(n_t), sep = "_") # name the rows 
         colnames(TR) <- v_n                              # name the columns 
       } else {
@@ -744,7 +748,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
                                  = transitions, 
                                  ordered = TRUE))))
         # trace
-        #rownames(Tot_Trans_per_t) <- paste0("cycle_", 1:(n_t + 1), sep = "") # name the rows 
         rownames(Tot_Trans_per_t) <- paste0("cycle_", 1:(n_t), sep = "") # name the rows 
       } else {
         Tot_Trans_per_t <- NULL
@@ -795,8 +798,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       
       ### add age to TR:
       TR <- as.data.frame(TR)
-      #TR <- TR %>% mutate(age = row_number() + 10)
-      #TR <- TR %>% mutate(age = row_number() + 8)
       TR <- TR %>% mutate(age = row_number() + 9)
       TR$sim <- sim
       
@@ -870,13 +871,11 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
 ################################################################################
 
 
-
 ################################################################################
 ################################################################################
 ### Prepare Parallelize code ###
 library(parallel)
 ensure_library("doParallel")
-
 
 ################################################################################
 # Function to detect if running on SLURM -NOT WORKING AS INTENDED"-
@@ -885,7 +884,6 @@ is_slurm <- function() {
   return(nzchar(slurm_id))  # Returns TRUE only if SLURM_JOB_ID is a non-empty string
 }
 ################################################################################
-
  
 ################################################################################
 # Determine number of cores
@@ -921,21 +919,19 @@ clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
                     "update_column", "states_to_check", "symptom_prob_vec",
                     "survival_prob_vec", #"global_diagnosed", 
                     "cost_Vec", "new_cases_2"))
-registerDoParallel(cl)
-#registerDoSEQ()
+registerDoParallel(cl) # for parallel
+#registerDoSEQ()        # for sequential
 ################################################################################
 ################################################################################
 
 
-
 ################################################################################
-##     Perform simulation
 ########################## Run the simulation ##################################
 ## START SIMULATION
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 3
+numb_of_sims = 20
 strategy <- "natural_history"
 sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
@@ -957,8 +953,6 @@ sim_no_trt <- stacked_results
 
 # Load computed simulation if needed here:
 #sim_no_trt <- readRDS(file = "./data/stacked_sims_100x10E6x75.rds")
-#sim_no_trt <- readRDS(file = "./data/stacked_sims_10x10E6x75_20241002.rds")
-#sim_no_trt <- readRDS(file = "./data/stacked_sims_100x10E6x75_FULL_IMPLEMENTATION.rds")
 
 comp.time = Sys.time() - p
 comp.time %>% print()
@@ -1009,7 +1003,6 @@ mean_prevalence_func <- function(sim_stalked_result, my_Probs) {
   age_intervals <- my_Probs %>% 
     select(Lower, Larger) %>% 
     unique() %>% 
-    dplyr::mutate(Larger = ifelse(Larger == 85, 84, Larger)) %>% # Ensure Larger is capped at 84
     arrange(Lower)
   
   # Create a vector of breaks for the intervals
@@ -1052,7 +1045,6 @@ mean_incidence_func <- function(sim_stalked_result, state, my_Probs) {
   age_intervals <- my_Probs %>% 
     dplyr::select(Lower, Larger) %>% 
     unique() %>% 
-    dplyr::mutate(Larger = ifelse(Larger == 85, 84, Larger)) %>%  # Cap at 84
     arrange(Lower)
   
   # Create a vector of the breaks for the intervals
@@ -1131,7 +1123,6 @@ mean_CC_incidence_func <- function(sim_stalked_result, my_Probs) {
   age_intervals <- my_Probs %>% 
     dplyr::select(Lower, Larger) %>% 
     unique() %>% 
-    dplyr::mutate(Larger = ifelse(Larger == 85, 84, Larger)) %>%  # Cap at 84
     arrange(Lower)
   
   # Create a vector of the breaks for the intervals
@@ -1187,7 +1178,6 @@ mean_CC_mortality_func <- function(sim_stalked_result, my_Probs) {
   age_intervals <- my_Probs %>% 
     dplyr::select(Lower, Larger) %>% 
     unique() %>% 
-    dplyr::mutate(Larger = ifelse(Larger == 85, 84, Larger)) %>%  # Cap at 84
     arrange(Lower)
   
   # Create a vector of the breaks for the intervals
@@ -1244,7 +1234,6 @@ mean_CC_mortality_by_diff_func <- function(sim_stalked_result, my_Probs) {
   age_intervals <- my_Probs %>% 
     dplyr::select(Lower, Larger) %>% 
     unique() %>% 
-    dplyr::mutate(Larger = ifelse(Larger == 85, 84, Larger)) %>%  # Cap at 84
     arrange(Lower)
   
   # Create a vector of the breaks for the intervals
@@ -1303,7 +1292,6 @@ other_mean_mortality_func <- function(sim_stalked_result, my_Probs) {
   age_intervals <- my_Probs %>% 
     dplyr::select(Lower, Larger) %>% 
     unique() %>% 
-    dplyr::mutate(Larger = ifelse(Larger == 85, 84, Larger)) %>%  # Cap at 84
     arrange(Lower)
   
   # Create a vector of the breaks for the intervals
@@ -1346,7 +1334,6 @@ mean_FIGO_prevalence_Func <- function(sim_stalked_result, my_Probs) {
   age_intervals <- my_Probs %>% 
     dplyr::select(Lower, Larger) %>% 
     unique() %>% 
-    dplyr::mutate(Larger = ifelse(Larger == 85, 84, Larger)) %>%  # Cap at 84
     arrange(Lower)
   
   # Create a vector of the breaks for the intervals
@@ -1403,7 +1390,6 @@ mean_Figo_Func  <- function (sim_stalked_result, my_Probs) {
   age_intervals <- my_Probs %>% 
     dplyr::select(Lower, Larger) %>% 
     unique() %>% 
-    dplyr::mutate(Larger = ifelse(Larger == 85, 84, Larger)) %>%  # Cap at 84
     arrange(Lower)
   
   # Create a vector of the breaks for the intervals
@@ -1440,13 +1426,6 @@ mean_Figo_Func  <- function (sim_stalked_result, my_Probs) {
 }
 ################################################################################
 
-# Initialize the result with the original structure
-#sim_result <-  other_mean_mortality_result <- mean_CC_mortality_by_diff_result
-## Concatenate the averaged FIGOs to the sim result 
-#other_mean_mortality_result <-
-#other_mean_mortality_func(sim_stalked_result = 
-#                              sim_result, my_Probs = my_Probs)  
-
 # Concatenate the prevalence to the sim result 
 sim_result <-
   mean_Figo_Func(sim_stalked_result = 
@@ -1456,6 +1435,80 @@ sim_result <-
 
 
 ################################################################################
+# Mean diagnosed of Cancer averaged by age intervals (FIGO.I-.IV) and by sims
+mean_Diagnosed_Func  <- function (sim_stacked_result, my_Probs) {
+  age_intervals <- my_Probs %>% 
+    dplyr::select(Lower, Larger) %>% 
+    unique() %>% 
+    arrange(Lower)
+  
+  # Create a vector of the breaks for the intervals
+  breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
+  
+  # Create labels for the intervals
+  labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
+  
+  # extracting diagnosed:
+  sympt <- sim_stacked_result[[1]]$symptomatics
+  
+  # add age column:
+  sympt <- sympt %>% dplyr::mutate(age = TimeStep + 9)
+  
+  # add age interval column:
+  sympt <- sympt %>%
+    mutate(age_interval = cut(age, 
+                              breaks = seq(10, 85, by = 5), 
+                              labels = labels, 
+                              right = FALSE))
+  
+  # Calculate the maximum simulation count
+  max_sim <- max(sympt$sim)
+  
+  ## Summarize data in the desired format
+  #df <- sympt %>%
+  #  group_by(age_interval, DiagnosedState) %>%
+  #  summarise(count = n() / max_sim, .groups = "drop") %>%
+  #  pivot_wider(names_from = DiagnosedState, 
+  #              values_from = count, 
+  #              names_prefix = "mean_FIGO.") %>%
+  #  replace(is.na(.), 0) %>%  # Replace NA values with 0
+  #  rename(mean_Diagnosed_FIGO.I = mean_FIGO.FIGO.I, 
+  #         mean_Diagnosed_FIGO.II = mean_FIGO.FIGO.II, 
+  #         mean_Diagnosed_FIGO.III = mean_FIGO.FIGO.III, 
+  #         mean_Diagnosed_FIGO.IV = mean_FIGO.FIGO.IV)
+  
+  
+  # Create a complete data frame with all combinations of age intervals and DiagnosedStates
+  complete_data <- expand.grid(
+    age_interval = labels,
+    DiagnosedState = c("FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
+  )
+  
+  # Summarize data
+  df <- sympt %>%
+    group_by(age_interval, DiagnosedState) %>%
+    summarise(mean_count = n() / max_sim, .groups = "drop") %>%
+    right_join(complete_data, by = c("age_interval", "DiagnosedState")) %>%
+    replace_na(list(mean_count = 0)) %>%  # Replace NA values with 0
+    pivot_wider(names_from = DiagnosedState, 
+                values_from = mean_count, 
+                names_prefix = "mean_Diagnosed_") %>%
+    arrange(age_interval)
+  
+  # View the result
+  print(df)
+  
+  # Storing the results in the simulation object
+  sim_stacked_result[[1]]$mean_Diagnosed <- df 
+  return(sim_stacked_result) 
+}
+################################################################################
+
+# Concatenate the prevalence to the sim result 
+sim_result <-
+  mean_Diagnosed_Func(sim_stacked_result = sim_result, my_Probs = my_Probs)  
+################################################################################
+
 
 
 ################################################################################
@@ -1748,30 +1801,6 @@ microSim_long <- microSim_data %>%
 # Combine data
 combined_data <- bind_rows(markov_long, microSim_long)
 
-
-#plot_comparison <- function(data, measure_name) {
-#  ggplot(data %>% dplyr::filter(grepl(measure_name, measure)), 
-#         aes(x = age, y = value, fill = model)) +
-#    geom_bar(stat = "identity", position = "dodge") +
-#    labs(
-#      title = paste(
-#        measure_name, "Comparison\n",
-#        "N =",other_mean_mortality_result[[1]]$numb_of_ind, 
-#        ";  cycles=", other_mean_mortality_result[[1]]$numb_of_cycles, 
-#        "Parallelized\n", 
-#        "Numb. of avg. sims =", numb_of_sims
-#      ),
-#      x = "Age Group",
-#      y = measure_name
-#    ) +
-#    theme_minimal() +
-#    theme(
-#      axis.text.x = element_text(angle = 45, hjust = 1),
-#      plot.title = element_text(size = 15, hjust = 0.5),  # Adjust size and center the title
-#      plot.margin = margin(15, 5, 5, 5)                   # Add extra margin
-#    )
-#}
-
 plot_comparison <- function(data, measure_name) {
   ggplot(data %>% dplyr::filter(grepl(measure_name, measure)), 
          aes(x = age, y = value, fill = model)) +
@@ -1827,7 +1856,7 @@ plot_FIGO_prevalence <-
 
 
 ################################################################################
-## Plotting diag_by_Symp "Diagnosed by Symptoms":
+## Plotting mean FIGOs:
 mean_FIGO <- sim_result[["No Intervention"]]$mean_FIGO
 
 # Reshape the data into a long format
@@ -1842,7 +1871,7 @@ data_long <- tidyr::pivot_longer(
 data_long$FIGO_stage <- gsub("diag_FIGO_", "FIGO ", data_long$FIGO_stage)
 
 # Create the plot
-mean_FIGO <- 
+plot_mean_FIGO <- 
   ggplot(data_long, aes(x = age_interval, y = diagnosed, color = FIGO_stage, group = FIGO_stage)) +
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
@@ -1856,6 +1885,37 @@ mean_FIGO <-
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ################################################################################
 
+
+
+################################################################################
+## Plotting mean Diagnosed:
+mean_Diagnosed <- sim_result[["No Intervention"]]$mean_Diagnosed
+
+# Reshape the data into a long format
+data_long <- tidyr::pivot_longer(
+  mean_Diagnosed,
+  cols = starts_with("mean_Diagnosed_FIGO"),
+  names_to = "FIGO_stage",
+  values_to = "diagnosed"
+)
+
+# Update the FIGO_stage names for better readability
+data_long$FIGO_stage <- gsub("diag_FIGO_", "FIGO ", data_long$FIGO_stage)
+
+# Create the plot
+plot_mean_Diagnosed_FIGO <- 
+  ggplot(data_long, aes(x = age_interval, y = diagnosed, color = FIGO_stage, group = FIGO_stage)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  labs(
+    title = "Mean Diagnosed FIGO by Age Interval",
+    x = "Age Interval",
+    y = "Mean",
+    color = "FIGO Stage"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+################################################################################
 
 
 
@@ -1876,7 +1936,8 @@ print(plot_CC_incidences)
 print(plot_HPV_prevalences)
 print(plot_CC_mortality)
 #print(plot_FIGO_prevalence)
-print(mean_FIGO)
+print(plot_mean_FIGO)
+print(plot_mean_Diagnosed_FIGO)
 #print(plot_CC_by_diff_mortality)
 
 
