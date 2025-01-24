@@ -275,62 +275,62 @@ return(u_it)
 ################################################################################
 
 
-################################################################################
-## ----Time period related functions
-########### WORK IN PROGRESS #########################
-age_factor <- function(my_period) {
-# it receives a string with the period of the cycle, and it can be:
-#  - "1mth"
-#  - "3mth"
-#  - "4mth"
-#  - "6mth"
-#  - "1yr" # i.e. 12 months
-# and it gives back an age factor for scaling cycle period.
-if (my_period == "1yr") {
-  my_factor <- 1
-} else if (my_period == "6mth") {
-  my_factor <- 2
-} else if (my_period == "4mth") {
-  my_factor <- 3
-} else if (my_period == "3mth") {
-  my_factor <- 4
-} else if (my_period == "1mth") {
-  my_factor <- 12
-} else {print("Cycle period can only be: '1yr', '6mth','4mth', '3mth' and '12mth'")}
-return(my_factor)
-}
-######### WORK IN PROGRESS #################
-################################################################################
+#################################################################################
+### ----Time period related functions
+############ WORK IN PROGRESS #########################
+#age_factor <- function(my_period) {
+## it receives a string with the period of the cycle, and it can be:
+##  - "1mth"
+##  - "3mth"
+##  - "4mth"
+##  - "6mth"
+##  - "1yr" # i.e. 12 months
+## and it gives back an age factor for scaling cycle period.
+#if (my_period == "1yr") {
+#  my_factor <- 1
+#} else if (my_period == "6mth") {
+#  my_factor <- 2
+#} else if (my_period == "4mth") {
+#  my_factor <- 3
+#} else if (my_period == "3mth") {
+#  my_factor <- 4
+#} else if (my_period == "1mth") {
+#  my_factor <- 12
+#} else {print("Cycle period can only be: '1yr', '6mth','4mth', '3mth' and '12mth'")}
+#return(my_factor)
+#}
+########## WORK IN PROGRESS #################
+#################################################################################
 
 
-################################################################################
-#### ! NOT USED ! ############################
-convert_matrix_to_proper_transition <- 
-function(my_age_prob_matrix, cycle_period) {
-  my_age_prob_matrix %>% head(3)
-  ensure_library(c("expm", "pracma", "ctmcd"))
-  trans_matrix <- my_age_prob_matrix %>% 
-    select(-c("Age.group", "Lower", "Larger")) %>% 
-    as.matrix()
-  # Referenece: https://rpubs.com/crossxwill/transition_matrix
-  ## method 1: (not working atm)
-  #ensure_library(expm)
-  #TM.exp  <- expm::expm((1 / age_factor(cycle_period))) * log(trans_matrix) 
-  
-  #method 2 ;
-  #ensure_library("pracma")
-  TM_pracma <- 
-    pracma::rootm(trans_matrix, p=age_factor(cycle_period), 
-                  kmax = 20, tol = 1e-10)
-  round(TM_pracma$B, 5)
-  # Regularization with the `ctmcd` package, The code below uses the 
-  # quasi-optimization of the generator (QOG) approach from 
-  # Kreinin and Sidelnikova (2001).:
-  ensure_library("ctmcd")
-  TM_qo <- ctmcd::gm(TM_pracma$B, te=1, method = "QO") 
-}
-#### ! NOT USED ! ############################
-################################################################################
+#################################################################################
+##### ! NOT USED ! ############################
+#convert_matrix_to_proper_transition <- 
+#function(my_age_prob_matrix, cycle_period) {
+#  my_age_prob_matrix %>% head(3)
+#  ensure_library(c("expm", "pracma", "ctmcd"))
+#  trans_matrix <- my_age_prob_matrix %>% 
+#    select(-c("Age.group", "Lower", "Larger")) %>% 
+#    as.matrix()
+#  # Referenece: https://rpubs.com/crossxwill/transition_matrix
+#  ## method 1: (not working atm)
+#  #ensure_library(expm)
+#  #TM.exp  <- expm::expm((1 / age_factor(cycle_period))) * log(trans_matrix) 
+#  
+#  #method 2 ;
+#  #ensure_library("pracma")
+#  TM_pracma <- 
+#    pracma::rootm(trans_matrix, p=age_factor(cycle_period), 
+#                  kmax = 20, tol = 1e-10)
+#  round(TM_pracma$B, 5)
+#  # Regularization with the `ctmcd` package, The code below uses the 
+#  # quasi-optimization of the generator (QOG) approach from 
+#  # Kreinin and Sidelnikova (2001).:
+#  ensure_library("ctmcd")
+#  TM_qo <- ctmcd::gm(TM_pracma$B, te=1, method = "QO") 
+#}
+##### ! NOT USED ! ############################
+#################################################################################
 
 
 ## ---- Symptomatic Individuals ----                                                         ##
@@ -896,10 +896,10 @@ if (is_slurm()) {
   # On local machine, use all available cores (or limit if needed)
   #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
   ## Register fewer cores (adjust based on server resources)
-  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+  #n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
   #n_cores <- detectCores()  # Try using 8 or fewer cores
   #n_cores <- min(detectCores())  # Try using 8 or fewer cores
-  #n_cores <- 6  # Try using 8 or fewer cores
+  n_cores <- 6  # Try using 8 or fewer cores
 }
 # for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
 # five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
@@ -931,7 +931,7 @@ registerDoParallel(cl) # for parallel
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 20
+numb_of_sims = 10
 strategy <- "natural_history"
 sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
@@ -1243,7 +1243,7 @@ mean_CC_mortality_by_diff_func <- function(sim_stalked_result, my_Probs) {
   labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
   
   # Define the age range you want to keep
-  age_range <- 10:84
+  age_range <- min(age_intervals$Lower):max(age_intervals$Larger) 
   
   # Left join sim_no_trt[[1]]$TR with sim_no_trt[[1]]$new_CC_Death by age
   df <- sim_no_trt[[1]]$TR %>%
@@ -1353,7 +1353,8 @@ mean_FIGO_prevalence_Func <- function(sim_stalked_result, my_Probs) {
     dplyr::mutate(FIGO.III_prev = (FIGO.III / total_alive) * 10^5) %>% 
     dplyr::mutate(FIGO.IV_prev = (FIGO.IV / total_alive) * 10^5) %>% 
     # Assigning age intervals
-    dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
+    dplyr::mutate(age_interval = cut(age, breaks = breaks, 
+                                     labels = labels, right = FALSE)) %>% 
     dplyr::group_by(age_interval) %>% 
     # Summarizing the mean prevalence for each FIGO state
     dplyr::summarise(mean_FIGO.I_prev = mean(FIGO.I_prev, na.rm = TRUE),
@@ -1404,10 +1405,10 @@ mean_Figo_Func  <- function (sim_stalked_result, my_Probs) {
     #dplyr::mutate(total_alive = H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
     #                FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
     # Prevalence for each FIGO state
-    dplyr::mutate(FIGO.I   = (FIGO.I)) %>% # / total_alive) * 10^5) %>% 
-    dplyr::mutate(FIGO.II  = (FIGO.II)) %>% # / total_alive) * 10^5) %>% 
-    dplyr::mutate(FIGO.III = (FIGO.III)) %>% # / total_alive) * 10^5) %>% 
-    dplyr::mutate(FIGO.IV  = (FIGO.IV)) %>% # / total_alive) * 10^5) %>% 
+    dplyr::mutate(FIGO.I   = (FIGO.I)) %>%  
+    dplyr::mutate(FIGO.II  = (FIGO.II)) %>% 
+    dplyr::mutate(FIGO.III = (FIGO.III)) %>% 
+    dplyr::mutate(FIGO.IV  = (FIGO.IV)) %>% 
     # Assigning age intervals
     dplyr::mutate(age_interval = 
                     cut(age, breaks = 
@@ -1464,27 +1465,13 @@ mean_Diagnosed_Func  <- function (sim_stacked_result, my_Probs) {
   # Calculate the maximum simulation count
   max_sim <- max(sympt$sim)
   
-  ## Summarize data in the desired format
-  #df <- sympt %>%
-  #  group_by(age_interval, DiagnosedState) %>%
-  #  summarise(count = n() / max_sim, .groups = "drop") %>%
-  #  pivot_wider(names_from = DiagnosedState, 
-  #              values_from = count, 
-  #              names_prefix = "mean_FIGO.") %>%
-  #  replace(is.na(.), 0) %>%  # Replace NA values with 0
-  #  rename(mean_Diagnosed_FIGO.I = mean_FIGO.FIGO.I, 
-  #         mean_Diagnosed_FIGO.II = mean_FIGO.FIGO.II, 
-  #         mean_Diagnosed_FIGO.III = mean_FIGO.FIGO.III, 
-  #         mean_Diagnosed_FIGO.IV = mean_FIGO.FIGO.IV)
-  
-  
   # Create a complete data frame with all combinations of age intervals and DiagnosedStates
   complete_data <- expand.grid(
     age_interval = labels,
     DiagnosedState = c("FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
   )
   
-  # Summarize data
+  # Summarize data in the desired format
   df <- sympt %>%
     group_by(age_interval, DiagnosedState) %>%
     summarise(mean_count = n() / max_sim, .groups = "drop") %>%
@@ -1495,8 +1482,8 @@ mean_Diagnosed_Func  <- function (sim_stacked_result, my_Probs) {
                 names_prefix = "mean_Diagnosed_") %>%
     arrange(age_interval)
   
-  # View the result
-  print(df)
+  ## View the result
+  #print(df)
   
   # Storing the results in the simulation object
   sim_stacked_result[[1]]$mean_Diagnosed <- df 
@@ -1872,7 +1859,8 @@ data_long$FIGO_stage <- gsub("diag_FIGO_", "FIGO ", data_long$FIGO_stage)
 
 # Create the plot
 plot_mean_FIGO <- 
-  ggplot(data_long, aes(x = age_interval, y = diagnosed, color = FIGO_stage, group = FIGO_stage)) +
+  ggplot(data_long, aes(x = age_interval, y = diagnosed, 
+                        color = FIGO_stage, group = FIGO_stage)) +
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
   labs(
@@ -1904,7 +1892,8 @@ data_long$FIGO_stage <- gsub("diag_FIGO_", "FIGO ", data_long$FIGO_stage)
 
 # Create the plot
 plot_mean_Diagnosed_FIGO <- 
-  ggplot(data_long, aes(x = age_interval, y = diagnosed, color = FIGO_stage, group = FIGO_stage)) +
+  ggplot(data_long, aes(x = age_interval, y = diagnosed, 
+                        color = FIGO_stage, group = FIGO_stage)) +
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
   labs(
@@ -1970,4 +1959,3 @@ if (numb_of_sims >=60) {
   plot(average_cost, type = "l", main = "Average Cost over Simulations")
   lines(moving_avg, col = "red")
 }
-  
