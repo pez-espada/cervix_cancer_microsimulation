@@ -931,7 +931,7 @@ registerDoParallel(cl) # for parallel
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 10
+numb_of_sims = 3
 strategy <- "natural_history"
 sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
@@ -1458,7 +1458,7 @@ mean_Diagnosed_Func  <- function (sim_stacked_result, my_Probs) {
   # add age interval column:
   sympt <- sympt %>%
     mutate(age_interval = cut(age, 
-                              breaks = seq(10, 85, by = 5), 
+                              breaks = seq(min(breaks), max(breaks), by = 5), 
                               labels = labels, 
                               right = FALSE))
   
@@ -1959,3 +1959,7 @@ if (numb_of_sims >=60) {
   plot(average_cost, type = "l", main = "Average Cost over Simulations")
   lines(moving_avg, col = "red")
 }
+
+df <- sim_result[["No Intervention"]]$TR %>% select(FIGO.I, FIGO.II, FIGO.III, FIGO.IV) 
+# select(FIGO.I, FIGO.II, FIGO.III, FIGO.IV) and summarize by columns
+df <- df %>% summarise(across(everything(), sum, na.rm = TRUE))
