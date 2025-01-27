@@ -14,27 +14,21 @@ library(tidyverse)
 #setwd(dir = "/home/07075107P/microSim/cervix_cancer_microsimulation")
 
 ensure_library <- function(...) {
-pkgs <- unlist(list(...))
-pkgs <- gsub("[\"']", "", pkgs) # Remove quotes
-sapply(pkgs, function(pkg) {
-  if (!requireNamespace(pkg, quietly = TRUE)) {
-    install.packages(pkg)
-  }
-  library(pkg, character.only = TRUE)
-})
+  pkgs <- unlist(list(...))
+  pkgs <- gsub("[\"']", "", pkgs) # Remove quotes
+  sapply(pkgs, function(pkg) {
+    if (!requireNamespace(pkg, quietly = TRUE)) {
+      install.packages(pkg)
+    }
+    library(pkg, character.only = TRUE)
+  })
 }
 ################################################################################
 
-my_Probs <- readRDS(file = "./data/probs.rds") # natural history
+my_Probs <- readRDS(file = "./data/probs.rds") # natural history transition matrix
+my_Probs2 <- readRDS(file = "./data/probs2.rds") # vaccination transition matrix
 
-my_Probs <- # transition matrix (for all sim cycles) 
-  my_Probs %>%
-  as_tibble() # I need a tibble to use 'rename' function down there:
 
-# Tidying up a bit the transition matrix:
-my_Probs <- my_Probs %>% dplyr::rename("H" = "Well")
-
-my_Probs <- my_Probs %>% as.data.frame() #convert back to data.frame (no needed?)
 
 ################################################################################
 # Function to extract and convert numbers from factor levels
@@ -45,21 +39,33 @@ return(numbers)
 }
 ################################################################################
 
-# Apply the function to the Range column and create new columns
-my_Probs$Lower  <- sapply(my_Probs$Age.group, function(x) extract_numbers(x)[1])
-my_Probs$Larger <- sapply(my_Probs$Age.group, function(x) extract_numbers(x)[2])
-# For the last cycle/iteration we need to adjust the last transition matrix:
-#my_Probs$Larger <- 
-#  ifelse(my_Probs$Larger == max(my_Probs$Larger), my_Probs$Larger + 1, my_Probs$Larger) 
+################################################################################
+my_Probs_cleaning_Func <- function(Probs_matrix) {
+  # Tidying up a bit the transition matrix:
+  Probs_matrix  <- Probs_matrix %>% dplyr::rename("H" = "Well")
+  Probs_matrix  <- Probs_matrix %>% as.data.frame() #convert back to data.frame (no needed?)
+  Probs_matrix$Lower  <- sapply(Probs_matrix$Age.group, function(x) extract_numbers(x)[1])
+  Probs_matrix$Larger <- sapply(Probs_matrix$Age.group, function(x) extract_numbers(x)[2])
+  return(Probs_matrix) 
+}
+################################################################################
 
 
+# Tidying up a bit the transition matrix:
+my_Probs <- my_Probs_cleaning_Func(Probs_matrix = my_Probs)
+
+my_Probs <- my_Probs %>% as.data.frame() #convert back to data.frame (no needed?)
+
+
+################################################################################
 ## ----Model Parameters
 n_i <- (2)*10^5         # number of simulated individuals
 #n_i <- (5)*10^5            # number of simulated individuals
 #n_i <- 10^7            # number of simulated individuals
-#n_i <- 10^5               # number of simulated individuals
+n_i <- 10^5               # number of simulated individuals
 #n_i <- 10^6               # number of simulated individuals
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
+################################################################################
  
 
 ################################################################################
@@ -127,6 +133,73 @@ return(transition_prob)
 
 
 ################################################################################
+## ---- Probability Function ----                                             ##
+## The Probs function that updates the transition probabilities of every cycle:
+Probs <- function(M_it, my_Probs) {
+  n_s <- length(v_n)
+  n_i <- length(M_it)
+  m_P_it <- matrix(NA, n_s, n_i) 
+  rownames(m_P_it) <- v_n
+  for (i in 1:length(v_n)) {
+    state_mask <- !is.na(M_it) & M_it == v_n[i]
+    
+    if (sum(state_mask) > 0) {
+      m_P_it[, state_mask] <- 
+        lapply(X = v_n, function(x) trans_prb(P = my_Probs, state1 =
+                                                v_n[i], state2 = x)) %>%
+        unlist()
+    } else {
+      ## Debugging:
+      #cat("State", v_n[i], "is not present in M_it at this time step\n")
+    }
+  }
+  if (any(is.na(m_P_it))) {
+    # Diagnostic message
+    cat("Transition probabilities contain NA values\n")
+  }
+  ifelse(colSums(m_P_it, na.rm = TRUE) >= .991, 
+         return(t(m_P_it)), 
+         stop("Probabilities do not sum to 1"))
+}
+################################################################################
+
+################################################################################
+## ---- Probability Function ----                                             ##
+## The Probs_2 function that updates the transition probabilities of every cycle:
+## taking into account other probs than natura history
+## depending on the vaccination startegies
+Probs_2 <- function(M_it, my_Probs, vacc_vector) {
+  # M_it: matrix of health states of all individuals at time t
+  # my_Probs: list of distinct transition matrices for each vaccination strategy
+  # vacc_vector: vector of vaccination strategies for each individual
+  n_s <- length(v_n)
+  n_i <- length(M_it)
+  m_P_it <- matrix(NA, n_s, n_i) 
+  rownames(m_P_it) <- v_n
+  for (i in 1:length(v_n)) {
+    state_mask <- !is.na(M_it) & M_it == v_n[i]
+    
+    if (sum(state_mask) > 0) {
+      m_P_it[, state_mask] <- 
+        lapply(X = v_n, function(x) trans_prb(P = my_Probs, state1 =
+                                                v_n[i], state2 = x)) %>%
+        unlist()
+    } else {
+      ## Debugging:
+      #cat("State", v_n[i], "is not present in M_it at this time step\n")
+    }
+  }
+  if (any(is.na(m_P_it))) {
+    # Diagnostic message
+    cat("Transition probabilities contain NA values\n")
+  }
+  ifelse(colSums(m_P_it, na.rm = TRUE) >= .991, 
+         return(t(m_P_it)), 
+         stop("Probabilities do not sum to 1"))
+}
+################################################################################
+
+################################################################################
 ## ----Sampling function
 # Efficient implementation of the rMultinom() function of the Hmisc package #### 
 # This function samples the next health state of each individual based on the
@@ -179,39 +252,6 @@ samplev <- function (probs, m) {
   ran
 }
 ################################################################################
-
-
-################################################################################
-## ---- Probability Function ----                                             ##
-## The Probs function that updates the transition probabilities of every cycle:
-Probs <- function(M_it, my_Probs) {
-  n_s <- length(v_n)
-  n_i <- length(M_it)
-  m_P_it <- matrix(NA, n_s, n_i) 
-  rownames(m_P_it) <- v_n
-  for (i in 1:length(v_n)) {
-    state_mask <- !is.na(M_it) & M_it == v_n[i]
-    
-    if (sum(state_mask) > 0) {
-      m_P_it[, state_mask] <- 
-        lapply(X = v_n, function(x) trans_prb(P = my_Probs, state1 =
-                                                v_n[i], state2 = x)) %>%
-        unlist()
-    } else {
-      ## Debugging:
-      #cat("State", v_n[i], "is not present in M_it at this time step\n")
-    }
-  }
-  if (any(is.na(m_P_it))) {
-    # Diagnostic message
-    cat("Transition probabilities contain NA values\n")
-  }
-  ifelse(colSums(m_P_it, na.rm = TRUE) >= .991, 
-         return(t(m_P_it)), 
-         stop("Probabilities do not sum to 1"))
-}
-################################################################################
-
 
 ################################################################################
 ## ---- Costs Function ----                                                   ##
@@ -531,6 +571,18 @@ my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
 }
 ################################################################################
 
+ 
+################################################################################
+## Function to update the transition matrix with new cases
+## This function will take into account probabilities depending on 
+## vaccination strategies
+#my_age_prob_matrix_func_2 <- function(my_Prob_matrix, my_age_in_loop) {
+#  my_age_prob_matrix <- my_Prob_matrix %>% 
+#    dplyr::filter(Lower <= my_age_in_loop  &
+#                    Larger >= my_age_in_loop) 
+#}
+################################################################################
+
 
 ################################################################################
 ## THE MICROSIMULATION MAIN FUNCTION
@@ -584,7 +636,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       m_M <- m_C <- m_E <- 
         matrix(nrow = n_i, ncol = (n_t), 
                dimnames = list( 1:n_i, 
-                                paste0("cycle_", 1:(n_t), sep = "")))  
+                                paste0("cycle_", 1:(n_t),
+                                       sep = "")))  
       
       m_M[, 1] <- v_M_1  # indicate the initial health state   
       
@@ -638,6 +691,10 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         ########################################################################
         # NOTE: if my_age_in_loop = age_in_loop (without adding 1), then the 
         # microsim does not agree with the markov (for whatever reason)
+        
+        ## Here I need to modify the following function to extract the the right
+        ## transition matrix based on the age of the individual at each cycle, and
+        ## the correponding transition matrix that depends on vaccination strategies
         my_age_prob_matrix <- 
           my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
                                   my_age_in_loop = (age_in_loop + 1))
@@ -651,6 +708,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         # given the individual current state and the corresponding 
         # transition probability matrix that depends on age:
         # Next time (t+1) transition
+        # m_P is a (n_i x n_s) matrix with the probabilities of transitioning
         m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
         
         m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
@@ -872,6 +930,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
 
 
 ################################################################################
+                  ###################################
+                  ## Pre-simulation Computations: ##
+                  ###################################
 ################################################################################
 ### Prepare Parallelize code ###
 library(parallel)
@@ -919,10 +980,28 @@ clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
                     "update_column", "states_to_check", "symptom_prob_vec",
                     "survival_prob_vec", #"global_diagnosed", 
                     "cost_Vec", "new_cases_2"))
-registerDoParallel(cl) # for parallel
-#registerDoSEQ()        # for sequential
+#registerDoParallel(cl) # for parallel
+registerDoSEQ()        # for sequential
 ################################################################################
 ################################################################################
+
+
+################################################################################
+################################################################################
+## Vaccination strategies:
+## 1. No vaccination
+#vaccination <- TRUE
+#vaccination <- FALSE
+vacc2 <- FALSE
+vacc4 <- FALSE
+vacc9 <- FALSE
+
+# par
+vacc_coverage <- c(0.0, 0.0, 0.0) # vaccination coverage for vacc 2, 4 and 9
+
+
+################################################################################
+
 
 
 ################################################################################
@@ -1925,7 +2004,7 @@ print(plot_CC_incidences)
 print(plot_HPV_prevalences)
 print(plot_CC_mortality)
 #print(plot_FIGO_prevalence)
-print(plot_mean_FIGO)
+#print(plot_mean_FIGO)
 print(plot_mean_Diagnosed_FIGO)
 #print(plot_CC_by_diff_mortality)
 
