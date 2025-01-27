@@ -710,6 +710,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         # Next time (t+1) transition
         # m_P is a (n_i x n_s) matrix with the probabilities of transitioning
         m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
+        #m_P <- Probs_2(M_it = m_M[, t], my_Probs = c(), vacc_vector = vaccination)
         
         m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
         # and store that state in  
