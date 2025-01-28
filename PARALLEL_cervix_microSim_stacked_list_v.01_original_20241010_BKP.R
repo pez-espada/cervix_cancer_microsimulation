@@ -27,8 +27,6 @@ ensure_library <- function(...) {
 
 my_Probs <- readRDS(file = "./data/probs.rds") # natural history transition matrix
 my_Probs2 <- readRDS(file = "./data/probs2.rds") # vaccination transition matrix
-my_Probs4 <- readRDS(file = "./data/probs3.rds") # vaccination transition matrix
-my_Probs9 <- readRDS(file = "./data/probs3.rds") # vaccination transition matrix
 
 
 
@@ -55,16 +53,10 @@ my_Probs_cleaning_Func <- function(Probs_matrix) {
 
 # Tidying up a bit the transition matrix:
 my_Probs <- my_Probs_cleaning_Func(Probs_matrix = my_Probs)
+
 my_Probs <- my_Probs %>% as.data.frame() #convert back to data.frame (no needed?)
 
-my_Probs2 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs2)
-my_Probs2 <- my_Probs2 %>% as.data.frame() #convert back to data.frame (no needed?)
 
-my_Probs4 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs4)
-my_Probs4 <- my_Probs4 %>% as.data.frame() #convert back to data.frame (no needed?)
-
-my_Probs9 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs9)
-my_Probs9 <- my_Probs9 %>% as.data.frame() #convert back to data.frame (no needed?)
 ################################################################################
 ## ----Model Parameters
 n_i <- (2)*10^5         # number of simulated individuals
@@ -138,7 +130,7 @@ transition_prob<-P[state1,state2]
 return(transition_prob)
 }
 ################################################################################
-# 
+
 
 ################################################################################
 ## ---- Probability Function ----                                             ##
@@ -171,13 +163,12 @@ Probs <- function(M_it, my_Probs) {
 }
 ################################################################################
 
-
 ################################################################################
 ## ---- Probability Function ----                                             ##
 ## The Probs_2 function that updates the transition probabilities of every cycle:
 ## taking into account other probs than natura history
 ## depending on the vaccination startegies
-Probs_2 <- function(M_it, my_Probs, my_Probs2, my_Probs4, my_Probs9, vacc_lbl) {
+Probs_2 <- function(M_it, my_Probs, vacc_vector) {
   # M_it: matrix of health states of all individuals at time t
   # my_Probs: list of distinct transition matrices for each vaccination strategy
   # vacc_vector: vector of vaccination strategies for each individual
@@ -712,46 +703,13 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
           my_age_prob_matrix %>%
           dplyr::select(-c(Age.group, Lower, Larger)) %>% 
           colnames()
-       
-         
-        my_age_prob_matrix_2 <- 
-          my_age_prob_matrix_func(my_Prob_matrix = my_Probs2, 
-                                  my_age_in_loop = (age_in_loop + 1))
-        # Add colnames and update `v_n`:
-        rownames(my_age_prob_matrix_2) <- v_n <<- 
-          my_age_prob_matrix_2 %>%
-          dplyr::select(-c(Age.group, Lower, Larger)) %>% 
-          colnames()
         
-        
-        my_age_prob_matrix_4 <- 
-          my_age_prob_matrix_func(my_Prob_matrix = my_Probs4, 
-                                  my_age_in_loop = (age_in_loop + 1))
-        # Add colnames and update `v_n`:
-        rownames(my_age_prob_matrix_4) <- v_n <<- 
-          my_age_prob_matrix_4 %>%
-          dplyr::select(-c(Age.group, Lower, Larger)) %>% 
-          colnames()
-        
-        
-        my_age_prob_matrix_9 <- 
-          my_age_prob_matrix_func(my_Prob_matrix = my_Probs9, 
-                                  my_age_in_loop = (age_in_loop + 1))
-        # Add colnames and update `v_n`:
-        rownames(my_age_prob_matrix_9) <- v_n <<- 
-          my_age_prob_matrix_9 %>%
-          dplyr::select(-c(Age.group, Lower, Larger)) %>% 
-          colnames()
-        
-        
-          # Extract the transition probabilities of each individuals at cycle t
+        # Extract the transition probabilities of each individuals at cycle t
         # given the individual current state and the corresponding 
         # transition probability matrix that depends on age:
         # Next time (t+1) transition
         # m_P is a (n_i x n_s) matrix with the probabilities of transitioning
         m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
-        
-        # for vaccination I'll need a new Probs function: 
         #m_P <- Probs_2(M_it = m_M[, t], my_Probs = c(), vacc_vector = vaccination)
         
         m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
@@ -1000,10 +958,10 @@ if (is_slurm()) {
   # On local machine, use all available cores (or limit if needed)
   #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
   ## Register fewer cores (adjust based on server resources)
-  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+  #n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
   #n_cores <- detectCores()  # Try using 8 or fewer cores
   #n_cores <- min(detectCores())  # Try using 8 or fewer cores
-  #n_cores <- 6  # Try using 8 or fewer cores
+  n_cores <- 6  # Try using 8 or fewer cores
 }
 # for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
 # five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
@@ -1039,54 +997,8 @@ vacc2 <- FALSE
 vacc4 <- FALSE
 vacc9 <- FALSE
 
-# paramters:
-vacc_coverage <- c(0.3, 0.0, 0.0) # vaccination coverage for vacc 2, 4 and 9
-
-
-generate_vaccine_labels <- function(n_i, vacc_coverage) {
-  # Ensure the sum of coverage is valid
-  if (sum(vacc_coverage) > 1) {
-    stop("The sum of vacc_coverage cannot exceed 1.")
-  }
-  
-  # Calculate the number of individuals for each vaccine
-  n_vacc_2 <- round(vacc_coverage[1] * n_i)
-  n_vacc_4 <- round(vacc_coverage[2] * n_i)
-  n_vacc_9 <- round(vacc_coverage[3] * n_i)
-  
-  # Remaining individuals are "no_vacc"
-  n_no_vacc <- n_i - (n_vacc_2 + n_vacc_4 + n_vacc_9)
-  
-  if (n_no_vacc < 0) {
-    stop("The specified coverage results in more vaccinated individuals than n_i.")
-  }
-  
-  # Create the label vector
-  vacc_lbl <- c(
-    rep("vacc_2", n_vacc_2),
-    rep("vacc_4", n_vacc_4),
-    rep("vacc_9", n_vacc_9),
-    rep("no_vacc", n_no_vacc)
-  )
-  
-  # Shuffle the vector randomly
-  vacc_lbl <- sample(vacc_lbl, size = n_i, replace = FALSE)
-  
-  return(vacc_lbl)
-}
-## Example usage
-#set.seed(123) # For reproducibility
-#n_i <- 1000
-#vacc_coverage <- c(0.6, 0.2, 0.2)
-#vacc_coverage <- c(0.0, 0.0, 0.0)
-#vacc_coverage <- c(0.0, 0.7, 0.0)
-#vacc_coverage <- c(0.3, 0.7, 0.1)
-vacc_lbl <- generate_vaccine_labels(n_i, vacc_coverage)
-#
-## Check the results
-#table(vacc_lbl) / n_i
-################################################################################
-
+# par
+vacc_coverage <- c(0.0, 0.0, 0.0) # vaccination coverage for vacc 2, 4 and 9
 
 
 ################################################################################
