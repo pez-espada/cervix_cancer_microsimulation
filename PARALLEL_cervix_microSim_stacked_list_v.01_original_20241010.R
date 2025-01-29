@@ -707,6 +707,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         ## Here I need to modify the following function to extract the the right
         ## transition matrix based on the age of the individual at each cycle, and
         ## the correponding transition matrix that depends on vaccination strategies
+        ######################################################################## 
         my_age_prob_matrix <- 
           my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
                                   my_age_in_loop = (age_in_loop + 1))
@@ -715,36 +716,56 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
           my_age_prob_matrix %>%
           dplyr::select(-c(Age.group, Lower, Larger)) %>% 
           colnames()
+        ######################################################################## 
        
-         
+        ######################################################################## 
         my_age_prob_matrix_2 <- 
           my_age_prob_matrix_func(my_Prob_matrix = my_Probs2, 
                                   my_age_in_loop = (age_in_loop + 1))
+        #rename age column:
+        my_age_prob_matrix_2 <- 
+          my_age_prob_matrix_2 %>%
+          dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
+          dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
         # Add colnames and update `v_n`:
         rownames(my_age_prob_matrix_2) <- v_n <<- 
           my_age_prob_matrix_2 %>%
           dplyr::select(-c(Age.group, Lower, Larger)) %>% 
           colnames()
+        ######################################################################## 
         
         
+        ######################################################################## 
         my_age_prob_matrix_4 <- 
           my_age_prob_matrix_func(my_Prob_matrix = my_Probs4, 
                                   my_age_in_loop = (age_in_loop + 1))
+        #rename age column:
+        my_age_prob_matrix_4 <- 
+          my_age_prob_matrix_4 %>%
+          dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
+          dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
         # Add colnames and update `v_n`:
         rownames(my_age_prob_matrix_4) <- v_n <<- 
           my_age_prob_matrix_4 %>%
           dplyr::select(-c(Age.group, Lower, Larger)) %>% 
           colnames()
+        ######################################################################## 
         
         
+        ######################################################################## 
         my_age_prob_matrix_9 <- 
           my_age_prob_matrix_func(my_Prob_matrix = my_Probs9, 
                                   my_age_in_loop = (age_in_loop + 1))
+        #rename age column:
+        my_age_prob_matrix_9 <- 
+          my_age_prob_matrix_9 %>%
+          dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group))
         # Add colnames and update `v_n`:
         rownames(my_age_prob_matrix_9) <- v_n <<- 
           my_age_prob_matrix_9 %>%
           dplyr::select(-c(Age.group, Lower, Larger)) %>% 
           colnames()
+        ######################################################################## 
         
         
           # Extract the transition probabilities of each individuals at cycle t
@@ -1042,9 +1063,11 @@ vacc2 <- FALSE
 vacc4 <- FALSE
 vacc9 <- FALSE
 
-# paramters:
-vacc_coverage <- c(0.3, 0.0, 0.0) # vaccination coverage for vacc 2, 4 and 9
-
+# Paramters
+# vaccination coverage for vacc 2, 4 and 9:
+vacc_coverage <- c(0.3, 0.0, 0.0) 
+# natural immunity associated with vacc 2, 4, and 9:
+nat_immunity_linked_to_vacc <- c(0.0, 0.0, 0.0)
 
 generate_vaccine_labels <- function(n_i, vacc_coverage) {
   # Ensure the sum of coverage is valid
@@ -1089,17 +1112,17 @@ vacc_lbl <- generate_vaccine_labels(n_i, vacc_coverage)
 ## Check the results
 #table(vacc_lbl) / n_i
 ################################################################################
-
-
-
 ################################################################################
+
+
 
 
 
 ################################################################################
 ########################## Run the simulation ##################################
 ## START SIMULATION
-Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
+# to prevent conflicts between OpenMP and R parallel:
+Sys.setenv(OMP_NUM_THREADS = "1") 
 p = Sys.time()
 # run for no treatment
 numb_of_sims = 3
