@@ -24,11 +24,12 @@ ensure_library <- function(...) {
   })
 }
 ################################################################################
-
-my_Probs <- readRDS(file = "./data/probs.rds") # natural history transition matrix
-my_Probs2 <- readRDS(file = "./data/probs2.rds") # vaccination transition matrix
-my_Probs4 <- readRDS(file = "./data/probs3.rds") # vaccination transition matrix
-my_Probs9 <- readRDS(file = "./data/probs3.rds") # vaccination transition matrix
+# natural history transition matrix:
+my_Probs <- readRDS(file = "./data/probs.rds")
+# vaccination 2 transition matrix
+my_Probs2 <- readRDS(file = "./data/probs2.rds")
+# vaccination 2 associated immunity transition matrix
+my_Probs2_nat_immunity <- readRDS(file = "./data/probs3.rds") 
 
 
 
@@ -1063,10 +1064,11 @@ vacc9 <- FALSE
 
 # Paramters
 # vaccination coverage for vacc 2, 4 and 9:
-vacc_coverage <- c(0.3, 0.0, 0.0) 
+vacc_coverage <- c(0.357, 0.0, 0.0) 
 # natural immunity associated with vacc 2, 4, and 9:
 nat_immunity_linked_to_vacc <- c(0.0, 0.0, 0.0)
 
+################################################################################
 generate_vaccine_labels <- function(n_i, vacc_coverage) {
   # Ensure the sum of coverage is valid
   if (sum(vacc_coverage) > 1) {
@@ -1096,8 +1098,13 @@ generate_vaccine_labels <- function(n_i, vacc_coverage) {
   # Shuffle the vector randomly
   vacc_lbl <- sample(vacc_lbl, size = n_i, replace = FALSE)
   
+  # as data frame:
+  vacc_lbl <- as.data.frame(vacc_lbl)
+  vacc_lbl$ID <- seq_len(nrow(vacc_lbl))
   return(vacc_lbl)
 }
+################################################################################
+
 ## Example usage
 #set.seed(123) # For reproducibility
 #n_i <- 1000
@@ -1109,6 +1116,8 @@ vacc_lbl <- generate_vaccine_labels(n_i, vacc_coverage)
 #
 ## Check the results
 #table(vacc_lbl) / n_i
+
+# convert the list to a data frame
 ################################################################################
 
 
@@ -2155,3 +2164,4 @@ if (numb_of_sims >=60) {
 df <- sim_result[["No Intervention"]]$TR %>% select(FIGO.I, FIGO.II, FIGO.III, FIGO.IV) 
 # select(FIGO.I, FIGO.II, FIGO.III, FIGO.IV) and summarize by columns
 df <- df %>% summarise(across(everything(), sum, na.rm = TRUE))
+
