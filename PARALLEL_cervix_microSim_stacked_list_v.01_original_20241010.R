@@ -61,11 +61,11 @@ my_Probs <- my_Probs %>% as.data.frame() #convert back to data.frame (no needed?
 my_Probs2 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs2)
 my_Probs2 <- my_Probs2 %>% as.data.frame() #convert back to data.frame (no needed?)
 
-my_Probs4 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs4)
-my_Probs4 <- my_Probs4 %>% as.data.frame() #convert back to data.frame (no needed?)
+#my_Probs4 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs4)
+#my_Probs4 <- my_Probs4 %>% as.data.frame() #convert back to data.frame (no needed?)
 
-my_Probs9 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs9)
-my_Probs9 <- my_Probs9 %>% as.data.frame() #convert back to data.frame (no needed?)
+#my_Probs9 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs9)
+#my_Probs9 <- my_Probs9 %>% as.data.frame() #convert back to data.frame (no needed?)
 ################################################################################
 ## ----Model Parameters
 n_i <- (2)*10^5         # number of simulated individuals
@@ -178,7 +178,7 @@ Probs <- function(M_it, my_Probs) {
 ## The Probs_2 function that updates the transition probabilities of every cycle:
 ## taking into account other probs than natura history
 ## depending on the vaccination startegies
-Probs_2 <- function(M_it, my_Probs, my_Probs2, my_Probs4, my_Probs9, vacc_lbl) {
+Probs_2 <- function(M_it, my_Probs, my_Probs2, vacc_lbl) {
   # M_it: matrix of health states of all individuals at time t
   # my_Probs: list of distinct transition matrices for each vaccination strategy
   # vacc_vector: vector of vaccination strategies for each individual
@@ -733,38 +733,38 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         ######################################################################## 
         
         
-        ######################################################################## 
-        my_age_prob_matrix_4 <- 
-          my_age_prob_matrix_func(my_Prob_matrix = my_Probs4, 
-                                  my_age_in_loop = (age_in_loop + 1))
-        #rename age column:
-        my_age_prob_matrix_4 <- 
-          my_age_prob_matrix_4 %>%
-          dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
-          dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
-        # Add colnames and update `v_n`:
-        rownames(my_age_prob_matrix_4) <- v_n <<- 
-          my_age_prob_matrix_4 %>%
-          dplyr::select(-c(Age.group, Lower, Larger)) %>% 
-          colnames()
-        ######################################################################## 
+        ######################################################################### 
+        #my_age_prob_matrix_4 <- 
+        #  my_age_prob_matrix_func(my_Prob_matrix = my_Probs4, 
+        #                          my_age_in_loop = (age_in_loop + 1))
+        ##rename age column:
+        #my_age_prob_matrix_4 <- 
+        #  my_age_prob_matrix_4 %>%
+        #  dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
+        #  dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
+        ## Add colnames and update `v_n`:
+        #rownames(my_age_prob_matrix_4) <- v_n <<- 
+        #  my_age_prob_matrix_4 %>%
+        #  dplyr::select(-c(Age.group, Lower, Larger)) %>% 
+        #  colnames()
+        ######################################################################### 
         
         
-        ######################################################################## 
-        my_age_prob_matrix_9 <- 
-          my_age_prob_matrix_func(my_Prob_matrix = my_Probs9, 
-                                  my_age_in_loop = (age_in_loop + 1))
-        #rename age column:
-        my_age_prob_matrix_9 <- 
-          my_age_prob_matrix_9 %>%
-          dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
-          dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
-        # Add colnames and update `v_n`:
-        rownames(my_age_prob_matrix_9) <- v_n <<- 
-          my_age_prob_matrix_9 %>%
-          dplyr::select(-c(Age.group, Lower, Larger)) %>% 
-          colnames()
-        ######################################################################## 
+        ######################################################################### 
+        #my_age_prob_matrix_9 <- 
+        #  my_age_prob_matrix_func(my_Prob_matrix = my_Probs9, 
+        #                          my_age_in_loop = (age_in_loop + 1))
+        ##rename age column:
+        #my_age_prob_matrix_9 <- 
+        #  my_age_prob_matrix_9 %>%
+        #  dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
+        #  dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
+        ## Add colnames and update `v_n`:
+        #rownames(my_age_prob_matrix_9) <- v_n <<- 
+        #  my_age_prob_matrix_9 %>%
+        #  dplyr::select(-c(Age.group, Lower, Larger)) %>% 
+        #  colnames()
+        ######################################################################### 
         
         
         # Extract the transition probabilities of each individuals at cycle t
@@ -809,7 +809,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         
       }  
       #################### close loop for cycles ############################### 
-      
+      ##########################################################################    
+     
+       
       # Combine stored entries in a single data frame
       symptomatics <- bind_rows(stored_list)
       tc_disc <- m_C[,1:n_t] %*% v_dwc       # total (discounted) cost per individual
@@ -1023,10 +1025,10 @@ if (is_slurm()) {
   # On local machine, use all available cores (or limit if needed)
   #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
   ## Register fewer cores (adjust based on server resources)
-  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+  #n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
   #n_cores <- detectCores()  # Try using 8 or fewer cores
   #n_cores <- min(detectCores())  # Try using 8 or fewer cores
-  #n_cores <- 6  # Try using 8 or fewer cores
+  n_cores <- 6  # Try using 8 or fewer cores
 }
 # for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
 # five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
