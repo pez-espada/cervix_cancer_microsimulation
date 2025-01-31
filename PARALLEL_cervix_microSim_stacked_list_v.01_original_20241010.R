@@ -24,11 +24,12 @@ ensure_library <- function(...) {
   })
 }
 ################################################################################
-
-my_Probs <- readRDS(file = "./data/probs.rds") # natural history transition matrix
-my_Probs2 <- readRDS(file = "./data/probs2.rds") # vaccination transition matrix
-my_Probs4 <- readRDS(file = "./data/probs3.rds") # vaccination transition matrix
-my_Probs9 <- readRDS(file = "./data/probs3.rds") # vaccination transition matrix
+# natural history transition matrix:
+my_Probs <- readRDS(file = "./data/probs.rds")
+# vaccination 2 transition matrix
+my_Probs2 <- readRDS(file = "./data/probs2.rds")
+# vaccination 2 associated immunity transition matrix
+my_Probs2_nat_immunity <- readRDS(file = "./data/probs3.rds") 
 
 
 
@@ -54,20 +55,17 @@ my_Probs_cleaning_Func <- function(Probs_matrix) {
 
 
 # Tidying up a bit the transition matrix:
-my_Probs <- my_Probs %>% as.data.frame() #convert back to data.frame (no needed?)
 my_Probs <- my_Probs_cleaning_Func(Probs_matrix = my_Probs)
+my_Probs <- my_Probs %>% as.data.frame() #convert back to data.frame (no needed?)
 
-my_Probs2 <- my_Probs2 %>% as.data.frame() %>% #convert back to data.frame (no needed?)
-  dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group))
 my_Probs2 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs2)
+my_Probs2 <- my_Probs2 %>% as.data.frame() #convert back to data.frame (no needed?)
 
-my_Probs4 <- my_Probs4 %>% as.data.frame() %>% #convert back to data.frame (no needed?)
-  dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group))
 my_Probs4 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs4)
+my_Probs4 <- my_Probs4 %>% as.data.frame() #convert back to data.frame (no needed?)
 
-my_Probs9 <- my_Probs9 %>% as.data.frame() %>% #convert back to data.frame (no needed?)
-  dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group))
 my_Probs9 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs9)
+my_Probs9 <- my_Probs9 %>% as.data.frame() #convert back to data.frame (no needed?)
 ################################################################################
 ## ----Model Parameters
 n_i <- (2)*10^5         # number of simulated individuals
@@ -273,27 +271,27 @@ samplev <- function (probs, m) {
 # This cost is only charged once in the patient's lifetime.
 # NOTE: need to decide if the cost is applied on current time `t` or `t+1` as it is now.
 Costs_per_Cancer_Diag <- function (M_it, cost_Vec, symptomatics, time_iteration, Trt = FALSE) {
-  c_it <- rep(0, length(M_it))
-  #ci_t <- 0
-  if(nrow(symptomatics) > 0 ) {
-    c_it[symptomatics %>% 
-           dplyr::filter(DiagnosedState == "FIGO.I" & TimeStep == time_iteration) %>% 
-           select(ID) %>% as.list() %>% 
-           unlist()] <- cost_Vec[which(v_n %in% "FIGO.I")]
-    c_it[symptomatics %>% 
-           dplyr::filter(DiagnosedState == "FIGO.II" & TimeStep == time_iteration) %>% 
-           select(ID) %>% as.list() %>% 
-           unlist()] <- cost_Vec[which(v_n %in% "FIGO.II")]
-    c_it[symptomatics %>%
-           dplyr::filter(DiagnosedState == "FIGO.III" & TimeStep == time_iteration) %>% 
-           select(ID) %>% as.list() %>% 
-           unlist()] <- cost_Vec[which(v_n %in% "FIGO.III")]
-    c_it[symptomatics %>% 
-           dplyr::filter(DiagnosedState == "FIGO.IV" & TimeStep == time_iteration) %>% 
-           select(ID) %>% as.list() %>% 
-           unlist()] <- cost_Vec[which(v_n %in% "FIGO.IV")]
-  }
-  return(c_it) # return the costs
+c_it <- rep(0, length(M_it))
+#ci_t <- 0
+if(nrow(symptomatics) > 0 ) {
+  c_it[symptomatics %>% 
+         dplyr::filter(DiagnosedState == "FIGO.I" & TimeStep == time_iteration) %>% 
+         select(ID) %>% as.list() %>% 
+         unlist()] <- cost_Vec[which(v_n %in% "FIGO.I")]
+  c_it[symptomatics %>% 
+         dplyr::filter(DiagnosedState == "FIGO.II" & TimeStep == time_iteration) %>% 
+         select(ID) %>% as.list() %>% 
+         unlist()] <- cost_Vec[which(v_n %in% "FIGO.II")]
+  c_it[symptomatics %>%
+         dplyr::filter(DiagnosedState == "FIGO.III" & TimeStep == time_iteration) %>% 
+         select(ID) %>% as.list() %>% 
+         unlist()] <- cost_Vec[which(v_n %in% "FIGO.III")]
+  c_it[symptomatics %>% 
+         dplyr::filter(DiagnosedState == "FIGO.IV" & TimeStep == time_iteration) %>% 
+         select(ID) %>% as.list() %>% 
+         unlist()] <- cost_Vec[which(v_n %in% "FIGO.IV")]
+}
+return(c_it) # return the costs
 }
 ################################################################################
 
@@ -303,26 +301,26 @@ Costs_per_Cancer_Diag <- function (M_it, cost_Vec, symptomatics, time_iteration,
 ### Health outcome function 
 # The `Effs` function estimates the QALYs of a diagnose individual due to cancer
 Effs <- function (M_it, Trt = FALSE, cl = 1, utilityCoefs) {
-  # check length of vector of states and vector of utility/QALYs are the same:
-  u_it <- 0                   # by default the utility for everyone is zero
-  tryCatch(
-    for (i in 1:length(utilityCoefs)) {
-      u_it[M_it == v_n[i]] <- utilityCoefs[i]   # update the utility if healthy
-    },
-    error = function(e){
-      message("An error occurred:\n", e)
-      print("Check state vector and utility vector have the same dimensions:")
-      P %>% rownames() %>% print()
-    },
-    warning = function(w){
-      message("A warning occured:\n", w)
-    }
-  )
-  # If the TryCatch gives proble, just overrate it:
-  #for (i in 1:length(utilityCoefs)) {
-  #  u_it[M_it == v_n[i]] <- utilityCoefs[i]   # update the utility if healthy
-  #}
-  return(u_it)
+# check length of vector of states and vector of utility/QALYs are the same:
+u_it <- 0                   # by default the utility for everyone is zero
+tryCatch(
+  for (i in 1:length(utilityCoefs)) {
+    u_it[M_it == v_n[i]] <- utilityCoefs[i]   # update the utility if healthy
+  },
+  error = function(e){
+    message("An error occurred:\n", e)
+    print("Check state vector and utility vector have the same dimensions:")
+    P %>% rownames() %>% print()
+  },
+  warning = function(w){
+    message("A warning occured:\n", w)
+  }
+)
+# If the TryCatch gives proble, just overrate it:
+#for (i in 1:length(utilityCoefs)) {
+#  u_it[M_it == v_n[i]] <- utilityCoefs[i]   # update the utility if healthy
+#}
+return(u_it)
 }
 ################################################################################
 
@@ -413,39 +411,39 @@ stored_list <- vector("list", n_t)
 # The function also updates the global vector `global_diagnosed` with the IDs of
 # individuals who have been diagnosed.
 diagnose_column <- function(col, time_step) {
-  new_entries <- data.frame(ID = integer(), 
-                            TimeStep = integer(),
-                            DiagnosedState = character(),
-                            RecoveredFromState = logical())
-  
-  for (state_idx in seq_along(states_to_check)) {
-    state <- states_to_check[state_idx]
-    prob_symptom <- symptom_prob_vec[state_idx]
-    prob_survival <- survival_prob_vec[state_idx]
-    in_state <- which(col == state)
+new_entries <- data.frame(ID = integer(), 
+                          TimeStep = integer(),
+                          DiagnosedState = character(),
+                          RecoveredFromState = logical())
+
+for (state_idx in seq_along(states_to_check)) {
+  state <- states_to_check[state_idx]
+  prob_symptom <- symptom_prob_vec[state_idx]
+  prob_survival <- survival_prob_vec[state_idx]
+  in_state <- which(col == state)
+  if (length(in_state) > 0) {
+    # Remove individuals who have already been diagnosed
+    in_state <- setdiff(in_state, global_diagnosed)
     if (length(in_state) > 0) {
-      # Remove individuals who have already been diagnosed
-      in_state <- setdiff(in_state, global_diagnosed)
-      if (length(in_state) > 0) {
-        # Store based on diagnose probability
-        to_store <- in_state[runif(length(in_state)) < prob_symptom]
-        if (length(to_store) > 0) {
-          # Add these individuals to the global diagnosed list
-          global_diagnosed <<- c(global_diagnosed, to_store)
-          # Check another probability to potentially change their state to "Survival"
-          recovered <- to_store[runif(length(to_store)) < prob_survival]
-          # Store the individuals' IDs, time steps, diagnosed states, and recovery status
-          new_entries <- rbind(new_entries, data.frame(
-            ID = to_store, 
-            TimeStep = time_step, 
-            DiagnosedState = state, 
-            RecoveredFromState = to_store %in% recovered))
-        }
+      # Store based on diagnose probability
+      to_store <- in_state[runif(length(in_state)) < prob_symptom]
+      if (length(to_store) > 0) {
+        # Add these individuals to the global diagnosed list
+        global_diagnosed <<- c(global_diagnosed, to_store)
+        # Check another probability to potentially change their state to "Survival"
+        recovered <- to_store[runif(length(to_store)) < prob_survival]
+        # Store the individuals' IDs, time steps, diagnosed states, and recovery status
+        new_entries <- rbind(new_entries, data.frame(
+          ID = to_store, 
+          TimeStep = time_step, 
+          DiagnosedState = state, 
+          RecoveredFromState = to_store %in% recovered))
       }
     }
   }
-  rownames(new_entries) <- NULL
-  return(new_entries)
+}
+rownames(new_entries) <- NULL
+return(new_entries)
 }
 ################################################################################
 
@@ -707,6 +705,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         ## Here I need to modify the following function to extract the the right
         ## transition matrix based on the age of the individual at each cycle, and
         ## the correponding transition matrix that depends on vaccination strategies
+        ######################################################################## 
         my_age_prob_matrix <- 
           my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
                                   my_age_in_loop = (age_in_loop + 1))
@@ -715,39 +714,60 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
           my_age_prob_matrix %>%
           dplyr::select(-c(Age.group, Lower, Larger)) %>% 
           colnames()
+        ######################################################################## 
        
-         
+        ######################################################################## 
         my_age_prob_matrix_2 <- 
           my_age_prob_matrix_func(my_Prob_matrix = my_Probs2, 
                                   my_age_in_loop = (age_in_loop + 1))
+        #rename age column:
+        my_age_prob_matrix_2 <- 
+          my_age_prob_matrix_2 %>%
+          dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
+          dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
         # Add colnames and update `v_n`:
         rownames(my_age_prob_matrix_2) <- v_n <<- 
           my_age_prob_matrix_2 %>%
           dplyr::select(-c(Age.group, Lower, Larger)) %>% 
           colnames()
+        ######################################################################## 
         
         
+        ######################################################################## 
         my_age_prob_matrix_4 <- 
           my_age_prob_matrix_func(my_Prob_matrix = my_Probs4, 
                                   my_age_in_loop = (age_in_loop + 1))
+        #rename age column:
+        my_age_prob_matrix_4 <- 
+          my_age_prob_matrix_4 %>%
+          dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
+          dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
         # Add colnames and update `v_n`:
         rownames(my_age_prob_matrix_4) <- v_n <<- 
           my_age_prob_matrix_4 %>%
           dplyr::select(-c(Age.group, Lower, Larger)) %>% 
           colnames()
+        ######################################################################## 
         
         
+        ######################################################################## 
         my_age_prob_matrix_9 <- 
           my_age_prob_matrix_func(my_Prob_matrix = my_Probs9, 
                                   my_age_in_loop = (age_in_loop + 1))
+        #rename age column:
+        my_age_prob_matrix_9 <- 
+          my_age_prob_matrix_9 %>%
+          dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
+          dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
         # Add colnames and update `v_n`:
         rownames(my_age_prob_matrix_9) <- v_n <<- 
           my_age_prob_matrix_9 %>%
           dplyr::select(-c(Age.group, Lower, Larger)) %>% 
           colnames()
+        ######################################################################## 
         
         
-          # Extract the transition probabilities of each individuals at cycle t
+        # Extract the transition probabilities of each individuals at cycle t
         # given the individual current state and the corresponding 
         # transition probability matrix that depends on age:
         # Next time (t+1) transition
@@ -1042,10 +1062,13 @@ vacc2 <- FALSE
 vacc4 <- FALSE
 vacc9 <- FALSE
 
-# paramters:
-vacc_coverage <- c(0.3, 0.0, 0.0) # vaccination coverage for vacc 2, 4 and 9
+# Paramters
+# vaccination coverage for vacc 2, 4 and 9:
+vacc_coverage <- c(0.357, 0.0, 0.0) 
+# natural immunity associated with vacc 2, 4, and 9:
+nat_immunity_linked_to_vacc <- c(0.0, 0.0, 0.0)
 
-
+################################################################################
 generate_vaccine_labels <- function(n_i, vacc_coverage) {
   # Ensure the sum of coverage is valid
   if (sum(vacc_coverage) > 1) {
@@ -1075,8 +1098,13 @@ generate_vaccine_labels <- function(n_i, vacc_coverage) {
   # Shuffle the vector randomly
   vacc_lbl <- sample(vacc_lbl, size = n_i, replace = FALSE)
   
+  # as data frame:
+  vacc_lbl <- as.data.frame(vacc_lbl)
+  vacc_lbl$ID <- seq_len(nrow(vacc_lbl))
   return(vacc_lbl)
 }
+################################################################################
+
 ## Example usage
 #set.seed(123) # For reproducibility
 #n_i <- 1000
@@ -1088,6 +1116,8 @@ vacc_lbl <- generate_vaccine_labels(n_i, vacc_coverage)
 #
 ## Check the results
 #table(vacc_lbl) / n_i
+
+# convert the list to a data frame
 ################################################################################
 
 
@@ -2134,3 +2164,4 @@ if (numb_of_sims >=60) {
 df <- sim_result[["No Intervention"]]$TR %>% select(FIGO.I, FIGO.II, FIGO.III, FIGO.IV) 
 # select(FIGO.I, FIGO.II, FIGO.III, FIGO.IV) and summarize by columns
 df <- df %>% summarise(across(everything(), sum, na.rm = TRUE))
+
