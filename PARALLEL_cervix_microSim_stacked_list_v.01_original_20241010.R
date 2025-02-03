@@ -26,10 +26,11 @@ ensure_library <- function(...) {
 ################################################################################
 
 my_Probs <- readRDS(file = "./data/probs.rds") # natural history transition matrix
-my_Probs2 <- readRDS(file = "./data/probs2.rds") # vaccination transition matrix
+my_Probs2 <- readRDS(file = "./data/probs2.rds")  # vaccination transition matrix
+# vaccination 2 associated immunity transition matrix
+my_Probs2_nat_immunity <- readRDS(file = "./data/probs3.rds") 
 my_Probs4 <- readRDS(file = "./data/probs3.rds") # vaccination transition matrix
 my_Probs9 <- readRDS(file = "./data/probs3.rds") # vaccination transition matrix
-
 
 
 ################################################################################
@@ -97,7 +98,7 @@ n_t <- n_t * 1
 
 
 ################################################################################
-v_n <- rownames(my_Probs)
+#v_n <- rownames(my_Probs)
 v_n <- colnames(my_Probs)
 v_n <- v_n[-c(1,14,15)]
 n_s   <- length(v_n)                # the number of health states
@@ -1063,11 +1064,12 @@ vacc9 <- FALSE
 
 # Paramters
 # vaccination coverage for vacc 2, 4 and 9:
-vacc_coverage <- c(0.3, 0.0, 0.0) 
+vacc_coverage <- c(0.357, 0.0, 0.0) 
 # natural immunity associated with vacc 2, 4, and 9:
 nat_immunity_linked_to_vacc <- c(0.0, 0.0, 0.0)
 
-generate_vaccine_labels <- function(n_i, vacc_coverage) {
+################################################################################
+generate_vaccine_labels <- function(n_i, vacc_coverage, nat_immunity) {
   # Ensure the sum of coverage is valid
   if (sum(vacc_coverage) > 1) {
     stop("The sum of vacc_coverage cannot exceed 1.")
@@ -1096,8 +1098,40 @@ generate_vaccine_labels <- function(n_i, vacc_coverage) {
   # Shuffle the vector randomly
   vacc_lbl <- sample(vacc_lbl, size = n_i, replace = FALSE)
   
-  return(vacc_lbl)
+  # Initialize the 'immuned' vector with FALSE for everyone
+  immuned <- rep(FALSE, n_i)
+  
+  ## as data frame:
+  #vacc_lbl <- as.data.frame(vacc_lbl)
+  #vacc_lbl$ID <- seq_len(nrow(vacc_lbl))
+  #return(vacc_lbl)
+  # For vaccinated individuals, check if they overcome their immunity probability
+  
+  for (i in 1:n_i) {
+    if (vacc_lbl[i] == "vacc_2") {
+      # Check if individual overcomes immunity probability for vacc_2
+      immuned[i] <- runif(1) < nat_immunity[1]
+    } else if (vacc_lbl[i] == "vacc_4") {
+      # Check if individual overcomes immunity probability for vacc_4
+      immuned[i] <- runif(1) < nat_immunity[2]
+    } else if (vacc_lbl[i] == "vacc_9") {
+      # Check if individual overcomes immunity probability for vacc_9
+      immuned[i] <- runif(1) < nat_immunity[3]
+    }
+    # Individuals with "no_vacc" remain FALSE for immunity
+  }
+  
+  # Create the final data frame with ID, vacc_state, and immuned status
+  result_df <- data.frame(
+    ID = seq_len(n_i),
+    vacc_state = vacc_lbl,
+    immuned = immuned
+  )
+  
+  return(result_df)
 }
+################################################################################
+
 ## Example usage
 #set.seed(123) # For reproducibility
 #n_i <- 1000
@@ -1105,7 +1139,8 @@ generate_vaccine_labels <- function(n_i, vacc_coverage) {
 #vacc_coverage <- c(0.0, 0.0, 0.0)
 #vacc_coverage <- c(0.0, 0.7, 0.0)
 #vacc_coverage <- c(0.3, 0.7, 0.1)
-vacc_lbl <- generate_vaccine_labels(n_i, vacc_coverage)
+vacc_lbl <-
+  generate_vaccine_labels(n_i, vacc_coverage, nat_immunity_linked_to_vacc)
 #
 ## Check the results
 #table(vacc_lbl) / n_i
