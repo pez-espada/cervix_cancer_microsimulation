@@ -1023,10 +1023,10 @@ if (is_slurm()) {
   # On local machine, use all available cores (or limit if needed)
   #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
   ## Register fewer cores (adjust based on server resources)
-  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+  #n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
   #n_cores <- detectCores()  # Try using 8 or fewer cores
   #n_cores <- min(detectCores())  # Try using 8 or fewer cores
-  #n_cores <- 6  # Try using 8 or fewer cores
+  n_cores <- 6  # Try using 8 or fewer cores
 }
 # for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
 # five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
@@ -1041,13 +1041,13 @@ cat("Number of cores: ", n_cores, "\n")
 # 6-hours timeout to prevent socket drop issues
 cl <- makeCluster(n_cores, timeout = 6*60*60) 
 clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
-                    "my_Probs", "utilityCoefs", "v_n", "samplev", 
-                    "my_age_prob_matrix_func","diagnose_column", 
-                    "update_column", "states_to_check", "symptom_prob_vec",
-                    "survival_prob_vec", #"global_diagnosed", 
+                    "my_Probs", "my_Probs2","my_Probs4", "my_Probs9", 
+                    "utilityCoefs", "v_n", "samplev", "my_age_prob_matrix_func",
+                    "diagnose_column", "update_column", "states_to_check", 
+                    "symptom_prob_vec", "survival_prob_vec", #"global_diagnosed", 
                     "cost_Vec", "new_cases_2"))
-#registerDoParallel(cl) # for parallel
-registerDoSEQ()        # for sequential
+registerDoParallel(cl) # for parallel
+#registerDoSEQ()        # for sequential
 ################################################################################
 ################################################################################
 
@@ -1055,14 +1055,7 @@ registerDoSEQ()        # for sequential
 ################################################################################
 ################################################################################
 ## Vaccination strategies:
-## 1. No vaccination
-#vaccination <- TRUE
-#vaccination <- FALSE
-vacc2 <- FALSE
-vacc4 <- FALSE
-vacc9 <- FALSE
-
-# Paramters
+# Paramters:
 # vaccination coverage for vacc 2, 4 and 9:
 vacc_coverage <- c(0.357, 0.0, 0.0) 
 # natural immunity associated with vacc 2, 4, and 9:
