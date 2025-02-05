@@ -196,41 +196,107 @@ Probs_2 <- function(M_it, my_Probs, my_Probs2, my_Probs2_nat_immunity,
     
     if (sum(state_mask) > 0) {
       
+      ## Identify which transition matrix to use for each individual
+      #trans_matrices <- sapply(seq_along(M_it), function(j) {
+      #  if (!state_mask[j]) return(NULL) # Skip individuals not in the current state
+      #  
+      #  vacc_status <- vacc_lbl$vacc_state[j]
+      #  immuned_status <- vacc_lbl$immuned[j]
+      #  cat("vacc_status: ", vacc_status, "\n")
+      #  cat("immuned_status: ", immuned_status, "\n")
+      #  
+      #  if (vacc_status == "no_vacc") {
+      #    return(my_Probs)
+      #  } else if (vacc_status == "vacc_2") {
+      #    return(ifelse(immuned_status, my_Probs2_nat_immunity, my_Probs2))
+      #  } else if (vacc_status == "vacc_4") {
+      #    return(my_Probs4)
+      #  } else if (vacc_status == "vacc_9") {
+      #    return(my_Probs9)
+      #  } else {
+      #    stop("Unknown vaccination status detected")
+      #  }
+      #})
+      
       # Identify which transition matrix to use for each individual
-      trans_matrices <- sapply(seq_along(M_it), function(j) {
-        if (!state_mask[j]) return(NULL) # Skip individuals not in the current state
+      trans_matrices <- lapply(seq_along(M_it), function(j) {
+        if (!state_mask[j]) {
+          return(data.frame(matrix(NA, nrow = nrow(my_Probs), ncol = ncol(my_Probs))))
+        }
         
         vacc_status <- vacc_lbl$vacc_state[j]
         immuned_status <- vacc_lbl$immuned[j]
         
-        #cat("vacc_status is: ", vacc_status, "\n") 
+        #cat("Processing individual:", j, "- Vaccination status:", vacc_status, "\n")
         
-        if (vacc_status == "no_vacc") {
-          return(my_Probs)
+        P <- if (vacc_status == "no_vacc") {
+          my_Probs
         } else if (vacc_status == "vacc_2") {
-          return(ifelse(immuned_status, my_Probs2_nat_immunity, my_Probs2))
+          if (immuned_status) my_Probs2_nat_immunity else my_Probs2
         } else if (vacc_status == "vacc_4") {
-          return(my_Probs4)
+          my_Probs4
         } else if (vacc_status == "vacc_9") {
-          return(my_Probs9)
+          my_Probs9
         } else {
           stop("Unknown vaccination status detected")
         }
+        
+        #print(class(P))  # Should be "data.frame"
+        #print(dim(P))    # Check dimensions
+        return(P)
       })
       
-      # Fill the transition probabilities matrix
-      m_P_it[, state_mask] <- sapply(trans_matrices, function(P) {
-        lapply(v_n, function(x) trans_prb(P = P, state1 = v_n[i], state2 = x)) %>%
-          unlist()
-      })
-      
-      ## Testing
-      #sapply(trans_matrices, function(P) {
-      #  print(dim(P))  # Check dimensions
-      #  print(class(P)) # Should be "matrix"
-      #  #lapply(v_n, function(x) trans_prb(P = P, state1 = v_n[i], state2 = x)) %>%
-      #  #  unlist()
+      ## Fill the transition probabilities matrix
+      #m_P_it[, state_mask] <- sapply(trans_matrices, function(P) {
+      #  lapply(v_n, function(x) trans_prb(P = P, state1 = v_n[i], state2 = x)) %>%
+      #    unlist()
       #})
+      
+      
+      ## Fill m_P_it with transition probabilities 2:
+      #for (i in seq_along(M_it)) {
+      #  # Get individual's current state
+      #  current_state <- M_it[[i]]
+      #  
+      #  # Get individual's transition matrix
+      #  P_i <- trans_matrices[[i]]  # This should be a data frame
+      #  
+      #  # Find the row corresponding to the individual's current state
+      #  if (current_state %in% rownames(P_i)) {
+      #    m_P_it[, i] <- as.numeric(P_i[current_state, ])  # Fill the column with transition probabilities
+      #  } else {
+      #    warning(paste("State", current_state, "not found in transition matrix for individual", i))
+      #    m_P_it[, i] <- NA  # Assign NA if the state isn't found
+      #  }
+      #}
+      
+      
+      # Fill m_P_it with transition probabilities 3:
+      for (i in seq_along(M_it)) {
+        # Get individual's current state
+        current_state <- M_it[[i]]
+        
+        # Get individual's transition matrix
+        P_i <- trans_matrices[[i]]  # This should be a data frame
+        
+        # Find the row corresponding to the individual's current state
+        if (current_state %in% colnames(P_i)) {
+          # Extract the transition probabilities (excluding first column if it's non-numeric)
+          transition_probs <- as.numeric(P_i[, current_state])
+          
+          # Fill the column in m_P_it
+          if (length(transition_probs) == nrow(m_P_it)) {
+            m_P_it[, i] <- transition_probs
+          } else {
+            warning(paste("Mismatch in transition probabilities for individual", i))
+            m_P_it[, i] <- NA  # Assign NA if there's a size mismatch
+          }
+        } else {
+          warning(paste("State", current_state, "not found in transition matrix for individual", i))
+          m_P_it[, i] <- NA  # Assign NA if the state isn't found
+        }
+      }
+      
       
       
     }
@@ -711,7 +777,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       m_E[, 1] <- Effs(m_M[, 1], Trt, utilityCoefs = utilityCoefs)  
       
       stored_list <- list()
-       
       ###################### run over all the cycles ########################### 
       # loop runs over all the cycles of the simulation. It updates the
       # health state of each individual at each cycle, estimates the costs and
@@ -843,23 +908,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
                        vacc_lbl = vacc_lbl)
         
         m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
-        # and store that state in  
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-        # matrix m_M 
+                                                     # and store that state in  
+                                                     # matrix m_M 
         ########################################################################    
         
         # m_M[, t + 1] <- update_column(m_M[, t], new_entries)
@@ -1190,6 +1240,7 @@ generate_vaccine_labels <- function(n_i, vacc_coverage, nat_immunity) {
 
 vacc_lbl <-
   generate_vaccine_labels(n_i, vacc_coverage, nat_immunity_linked_to_vacc)
+
 
 ################################################################################
 # 6-hours timeout to prevent socket drop issues
