@@ -32,6 +32,9 @@ my_Probs2_nat_immunity <- readRDS(file = "./data/probs3.rds")
 my_Probs4 <- readRDS(file = "./data/probs3.rds") # vaccination transition matrix
 my_Probs9 <- readRDS(file = "./data/probs3.rds") # vaccination transition matrix
 
+# arbitrary fi of an obvius error;
+my_Probs2$Other.Death[my_Probs2$Other.Death == 8.150000e+08] <- 8.150000e-08
+
 
 ################################################################################
 # Function to extract and convert numbers from factor levels
@@ -74,7 +77,7 @@ my_Probs9 <- my_Probs9 %>% as.data.frame() #convert back to data.frame (no neede
 n_i <- (2)*10^5         # number of simulated individuals
 #n_i <- (5)*10^5            # number of simulated individuals
 #n_i <- 10^7            # number of simulated individuals
-n_i <- 10^5               # number of simulated individuals
+n_i <- 10^3               # number of simulated individuals
 #n_i <- 10^6               # number of simulated individuals
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 ################################################################################
@@ -167,7 +170,7 @@ Probs <- function(M_it, my_Probs) {
   }
   if (any(is.na(m_P_it))) {
     # Diagnostic message
-    cat("Transition probabilities contain NA values\n")
+    #cat("Transition probabilities contain NA values\n")
   }
   ifelse(colSums(m_P_it, na.rm = TRUE) >= .991, 
          return(t(m_P_it)), 
@@ -177,12 +180,13 @@ Probs <- function(M_it, my_Probs) {
 
 
 #################################################################################
-### ---- Probability Function ----                                             ##
+### ---- Probability Function ---- BOTTLE NECK!!                                            ##
 ### The Probs_2 function that updates the transition probabilities of every cycle:
 ### taking into account other probs than natura history
 ### depending on the vaccination startegies
-Probs_2 <- function(M_it, my_Probs, my_Probs2, my_Probs2_nat_immunity,
-                    my_Probs4, my_Probs9, vacc_lbl) {
+library(data.table)
+Probs_2 <- function(M_it, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
+                    prob_matrix_4, prob_matrix_9, vacc_lbl) {
   # Ensure v_n is defined
   n_s <- length(v_n)  # Number of health states
   n_i <- length(M_it) # Number of individuals
@@ -196,28 +200,6 @@ Probs_2 <- function(M_it, my_Probs, my_Probs2, my_Probs2_nat_immunity,
     
     if (sum(state_mask) > 0) {
       
-      ## Identify which transition matrix to use for each individual
-      #trans_matrices <- sapply(seq_along(M_it), function(j) {
-      #  if (!state_mask[j]) return(NULL) # Skip individuals not in the current state
-      #  
-      #  vacc_status <- vacc_lbl$vacc_state[j]
-      #  immuned_status <- vacc_lbl$immuned[j]
-      #  cat("vacc_status: ", vacc_status, "\n")
-      #  cat("immuned_status: ", immuned_status, "\n")
-      #  
-      #  if (vacc_status == "no_vacc") {
-      #    return(my_Probs)
-      #  } else if (vacc_status == "vacc_2") {
-      #    return(ifelse(immuned_status, my_Probs2_nat_immunity, my_Probs2))
-      #  } else if (vacc_status == "vacc_4") {
-      #    return(my_Probs4)
-      #  } else if (vacc_status == "vacc_9") {
-      #    return(my_Probs9)
-      #  } else {
-      #    stop("Unknown vaccination status detected")
-      #  }
-      #})
-      
       # Identify which transition matrix to use for each individual
       trans_matrices <- lapply(seq_along(M_it), function(j) {
         if (!state_mask[j]) {
@@ -230,46 +212,25 @@ Probs_2 <- function(M_it, my_Probs, my_Probs2, my_Probs2_nat_immunity,
         #cat("Processing individual:", j, "- Vaccination status:", vacc_status, "\n")
         
         P <- if (vacc_status == "no_vacc") {
-          my_Probs
+          prob_matrix
         } else if (vacc_status == "vacc_2") {
-          if (immuned_status) my_Probs2_nat_immunity else my_Probs2
+          if (immuned_status) prob_matrix_2_nat_immunity else prob_matrix_2
         } else if (vacc_status == "vacc_4") {
-          my_Probs4
+          prob_matrix_4
         } else if (vacc_status == "vacc_9") {
-          my_Probs9
+          prob_matrix_9
         } else {
           stop("Unknown vaccination status detected")
         }
         
-        #print(class(P))  # Should be "data.frame"
+        #print(class(P))  # Should be "data.table"
         #print(dim(P))    # Check dimensions
+        
+        # get rid of the age.group, lower and larger columns:
+        P[, c("Age.group", "Lower", "Larger") := NULL]
+        
         return(P)
       })
-      
-      ## Fill the transition probabilities matrix
-      #m_P_it[, state_mask] <- sapply(trans_matrices, function(P) {
-      #  lapply(v_n, function(x) trans_prb(P = P, state1 = v_n[i], state2 = x)) %>%
-      #    unlist()
-      #})
-      
-      
-      ## Fill m_P_it with transition probabilities 2:
-      #for (i in seq_along(M_it)) {
-      #  # Get individual's current state
-      #  current_state <- M_it[[i]]
-      #  
-      #  # Get individual's transition matrix
-      #  P_i <- trans_matrices[[i]]  # This should be a data frame
-      #  
-      #  # Find the row corresponding to the individual's current state
-      #  if (current_state %in% rownames(P_i)) {
-      #    m_P_it[, i] <- as.numeric(P_i[current_state, ])  # Fill the column with transition probabilities
-      #  } else {
-      #    warning(paste("State", current_state, "not found in transition matrix for individual", i))
-      #    m_P_it[, i] <- NA  # Assign NA if the state isn't found
-      #  }
-      #}
-      
       
       # Fill m_P_it with transition probabilities 3:
       for (i in seq_along(M_it)) {
@@ -278,11 +239,14 @@ Probs_2 <- function(M_it, my_Probs, my_Probs2, my_Probs2_nat_immunity,
         
         # Get individual's transition matrix
         P_i <- trans_matrices[[i]]  # This should be a data frame
+        ## cleaning transition matrix using data.table:
+        #P_i <- P_i %>% dplyr::select(-c(Age.group, Lower, Larger))
         
         # Find the row corresponding to the individual's current state
         if (current_state %in% colnames(P_i)) {
           # Extract the transition probabilities (excluding first column if it's non-numeric)
-          transition_probs <- as.numeric(P_i[, current_state])
+          #transition_probs <- as.numeric(P_i[, ..current_state])
+          transition_probs <- as.numeric(P_i[which(colnames(P_i) == current_state),])
           
           # Fill the column in m_P_it
           if (length(transition_probs) == nrow(m_P_it)) {
@@ -296,9 +260,6 @@ Probs_2 <- function(M_it, my_Probs, my_Probs2, my_Probs2_nat_immunity,
           m_P_it[, i] <- NA  # Assign NA if the state isn't found
         }
       }
-      
-      
-      
     }
   }
   
@@ -734,7 +695,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
   
   # Parallel processing using foreach
   simulation_results <- 
-    foreach(sim = 1:numb_of_sims, .packages = c("dplyr", "tidyr", "purrr") ) %dopar% { 
+    foreach(sim = 1:numb_of_sims, .packages = c("dplyr", "tidyr", "purrr", "data.table") ) %dopar% { 
       ## clean memory:
       #if (step %% 10 == 0) gc()
       cat("Running simulation", sim, "with seed", seeds[sim], "\n")
@@ -834,7 +795,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         my_age_prob_matrix_2 <- 
           my_age_prob_matrix_2 %>%
           dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
-          dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
+          dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower)) %>% setDT()
         # Add colnames and update `v_n`:
         rownames(my_age_prob_matrix_2) <- v_n <<- 
           my_age_prob_matrix_2 %>%
@@ -891,7 +852,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
           colnames()
         ######################################################################## 
         
-        
         # Extract the transition probabilities of each individuals at cycle t
         # given the individual current state and the corresponding 
         # transition probability matrix that depends on age:
@@ -899,12 +859,22 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         # m_P is a (n_i x n_s) matrix with the probabilities of transitioning
         #m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
         
-        # for vaccination I'll need a new Probs function: 
-        m_P <- Probs_2(M_it = m_M[, t], my_Probs = my_age_prob_matrix, 
-                       my_Probs2 = my_age_prob_matrix_2,
-                       my_Probs2_nat_immunity = my_age_prob_matrix_2_nat_immunity,
-                       my_Probs4 = my_age_prob_matrix_4, 
-                       my_Probs9 = my_age_prob_matrix_9, 
+        # for vaccination I'll need a new Probs function:
+        # use data.table for speed
+        #m_P <- Probs_2(M_it = m_M[, t], 
+        #               prob_matrix = setkey(setDT(copy(my_age_prob_matrix))[, rownames := rownames(my_age_prob_matrix)], rownames), 
+        #               prob_matrix_2 = setkey(setDT(copy(my_age_prob_matrix_2))[, rownames := rownames(my_age_prob_matrix_2)], rownames),
+        #               prob_matrix_2_nat_immunity = setkey(setDT(copy(my_age_prob_matrix_2_nat_immunity))[, rownames := rownames(my_age_prob_matrix_2_nat_immunity)], rownames),
+        #               prob_matrix_4 = setkey(setDT(copy(my_age_prob_matrix_4))[, rownames := rownames(my_age_prob_matrix_4)], rownames) , 
+        #               prob_matrix_9 = setkey(setDT(copy(my_age_prob_matrix_9))[, rownames := rownames(my_age_prob_matrix_9)], rownames), 
+        #               vacc_lbl = vacc_lbl)
+        
+        m_P <- Probs_2(M_it = m_M[, t], 
+                       prob_matrix = setDT(my_age_prob_matrix), 
+                       prob_matrix_2 = setDT(my_age_prob_matrix_2),
+                       prob_matrix_2_nat_immunity = setDT(my_age_prob_matrix_2_nat_immunity),
+                       prob_matrix_4 = setDT(my_age_prob_matrix_4), 
+                       prob_matrix_9 = setDT(my_age_prob_matrix_9), 
                        vacc_lbl = vacc_lbl)
         
         m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
@@ -1241,6 +1211,8 @@ generate_vaccine_labels <- function(n_i, vacc_coverage, nat_immunity) {
 vacc_lbl <-
   generate_vaccine_labels(n_i, vacc_coverage, nat_immunity_linked_to_vacc)
 
+################################################################################
+
 
 ################################################################################
 # 6-hours timeout to prevent socket drop issues
@@ -1253,98 +1225,9 @@ clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
                     "update_column", "states_to_check", 
                     "symptom_prob_vec", "survival_prob_vec", #"global_diagnosed", 
                     "cost_Vec", "new_cases_2"))
-#registerDoParallel(cl) # for parallel
+registerDoParallel(cl) # for parallel
 registerDoSEQ()        # for sequential
 ################################################################################
-################################################################################
-
-
-#################################################################################
-#################################################################################
-### Vaccination strategies:
-## Paramters:
-## vaccination coverage for vacc 2, 4 and 9:
-#vacc_coverage <- c(0.357, 0.0, 0.0) 
-## natural immunity associated with vacc 2, 4, and 9:
-#nat_immunity_linked_to_vacc <- c(0.0, 0.0, 0.0)
-#
-#################################################################################
-#generate_vaccine_labels <- function(n_i, vacc_coverage, nat_immunity) {
-#  # Ensure the sum of coverage is valid
-#  if (sum(vacc_coverage) > 1) {
-#    stop("The sum of vacc_coverage cannot exceed 1.")
-#  }
-#  
-#  # Calculate the number of individuals for each vaccine
-#  n_vacc_2 <- round(vacc_coverage[1] * n_i)
-#  n_vacc_4 <- round(vacc_coverage[2] * n_i)
-#  n_vacc_9 <- round(vacc_coverage[3] * n_i)
-#  
-#  # Remaining individuals are "no_vacc"
-#  n_no_vacc <- n_i - (n_vacc_2 + n_vacc_4 + n_vacc_9)
-#  
-#  if (n_no_vacc < 0) {
-#    stop("The specified coverage results in more vaccinated individuals than n_i.")
-#  }
-#  
-#  # Create the label vector
-#  vacc_lbl <- c(
-#    rep("vacc_2", n_vacc_2),
-#    rep("vacc_4", n_vacc_4),
-#    rep("vacc_9", n_vacc_9),
-#    rep("no_vacc", n_no_vacc)
-#  )
-#  
-#  # Shuffle the vector randomly
-#  vacc_lbl <- sample(vacc_lbl, size = n_i, replace = FALSE)
-#  
-#  # Initialize the 'immuned' vector with FALSE for everyone
-#  immuned <- rep(FALSE, n_i)
-#  
-#  ## as data frame:
-#  #vacc_lbl <- as.data.frame(vacc_lbl)
-#  #vacc_lbl$ID <- seq_len(nrow(vacc_lbl))
-#  #return(vacc_lbl)
-#  # For vaccinated individuals, check if they overcome their immunity probability
-#  
-#  for (i in 1:n_i) {
-#    if (vacc_lbl[i] == "vacc_2") {
-#      # Check if individual overcomes immunity probability for vacc_2
-#      immuned[i] <- runif(1) < nat_immunity[1]
-#    } else if (vacc_lbl[i] == "vacc_4") {
-#      # Check if individual overcomes immunity probability for vacc_4
-#      immuned[i] <- runif(1) < nat_immunity[2]
-#    } else if (vacc_lbl[i] == "vacc_9") {
-#      # Check if individual overcomes immunity probability for vacc_9
-#      immuned[i] <- runif(1) < nat_immunity[3]
-#    }
-#    # Individuals with "no_vacc" remain FALSE for immunity
-#  }
-#  
-#  # Create the final data frame with ID, vacc_state, and immuned status
-#  result_df <- data.frame(
-#    ID = seq_len(n_i),
-#    vacc_state = vacc_lbl,
-#    immuned = immuned
-#  )
-#  
-#  return(result_df)
-#}
-#################################################################################
-#
-### Example usage
-##set.seed(123) # For reproducibility
-##n_i <- 1000
-##vacc_coverage <- c(0.3, 0.7, 0.1)
-#vacc_lbl <-
-#  generate_vaccine_labels(n_i, vacc_coverage, nat_immunity_linked_to_vacc)
-##
-### Check the results
-##table(vacc_lbl) / n_i
-#################################################################################
-
-
-
 ################################################################################
 
 

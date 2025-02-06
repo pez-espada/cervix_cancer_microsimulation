@@ -1,4 +1,4 @@
-summarize_results_by_Strategy <- function(results_list, numb_of_sims) {
+                      summarize_results_by_Strategy <- function(results_list, numb_of_sims) {
   library(dplyr)
   
   result<-list()
@@ -14,6 +14,7 @@ summarize_results_by_Strategy <- function(results_list, numb_of_sims) {
   #  results_list[[i]]$te_undisc<-NULL
   #  results_list[[i]][["Tot_Trans_per_t"]]<-NULL
   #}
+  
   
   cat("I have entered the Sandra's function\n")
   
