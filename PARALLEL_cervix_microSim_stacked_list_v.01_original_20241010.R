@@ -199,18 +199,14 @@ Probs_2 <- function(M_it, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity
     state_mask <- !is.na(M_it) & M_it == v_n[i]
     
     if (sum(state_mask) > 0) {
-      
       # Identify which transition matrix to use for each individual
       trans_matrices <- lapply(seq_along(M_it), function(j) {
         if (!state_mask[j]) {
           return(data.frame(matrix(NA, nrow = nrow(my_Probs), ncol = ncol(my_Probs))))
         }
-        
         vacc_status <- vacc_lbl$vacc_state[j]
         immuned_status <- vacc_lbl$immuned[j]
-        
         #cat("Processing individual:", j, "- Vaccination status:", vacc_status, "\n")
-        
         P <- if (vacc_status == "no_vacc") {
           prob_matrix
         } else if (vacc_status == "vacc_2") {
@@ -222,13 +218,10 @@ Probs_2 <- function(M_it, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity
         } else {
           stop("Unknown vaccination status detected")
         }
-        
         #print(class(P))  # Should be "data.table"
         #print(dim(P))    # Check dimensions
-        
         # get rid of the age.group, lower and larger columns:
         P[, c("Age.group", "Lower", "Larger") := NULL]
-        
         return(P)
       })
       
@@ -276,6 +269,49 @@ Probs_2 <- function(M_it, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity
 ################################################################################
   
 
+################################################################################
+library(data.table)
+Probs_3 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
+                    prob_matrix_4, prob_matrix_9, vacc_lbl) {
+   # Ensure v_n is defined
+   n_s <- length(v_n)  # Number of health states
+   n_i <- length(M_it) # Number of individuals
+   v_n <- colnames(prob_matrix) # Get the health states, trans matrix need to be square 
+   # add M_it a column with the individuals' ID as the row number and the health state as the value
+   M_it <- data.table(ID = 1:n_i, health_state = M_it)
+   
+   #M_it <- data.table(ID = 1:n_i, M_it)
+   
+   
+  # Run over the individuals:
+  for (ind in M_it$ID) {
+    # Ask whether is vaccinated or not and if so, which vaccination and immunity status
+    # first get the vaccination status (no_vacc, vacc_2, vacc_4, vacc_9):  
+    vacc_status <- vacc_lbl$vacc_state[vacc_lbl$ID == ind]
+    # second get the immunity status (TRUE or FALSE):
+    immuned_status <- vacc_lbl$immuned[vacc_lbl$ID == ind]
+    #cat("Processing individual:", ind, "- Vaccination status:", vacc_status, "\n")
+    
+    # Get the transition probabilities to other states on next cycle/iteration 
+    # based on a) its own state now, b) its vaccination status, c
+    # and c) its immunity status:
+    P <- if (vacc_status == "no_vacc") {
+      #prob_matrix[which(colnames(prob_matrix) == ind),]
+      prob_matrix[which(v_n == ind),]
+    } else if (vacc_status == "vacc_2") {
+      if (immuned_status) prob_matrix_2_nat_immunity[which(v_n == ind),] else
+        prob_matrix_2[which(v_n == ind),]
+    } else if (vacc_status == "vacc_4") {
+      prob_matrix_4[which(v_n == ind),]
+    } else if (vacc_status == "vacc_9") {
+      prob_matrix_9[which(v_n == ind),]
+    } else {
+      stop("Unknown vaccination status detected")
+    }
+    cat("individual: ", ind, "P: ", P, "\n")
+  }
+  
+}
 
 
 
@@ -1225,7 +1261,7 @@ clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
                     "update_column", "states_to_check", 
                     "symptom_prob_vec", "survival_prob_vec", #"global_diagnosed", 
                     "cost_Vec", "new_cases_2"))
-registerDoParallel(cl) # for parallel
+#registerDoParallel(cl) # for parallel
 registerDoSEQ()        # for sequential
 ################################################################################
 ################################################################################
