@@ -282,33 +282,38 @@ Probs_3 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_imm
    
    #M_it <- data.table(ID = 1:n_i, M_it)
    
-   
   # Run over the individuals:
   for (ind in M_it$ID) {
-    # Ask whether is vaccinated or not and if so, which vaccination and immunity status
+    # get individual state:
+    state <- M_it$health_state[M_it$ID == ind]
+    # Ask  is vaccinated or not and if so, which vaccination and immunity status
     # first get the vaccination status (no_vacc, vacc_2, vacc_4, vacc_9):  
     vacc_status <- vacc_lbl$vacc_state[vacc_lbl$ID == ind]
     # second get the immunity status (TRUE or FALSE):
     immuned_status <- vacc_lbl$immuned[vacc_lbl$ID == ind]
     #cat("Processing individual:", ind, "- Vaccination status:", vacc_status, "\n")
     
+    # get vacc_status position in the vector of vaccination statuses for ind:
+    vacc_status_pos <- which(vacc_lbl$vacc_state == vacc_status)
+    
     # Get the transition probabilities to other states on next cycle/iteration 
     # based on a) its own state now, b) its vaccination status, c
     # and c) its immunity status:
     P <- if (vacc_status == "no_vacc") {
       #prob_matrix[which(colnames(prob_matrix) == ind),]
-      prob_matrix[which(v_n == ind),]
+      prob_matrix[which(v_n == state),]
     } else if (vacc_status == "vacc_2") {
-      if (immuned_status) prob_matrix_2_nat_immunity[which(v_n == ind),] else
-        prob_matrix_2[which(v_n == ind),]
+      if (immuned_status) prob_matrix_2_nat_immunity[which(v_n == state),] else
+        prob_matrix_2[which(v_n == state),]
     } else if (vacc_status == "vacc_4") {
-      prob_matrix_4[which(v_n == ind),]
+      prob_matrix_4 [which(v_n == state),]
     } else if (vacc_status == "vacc_9") {
-      prob_matrix_9[which(v_n == ind),]
+      prob_matrix_9[which(v_n == state),]
     } else {
       stop("Unknown vaccination status detected")
     }
-    cat("individual: ", ind, "P: ", P, "\n")
+    #cat("individual: ", ind, "P: ", P, "\n")
+    P %>% print()
   }
   
 }
