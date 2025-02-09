@@ -34,7 +34,8 @@ my_Probs9 <- readRDS(file = "./data/probs3.rds") # vaccination transition matrix
 
 # arbitrary fi of an obvius error;
 my_Probs2$Other.Death[my_Probs2$Other.Death == 8.150000e+08] <- 8.150000e-08
-
+my_Probs2 <- my_Probs2 %>%
+  dplyr::rename("CC_Death" = "Death")
 
 ################################################################################
 # Function to extract and convert numbers from factor levels
@@ -273,15 +274,17 @@ Probs_2 <- function(M_it, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity
 library(data.table)
 Probs_3 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
                     prob_matrix_4, prob_matrix_9, vacc_lbl) {
-   # Ensure v_n is defined
-   n_s <- length(v_n)  # Number of health states
-   n_i <- length(M_it) # Number of individuals
-   v_n <- colnames(prob_matrix) # Get the health states, trans matrix need to be square 
-   # add M_it a column with the individuals' ID as the row number and the health state as the value
-   M_it <- data.table(ID = 1:n_i, health_state = M_it)
-   
-   #M_it <- data.table(ID = 1:n_i, M_it)
-   
+  # Ensure v_n is defined
+  n_s <- length(v_n)  # Number of health states
+  n_i <- M_it %>% length() %>% max() # Number of individuals
+  v_n <- colnames(prob_matrix) # Get the health states, trans matrix need to be square 
+  # add M_it a column with the individuals' ID as the row number and the health state as the value
+  M_it <- data.table(ID = 1:n_i, health_state = M_it)
+  #M_it <- data.table(ID = 1:n_i, M_it)
+  ## ------##
+  
+  
+  P_list <- list()  # Initialize an empty list to store each P
   # Run over the individuals:
   for (ind in M_it$ID) {
     # get individual state:
@@ -293,12 +296,10 @@ Probs_3 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_imm
     immuned_status <- vacc_lbl$immuned[vacc_lbl$ID == ind]
     #cat("Processing individual:", ind, "- Vaccination status:", vacc_status, "\n")
     
-    # get vacc_status position in the vector of vaccination statuses for ind:
-    vacc_status_pos <- which(vacc_lbl$vacc_state == vacc_status)
-    
     # Get the transition probabilities to other states on next cycle/iteration 
     # based on a) its own state now, b) its vaccination status, c
     # and c) its immunity status:
+    
     P <- if (vacc_status == "no_vacc") {
       #prob_matrix[which(colnames(prob_matrix) == ind),]
       prob_matrix[which(v_n == state),]
@@ -313,9 +314,23 @@ Probs_3 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_imm
       stop("Unknown vaccination status detected")
     }
     #cat("individual: ", ind, "P: ", P, "\n")
-    P %>% print()
+    #P %>% print()
+    # Convert P to data.table and add individual ID for tracking
+    P_dt <- as.data.table(P)
+    P_dt[, ID := ind]
+    
+    # Convert all columns to appropriate types
+    P_dt <- as.data.table(lapply(P_dt, type.convert, as.is = TRUE))
+    
+    # Store in list
+    P_list[[length(P_list) + 1]] <- P_dt
   }
-  
+  P_combined <- bind_rows(P_list)
+  # Remove the "Lower", "Larger", and "ID" columns
+  P_combined_clean <- P_combined[, !c("Age.group", "Lower", "Larger", "ID"), with = FALSE]
+  # Convert the cleaned data.table to a matrix (rows = individuals, columns = states)
+  P_matrix <- as.matrix(P_combined_clean)
+  return(P_matrix)
 }
 
 
@@ -836,7 +851,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         my_age_prob_matrix_2 <- 
           my_age_prob_matrix_2 %>%
           dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
-          dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower)) %>% setDT()
+          dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))# %>% setDT()
         # Add colnames and update `v_n`:
         rownames(my_age_prob_matrix_2) <- v_n <<- 
           my_age_prob_matrix_2 %>%
@@ -910,7 +925,14 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         #               prob_matrix_9 = setkey(setDT(copy(my_age_prob_matrix_9))[, rownames := rownames(my_age_prob_matrix_9)], rownames), 
         #               vacc_lbl = vacc_lbl)
         
-        m_P <- Probs_2(M_it = m_M[, t], 
+        #m_P <- Probs_2(M_it = m_M[, t], 
+        #               prob_matrix = setDT(my_age_prob_matrix), 
+        #               prob_matrix_2 = setDT(my_age_prob_matrix_2),
+        #               prob_matrix_2_nat_immunity = setDT(my_age_prob_matrix_2_nat_immunity),
+        #               prob_matrix_4 = setDT(my_age_prob_matrix_4), 
+        #               prob_matrix_9 = setDT(my_age_prob_matrix_9), 
+        #               vacc_lbl = vacc_lbl)
+        m_P <- Probs_3(M_it = m_M[, t], v_n = v_n,
                        prob_matrix = setDT(my_age_prob_matrix), 
                        prob_matrix_2 = setDT(my_age_prob_matrix_2),
                        prob_matrix_2_nat_immunity = setDT(my_age_prob_matrix_2_nat_immunity),
