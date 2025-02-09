@@ -277,12 +277,11 @@ Probs_3 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_imm
   # Ensure v_n is defined
   n_s <- length(v_n)  # Number of health states
   n_i <- M_it %>% length() %>% max() # Number of individuals
-  v_n <- colnames(prob_matrix) # Get the health states, trans matrix need to be square 
+  #v_n <- colnames(prob_matrix) # Get the health states, trans matrix need to be square 
   # add M_it a column with the individuals' ID as the row number and the health state as the value
   M_it <- data.table(ID = 1:n_i, health_state = M_it)
   #M_it <- data.table(ID = 1:n_i, M_it)
   ## ------##
-  
   
   P_list <- list()  # Initialize an empty list to store each P
   # Run over the individuals:
