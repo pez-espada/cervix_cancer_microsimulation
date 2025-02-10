@@ -328,7 +328,7 @@ Probs_3 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_imm
     P <- as.data.table(lapply(P, type.convert, as.is = TRUE))
     
     # Store in list
-    P_list[[length(P) + 1]] <- P
+    P_list[[length(P_list) + 1]] <- P
   }
   P_combined <- bind_rows(P_list)
   # Remove the "Lower", "Larger", and "ID" columns
