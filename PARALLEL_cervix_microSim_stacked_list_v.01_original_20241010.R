@@ -301,34 +301,41 @@ Probs_3 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_imm
     
     P <- if (vacc_status == "no_vacc") {
       #prob_matrix[which(colnames(prob_matrix) == ind),]
-      prob_matrix[which(v_n == state),]
+      #prob_matrix[which(v_n == state),]
+      prob_matrix[rn == state]
     } else if (vacc_status == "vacc_2") {
-      if (immuned_status) prob_matrix_2_nat_immunity[which(v_n == state),] else
-        prob_matrix_2[which(v_n == state),]
+      if (immuned_status) prob_matrix_2_nat_immunity[rn == state] else
+        prob_matrix_2[rn == state]
     } else if (vacc_status == "vacc_4") {
-      prob_matrix_4 [which(v_n == state),]
+      #prob_matrix_4 [which(v_n == state),]
+      prob_matrix_4 [rn == state]
     } else if (vacc_status == "vacc_9") {
-      prob_matrix_9[which(v_n == state),]
+      #prob_matrix_9[which(v_n == state),]
+      prob_matrix_9[rn == state]
     } else {
       stop("Unknown vaccination status detected")
     }
+    # Get rid of unnecessary columns
+    P <- P[, c("rn", "Age.group", "Lower", "Larger") := NULL]
+    
     #cat("individual: ", ind, "P: ", P, "\n")
     #P %>% print()
-    # Convert P to data.table and add individual ID for tracking
-    P_dt <- as.data.table(P)
-    P_dt[, ID := ind]
+    ## Convert P to data.table and add individual ID for tracking
+    #P_dt <- as.data.table(P)
+    #P_dt[, ID := ind]
     
-    # Convert all columns to appropriate types
-    P_dt <- as.data.table(lapply(P_dt, type.convert, as.is = TRUE))
+    # Convert all columns to appropriate types #ACHTUNG!
+    P <- as.data.table(lapply(P, type.convert, as.is = TRUE))
     
     # Store in list
-    P_list[[length(P_list) + 1]] <- P_dt
+    P_list[[length(P) + 1]] <- P
   }
   P_combined <- bind_rows(P_list)
   # Remove the "Lower", "Larger", and "ID" columns
-  P_combined_clean <- P_combined[, !c("Age.group", "Lower", "Larger", "ID"), with = FALSE]
-  # Convert the cleaned data.table to a matrix (rows = individuals, columns = states)
-  P_matrix <- as.matrix(P_combined_clean)
+  #P_combined_clean <- P_combined[, !c("Age.group", "Lower", "Larger", "ID"), with = FALSE]
+  ## Convert the cleaned data.table to a matrix (rows = individuals, columns = states)
+  #P_matrix <- as.matrix(P_combined_clean)
+  P_matrix <- as.matrix(P_combined)
   return(P_matrix)
 }
 
@@ -831,7 +838,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         
         ## Here I need to modify the following function to extract the the right
         ## transition matrix based on the age of the individual at each cycle, and
-        ## the correponding transition matrix that depends on vaccination strategies
+        ## the corresponding transition matrix that depends on vaccination strategies
         ######################################################################## 
         my_age_prob_matrix <- 
           my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
@@ -933,11 +940,11 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         #               prob_matrix_9 = setDT(my_age_prob_matrix_9), 
         #               vacc_lbl = vacc_lbl)
         m_P <- Probs_3(M_it = m_M[, t], v_n = v_n,
-                       prob_matrix = setDT(my_age_prob_matrix), 
-                       prob_matrix_2 = setDT(my_age_prob_matrix_2),
-                       prob_matrix_2_nat_immunity = setDT(my_age_prob_matrix_2_nat_immunity),
-                       prob_matrix_4 = setDT(my_age_prob_matrix_4), 
-                       prob_matrix_9 = setDT(my_age_prob_matrix_9), 
+                       prob_matrix = setDT(my_age_prob_matrix, keep.rownames = TRUE), 
+                       prob_matrix_2 = setDT(my_age_prob_matrix_2, keep.rownames = TRUE),
+                       prob_matrix_2_nat_immunity = setDT(my_age_prob_matrix_2_nat_immunity, keep.rownames = TRUE),
+                       prob_matrix_4 = setDT(my_age_prob_matrix_4, keep.rownames = TRUE), 
+                       prob_matrix_9 = setDT(my_age_prob_matrix_9, keep.rownames = TRUE), 
                        vacc_lbl = vacc_lbl)
         
         m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
