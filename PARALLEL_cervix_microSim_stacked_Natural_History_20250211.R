@@ -827,7 +827,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
                       #seed = seeds[sim],
                       seed = seed,
                       #sim_numb = sim, 
-                      m_M = m_M, 
+                      #m_M = m_M, 
                       #m_C = m_C, 
                       #m_E = m_E, 
                       #tc_disc = tc_disc, 
@@ -1525,7 +1525,7 @@ cat("SLURM job ID:", slurm_job_id, "\n")
 # Save simulation result:
 # Use job ID in file name
 output_file <-
-  paste0("data/natural_history/stacked_sims_20x10E6x75_20250211_madeinPADO_PARA_NATURAL_HISTORY", slurm_job_id, ".rds")
+  paste0("data/natural_history/stacked_sims_20x10E6x75_20250211_madeinPADO_PARA_NATURAL_HISTORY_2_", slurm_job_id, ".rds")
 saveRDS(object = sim_result, file = output_file)
 
 cat("I have written out the results\n")
