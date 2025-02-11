@@ -179,95 +179,6 @@ Probs <- function(M_it, my_Probs) {
 }
 ################################################################################
 
-
-##################################################################################
-#### ---- Probability Function ---- BOTTLE NECK!!                              
-#### The Probs_2 function that updates the transition probabilities of every cycle:
-#### taking into account other probs than natura history
-#### depending on the vaccination startegies
-#library(data.table)
-#Probs_2 <- function(M_it, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
-#                    prob_matrix_4, prob_matrix_9, vacc_lbl) {
-#  # Ensure v_n is defined
-#  n_s <- length(v_n)  # Number of health states
-#  n_i <- length(M_it) # Number of individuals
-#  
-#  m_P_it <- matrix(NA, n_s, n_i) 
-#  rownames(m_P_it) <- v_n
-#  
-#  # Loop over health states
-#  for (i in seq_along(v_n)) {
-#    state_mask <- !is.na(M_it) & M_it == v_n[i]
-#    
-#    if (sum(state_mask) > 0) {
-#      # Identify which transition matrix to use for each individual
-#      trans_matrices <- lapply(seq_along(M_it), function(j) {
-#        if (!state_mask[j]) {
-#          return(data.frame(matrix(NA, nrow = nrow(my_Probs), ncol = ncol(my_Probs))))
-#        }
-#        vacc_status <- vacc_lbl$vacc_state[j]
-#        immuned_status <- vacc_lbl$immuned[j]
-#        #cat("Processing individual:", j, "- Vaccination status:", vacc_status, "\n")
-#        P <- if (vacc_status == "no_vacc") {
-#          prob_matrix
-#        } else if (vacc_status == "vacc_2") {
-#          if (immuned_status) prob_matrix_2_nat_immunity else prob_matrix_2
-#        } else if (vacc_status == "vacc_4") {
-#          prob_matrix_4
-#        } else if (vacc_status == "vacc_9") {
-#          prob_matrix_9
-#        } else {
-#          stop("Unknown vaccination status detected")
-#        }
-#        #print(class(P))  # Should be "data.table"
-#        #print(dim(P))    # Check dimensions
-#        # get rid of the age.group, lower and larger columns:
-#        P[, c("Age.group", "Lower", "Larger") := NULL]
-#        return(P)
-#      })
-#      
-#      # Fill m_P_it with transition probabilities 3:
-#      for (i in seq_along(M_it)) {
-#        # Get individual's current state
-#        current_state <- M_it[[i]]
-#        
-#        # Get individual's transition matrix
-#        P_i <- trans_matrices[[i]]  # This should be a data frame
-#        ## cleaning transition matrix using data.table:
-#        #P_i <- P_i %>% dplyr::select(-c(Age.group, Lower, Larger))
-#        
-#        # Find the row corresponding to the individual's current state
-#        if (current_state %in% colnames(P_i)) {
-#          # Extract the transition probabilities (excluding first column if it's non-numeric)
-#          #transition_probs <- as.numeric(P_i[, ..current_state])
-#          transition_probs <- as.numeric(P_i[which(colnames(P_i) == current_state),])
-#          
-#          # Fill the column in m_P_it
-#          if (length(transition_probs) == nrow(m_P_it)) {
-#            m_P_it[, i] <- transition_probs
-#          } else {
-#            warning(paste("Mismatch in transition probabilities for individual", i))
-#            m_P_it[, i] <- NA  # Assign NA if there's a size mismatch
-#          }
-#        } else {
-#          warning(paste("State", current_state, "not found in transition matrix for individual", i))
-#          m_P_it[, i] <- NA  # Assign NA if the state isn't found
-#        }
-#      }
-#    }
-#  }
-#  
-#  # Check for NA values
-#  if (any(is.na(m_P_it))) {
-#    cat("Transition probabilities contain NA values\n")
-#  }
-#  
-#  # Ensure probabilities sum to approximately 1
-#  ifelse(colSums(m_P_it, na.rm = TRUE) >= 0.991, 
-#         return(t(m_P_it)), 
-#         stop("Probabilities do not sum to 1"))
-#}
-################################################################################
   
 
 ################################################################################
@@ -295,7 +206,7 @@ Probs_3 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_imm
     immuned_status <- vacc_lbl$immuned[vacc_lbl$ID == ind]
     #cat("Processing individual:", ind, "- Vaccination status:", vacc_status, "\n")
     
-    # Getd() the transition probabilities to other states on next cycle/iteration 
+    # Get the transition probabilities to other states on next cycle/iteration 
     # based on a) its own state now, b) its vaccination status, c
     # and c) its immunity status:
     
@@ -810,7 +721,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         # Select the transition matrix based on the cycle `n_t`:
         # Since our age intervals start at 10 years old,
         age_in_loop <- t + 9
-        cat("Cycle:", t, "Age:", age_in_loop, "\n")
+        #cat("Cycle:", t, "Age:", age_in_loop, "\n")
         ########################################################################
         
         # update/correct n_s (<<- let change variable from inside a function):
