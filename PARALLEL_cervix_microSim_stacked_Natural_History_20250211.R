@@ -1375,17 +1375,11 @@ mean_FIGO_prevalence_Func <- function(sim_stalked_result, my_Probs) {
 
 # Initialize the result with the original structure
 sim_result <-  other_mean_mortality_result 
-## Concatenate the prevalence to the sim result 
-#other_mean_mortality_result <-
-#  other_mean_mortality_func(sim_stalked_result = 
-#                              other_mean_mortality_result, my_Probs = my_Probs)  
-
 # Concatenate the prevalence to the sim result 
 sim_result <-
 mean_FIGO_prevalence_Func(sim_stalked_result = 
                               sim_result, my_Probs = my_Probs)  
 ################################################################################
-
 
 
 ################################################################################
@@ -1527,8 +1521,10 @@ cat("SLURM job ID:", slurm_job_id, "\n")
 output_file <-
   paste0("data/natural_history/stacked_sims_20x10E6x75_20250211_madeinPADO_PARA_NATURAL_HISTORY_2_", slurm_job_id, ".rds")
 saveRDS(object = sim_result, file = output_file)
-
 cat("I have written out the results\n")
+
+# Load previoulsy produced results (COMMENT OFF WHEN PRODUCING A NEW SIMULATION):
+sim_result <- readRDS("data/natural_history/stacked_sims_20x10E6x75_20250211_madeinPADO_PARA_NATURAL_HISTORY_2_7073.rds")
 
 ### ----Convert .Rmd to .R
 #library(knitr)
@@ -1928,7 +1924,7 @@ print(plot_CC_incidences)
 print(plot_HPV_prevalences)
 print(plot_CC_mortality)
 #print(plot_FIGO_prevalence)
-print(plot_mean_FIGO)
+#print(plot_mean_FIGO)
 print(plot_mean_Diagnosed_FIGO)
 #print(plot_CC_by_diff_mortality)
 
