@@ -32,7 +32,7 @@ my_Probs2_nat_immunity <- readRDS(file = "./data/probs3.rds")
 my_Probs4 <- readRDS(file = "./data/probs3.rds") # vaccination transition matrix
 my_Probs9 <- readRDS(file = "./data/probs3.rds") # vaccination transition matrix
 
-# arbitrary fi of an obvius error;
+# arbitrary fit of an obvious error;
 my_Probs2$Other.Death[my_Probs2$Other.Death == 8.150000e+08] <- 8.150000e-08
 my_Probs2 <- my_Probs2 %>%
   dplyr::rename("CC_Death" = "Death")
@@ -247,6 +247,262 @@ Probs_3 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_imm
   ## Convert the cleaned data.table to a matrix (rows = individuals, columns = states)
   #P_matrix <- as.matrix(P_combined_clean)
   P_matrix <- as.matrix(P_combined)
+  return(P_matrix)
+}
+################################################################################
+
+
+
+################################################################################
+Probs_3_optimized <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
+                              prob_matrix_4, prob_matrix_9, vacc_lbl) {
+  library(data.table)
+  
+  # Convert inputs to data.table for efficiency
+  M_dt <- data.table(ID = seq_along(M_it), health_state = M_it)
+  vacc_lbl <- as.data.table(vacc_lbl)
+  
+  # Perform join to get vaccination and immunity status in a vectorized way
+  M_dt <- merge(M_dt, vacc_lbl, by = "ID", all.x = TRUE, sort = FALSE)
+  
+  # Create a list of transition matrices for quick lookup
+  transition_matrices <- list(
+    no_vacc = prob_matrix,
+    vacc_2_no_immunity = prob_matrix_2,
+    vacc_2_immunity = prob_matrix_2_nat_immunity,
+    vacc_4 = prob_matrix_4,
+    vacc_9 = prob_matrix_9
+  )
+  
+  # Determine which transition matrix to use for each individual
+  M_dt[, trans_matrix := fifelse(
+    vacc_state == "no_vacc", "no_vacc",
+    fifelse(vacc_state == "vacc_2" & immuned, "vacc_2_immunity",
+            fifelse(vacc_state == "vacc_2", "vacc_2_no_immunity",
+                    fifelse(vacc_state == "vacc_4", "vacc_4",
+                            fifelse(vacc_state == "vacc_9", "vacc_9", NA_character_)))))]
+  #]
+
+# Get transition probabilities in a vectorized manner
+P_list <- lapply(transition_matrices, function(mat) mat[M_dt$health_state, on = "rn"])
+
+# Combine all results into a single matrix
+P_matrix <- rbindlist(P_list, use.names = FALSE, fill = TRUE)
+
+# Convert to matrix
+P_matrix <- as.matrix(P_matrix)
+
+return(P_matrix)
+}
+################################################################################
+
+
+################################################################################
+Probs_3_optimized_v2 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
+                                 prob_matrix_4, prob_matrix_9, vacc_lbl) {
+  
+  # Convert inputs to data.tables if not already
+  M_it <- data.table(ID = 1:length(M_it), health_state = M_it)
+  vacc_lbl <- as.data.table(vacc_lbl)
+  
+  # Precompute the vaccination and immunity status as a reference
+  vacc_lbl_ref <- vacc_lbl[, .(vacc_state, immuned), by = ID]
+  
+  # Merge vaccination status and immunity information (faster than in loop)
+  M_it <- merge(M_it, vacc_lbl_ref, by = "ID", all.x = TRUE)
+  
+  # Determine matrix choice column directly
+  M_it[, matrix_choice := fifelse(vacc_state == "vacc_2" & immuned, "prob_matrix_2_nat_immunity", vacc_state)]
+  
+  # Set keys for efficient data access
+  setkey(prob_matrix, rn)
+  setkey(prob_matrix_2, rn)
+  setkey(prob_matrix_2_nat_immunity, rn)
+  setkey(prob_matrix_4, rn)
+  setkey(prob_matrix_9, rn)
+  
+  # Precompute indices of health states
+  health_state_idx <- match(M_it$health_state, v_n)
+  
+  # Map vaccination status to corresponding transition matrix
+  prob_matrices <- list(
+    "no_vacc" = prob_matrix,
+    "vacc_2" = prob_matrix_2,
+    "vacc_4" = prob_matrix_4,
+    "vacc_9" = prob_matrix_9
+  )
+  
+  # Special case: vaccinated with natural immunity
+  M_it[, matrix_choice := fifelse(vacc_state == "vacc_2" & immuned, "prob_matrix_2_nat_immunity", vacc_state)]
+  
+  # Directly extract probabilities without looping
+  P_list <- lapply(1:nrow(M_it), function(i) {
+    # Select the appropriate transition matrix
+    prob_matrix_choice <- prob_matrices[[M_it$matrix_choice[i]]]
+    
+    # Extract the probabilities based on the individual's health state
+    P <- prob_matrix_choice[M_it$health_state[i], .SD, .SDcols = !c("rn", "Age.group", "Lower", "Larger")]
+    
+    # Return the selected probabilities
+    return(P)
+  })
+  
+  # Combine the results into a single data.table
+  P_matrix <- rbindlist(P_list, fill = TRUE)
+  
+  # Return the result as a matrix
+  return(as.matrix(P_matrix))
+}
+################################################################################
+
+
+
+################################################################################
+Probs_3_optimized_2 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
+                              prob_matrix_4, prob_matrix_9, vacc_lbl) {
+  
+  # Convert inputs to data.tables if not already
+  M_it <- data.table(ID = 1:length(M_it), health_state = M_it)
+  vacc_lbl <- as.data.table(vacc_lbl)
+  
+  # Merge vaccination and immunity status into M_it to avoid repeated lookups
+  M_it <- merge(M_it, vacc_lbl, by = "ID", all.x = TRUE)
+  
+  # Create a mapping of vaccination status to the appropriate transition matrix
+  prob_list <- list(
+    "no_vacc" = prob_matrix,
+    "vacc_2" = prob_matrix_2,
+    "vacc_4" = prob_matrix_4,
+    "vacc_9" = prob_matrix_9
+  )
+  
+  # Vectorized probability lookup
+  M_it[, P := lapply(1:.N, function(i) {
+    matrix_choice <- prob_list[[vacc_state[i]]]
+    if (is.null(matrix_choice)) stop("Unknown vaccination status detected")
+    
+    # Special case: vaccinated with natural immunity
+    if (vacc_state[i] == "vacc_2" & immuned[i]) {
+      matrix_choice <- prob_matrix_2_nat_immunity
+    }
+    
+    # Extract transition probabilities for the individual's state
+    matrix_choice[rn == health_state[i], .SD, .SDcols = !(c("rn", "Age.group", "Lower", "Larger"))]
+  })]
+  
+  # Convert the list column `P` into a matrix
+  P_matrix <- rbindlist(M_it$P, fill = TRUE)  # Ensures consistent dimensions
+  
+  return(as.matrix(P_matrix))
+}
+################################################################################
+
+
+################################################################################
+Probs_CoP <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
+                      prob_matrix_4, prob_matrix_9, vacc_lbl) {
+  
+  # Ensure v_n is defined
+  n_s <- length(v_n)  # Number of health states
+  n_i <- length(M_it)  # Number of individuals
+  
+  # Add M_it a column with the individuals' ID as the row number and the health state as the value
+  M_it <- data.table(ID = 1:n_i, health_state = M_it)
+  
+  # Initialize an empty list to store each P
+  P_list <- vector("list", n_i)
+  
+  # Precompute the vaccination and immunity status
+  vacc_status <- vacc_lbl$vacc_state
+  immuned_status <- vacc_lbl$immuned
+  
+  # Run over the individuals using vectorized operations
+  for (ind in 1:n_i) {
+    state <- M_it$health_state[ind]
+    vacc <- vacc_status[ind]
+    immune <- immuned_status[ind]
+    
+    P <- switch(vacc,
+                "no_vacc" = prob_matrix[rn == state],
+                "vacc_2" = if (immune) prob_matrix_2_nat_immunity[rn == state] else prob_matrix_2[rn == state],
+                "vacc_4" = prob_matrix_4[rn == state],
+                "vacc_9" = prob_matrix_9[rn == state],
+                stop("Unknown vaccination status detected"))
+    
+    # Remove unnecessary columns
+    #P <- P[, .(rn, Age.group, Lower, Larger) := NULL]
+    P <- P[, c("rn", "Age.group", "Lower", "Larger") := NULL]
+    
+    ## Convert all columns to appropriate types
+    #P <- as.data.table(lapply(P, type.convert, as.is = TRUE))
+    
+    # Store in list
+    P_list[[ind]] <- P
+  }
+  
+  P_combined <- rbindlist(P_list)
+  P_matrix <- as.matrix(P_combined)
+  
+  return(P_matrix)
+}
+################################################################################
+
+
+
+################################################################################
+Probs_CoP_v2 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
+                         prob_matrix_4, prob_matrix_9, vacc_lbl) {
+  
+  library(data.table)
+  library(future)
+  library(future.apply)
+  library(parallelly)
+  
+  
+  # Ensure v_n is defined
+  n_s <- length(v_n)  # Number of health states
+  n_i <- length(M_it)  # Number of individuals
+  
+  # Add M_it a column with the individuals' ID as the row number and the health state as the value
+  M_it <- data.table(ID = 1:n_i, health_state = M_it)
+  
+  # Precompute the vaccination and immunity status
+  vacc_status <- vacc_lbl$vacc_state
+  immuned_status <- vacc_lbl$immuned
+  
+  # Function to process each individual
+  process_individual <- function(ind) {
+    state <- M_it$health_state[ind]
+    vacc <- vacc_status[ind]
+    immune <- immuned_status[ind]
+    
+    P <- switch(vacc,
+                "no_vacc" = prob_matrix[rn == state],
+                "vacc_2" = if (immune) prob_matrix_2_nat_immunity[rn == state] else prob_matrix_2[rn == state],
+                "vacc_4" = prob_matrix_4[rn == state],
+                "vacc_9" = prob_matrix_9[rn == state],
+                stop("Unknown vaccination status detected"))
+    
+    # Remove unnecessary columns
+    #P <- P[, .(rn, Age.group, Lower, Larger) := NULL]
+    P <- P[, c("rn", "Age.group", "Lower", "Larger") := NULL]
+    
+    # Convert all columns to appropriate types
+    P <- as.data.table(lapply(P, type.convert, as.is = TRUE))
+    
+    return(P)
+  }
+  
+  # Set up the future plan for nested parallelism
+  plan(multisession, workers = availableCores() - 1)
+  
+  # Use future_lapply for parallel processing
+  P_list <- future_lapply(1:n_i, process_individual)
+  
+  P_combined <- rbindlist(P_list)
+  P_matrix <- as.matrix(P_combined) 
+  
+  
   return(P_matrix)
 }
 ################################################################################
@@ -849,13 +1105,13 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         #               prob_matrix_4 = setDT(my_age_prob_matrix_4), 
         #               prob_matrix_9 = setDT(my_age_prob_matrix_9), 
         #               vacc_lbl = vacc_lbl)
-        m_P <- Probs_3(M_it = m_M[, t], v_n = v_n,
-                       prob_matrix = setDT(my_age_prob_matrix, keep.rownames = TRUE), 
-                       prob_matrix_2 = setDT(my_age_prob_matrix_2, keep.rownames = TRUE),
-                       prob_matrix_2_nat_immunity = setDT(my_age_prob_matrix_2_nat_immunity, keep.rownames = TRUE),
-                       prob_matrix_4 = setDT(my_age_prob_matrix_4, keep.rownames = TRUE), 
-                       prob_matrix_9 = setDT(my_age_prob_matrix_9, keep.rownames = TRUE), 
-                       vacc_lbl = vacc_lbl)
+        m_P <- Probs_CoP_v2(M_it = m_M[, t], v_n = v_n,
+                                   prob_matrix = setDT(my_age_prob_matrix, keep.rownames = TRUE), 
+                                   prob_matrix_2 = setDT(my_age_prob_matrix_2, keep.rownames = TRUE),
+                                   prob_matrix_2_nat_immunity = setDT(my_age_prob_matrix_2_nat_immunity, keep.rownames = TRUE),
+                                   prob_matrix_4 = setDT(my_age_prob_matrix_4, keep.rownames = TRUE), 
+                                   prob_matrix_9 = setDT(my_age_prob_matrix_9, keep.rownames = TRUE), 
+                                   vacc_lbl = vacc_lbl)
         
         m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
                                                      # and store that state in  
@@ -1028,7 +1284,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
                       #seed = seeds[sim],
                       seed = seed,
                       #sim_numb = sim, 
-                      m_M = m_M, 
+                      #m_M = m_M, 
                       #m_C = m_C, 
                       #m_E = m_E, 
                       #tc_disc = tc_disc, 
@@ -1103,10 +1359,10 @@ if (is_slurm()) {
   # On local machine, use all available cores (or limit if needed)
   #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
   ## Register fewer cores (adjust based on server resources)
-  #n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
   #n_cores <- detectCores()  # Try using 8 or fewer cores
   #n_cores <- min(detectCores())  # Try using 8 or fewer cores
-  n_cores <- 6  # Try using 8 or fewer cores
+  #n_cores <- 6  # Try using 8 or fewer cores
 }
 # for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
 # five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
@@ -1198,15 +1454,15 @@ vacc_lbl <-
 # 6-hours timeout to prevent socket drop issues
 cl <- makeCluster(n_cores, timeout = 6*60*60) 
 clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
-                    "Probs_3", "vacc_lbl",
+                    "Probs_3", "vacc_lbl", "Probs_CoP", "Probs_CoP_v2",
                     "my_Probs", "my_Probs2","my_Probs4", "my_Probs9", 
                     "my_Probs2_nat_immunity", "utilityCoefs", "v_n", "samplev", 
                     "my_age_prob_matrix_func","diagnose_column", 
                     "update_column", "states_to_check", 
                     "symptom_prob_vec", "survival_prob_vec", #"global_diagnosed", 
                     "cost_Vec", "new_cases_2"))
-#registerDoParallel(cl) # for parallel
-registerDoSEQ()        # for sequential
+registerDoParallel(cl) # for parallel
+#registerDoSEQ()        # for sequential
 ################################################################################
 ################################################################################
 
