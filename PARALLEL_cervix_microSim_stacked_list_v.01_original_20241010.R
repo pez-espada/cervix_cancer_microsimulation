@@ -78,7 +78,7 @@ my_Probs9 <- my_Probs9 %>% as.data.frame() #convert back to data.frame (no neede
 n_i <- (2)*10^5         # number of simulated individuals
 n_i <- (5)*10^5            # number of simulated individuals
 #n_i <- 10^7            # number of simulated individuals
-n_i <- 10^3               # number of simulated individuals
+n_i <- 10^4               # number of simulated individuals
 #n_i <- 10^6               # number of simulated individuals
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 ################################################################################
@@ -1105,7 +1105,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         #               prob_matrix_4 = setDT(my_age_prob_matrix_4), 
         #               prob_matrix_9 = setDT(my_age_prob_matrix_9), 
         #               vacc_lbl = vacc_lbl)
-        m_P <- Probs_CoP_v2(M_it = m_M[, t], v_n = v_n,
+        m_P <- Probs_CoP(M_it = m_M[, t], v_n = v_n,
                                    prob_matrix = setDT(my_age_prob_matrix, keep.rownames = TRUE), 
                                    prob_matrix_2 = setDT(my_age_prob_matrix_2, keep.rownames = TRUE),
                                    prob_matrix_2_nat_immunity = setDT(my_age_prob_matrix_2_nat_immunity, keep.rownames = TRUE),
@@ -1363,6 +1363,7 @@ if (is_slurm()) {
   #n_cores <- detectCores()  # Try using 8 or fewer cores
   #n_cores <- min(detectCores())  # Try using 8 or fewer cores
   #n_cores <- 6  # Try using 8 or fewer cores
+  n_cores <- 10
 }
 # for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
 # five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
