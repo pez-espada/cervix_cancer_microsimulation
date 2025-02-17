@@ -1466,8 +1466,8 @@ clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
                     "update_column", "states_to_check", 
                     "symptom_prob_vec", "survival_prob_vec", #"global_diagnosed", 
                     "cost_Vec", "new_cases_2"))
-#registerDoParallel(cl) # for parallel
-registerDoSEQ()        # for sequential
+registerDoParallel(cl) # for parallel
+#registerDoSEQ()        # for sequential
 ################################################################################
 ################################################################################
 
