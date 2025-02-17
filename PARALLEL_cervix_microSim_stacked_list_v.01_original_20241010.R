@@ -78,7 +78,7 @@ my_Probs9 <- my_Probs9 %>% as.data.frame() #convert back to data.frame (no neede
 n_i <- (2)*10^5         # number of simulated individuals
 n_i <- (5)*10^5            # number of simulated individuals
 #n_i <- 10^7            # number of simulated individuals
-n_i <- 10^4               # number of simulated individuals
+n_i <- 5*10^3               # number of simulated individuals
 #n_i <- 10^6               # number of simulated individuals
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 ################################################################################
@@ -1086,7 +1086,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         # transition probability matrix that depends on age:
         # Next time (t+1) transition
         # m_P is a (n_i x n_s) matrix with the probabilities of transitioning
-        #m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
+        m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
         
         # for vaccination I'll need a new Probs function:
         # use data.table for speed
@@ -1105,7 +1105,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         #               prob_matrix_4 = setDT(my_age_prob_matrix_4), 
         #               prob_matrix_9 = setDT(my_age_prob_matrix_9), 
         #               vacc_lbl = vacc_lbl)
-        m_P <- Probs_CoP(M_it = m_M[, t], v_n = v_n,
+        m_P <- Probs_3(M_it = m_M[, t], v_n = v_n,
                                    prob_matrix = setDT(my_age_prob_matrix, keep.rownames = TRUE), 
                                    prob_matrix_2 = setDT(my_age_prob_matrix_2, keep.rownames = TRUE),
                                    prob_matrix_2_nat_immunity = setDT(my_age_prob_matrix_2_nat_immunity, keep.rownames = TRUE),
@@ -1311,6 +1311,10 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       cat("At sim number:", sim,  " tc_hat_undisc is ", tc_hat_undisc, "\n")
       rm(symptomatics)
       #rm(TS) 
+      
+      ## Write to a log file to track worker outputs
+      #cat(sprintf("Simulation %d, Length: %d\n", sim, length(output)), 
+      #    file = "debug_log.txt", append = TRUE)
       return(results)
       #gc() #Force memory cleanup after each sim/batch 
       
@@ -1359,11 +1363,11 @@ if (is_slurm()) {
   # On local machine, use all available cores (or limit if needed)
   #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
   ## Register fewer cores (adjust based on server resources)
-  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+  #n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
   #n_cores <- detectCores()  # Try using 8 or fewer cores
   #n_cores <- min(detectCores())  # Try using 8 or fewer cores
   #n_cores <- 6  # Try using 8 or fewer cores
-  n_cores <- 10
+  n_cores <- 6
 }
 # for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
 # five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
@@ -1462,8 +1466,8 @@ clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
                     "update_column", "states_to_check", 
                     "symptom_prob_vec", "survival_prob_vec", #"global_diagnosed", 
                     "cost_Vec", "new_cases_2"))
-registerDoParallel(cl) # for parallel
-#registerDoSEQ()        # for sequential
+#registerDoParallel(cl) # for parallel
+registerDoSEQ()        # for sequential
 ################################################################################
 ################################################################################
 
