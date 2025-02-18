@@ -2,7 +2,7 @@
 ################################################################################
 # This code is a modified version of the original code from:
 # [https://github.com/DARTH-git/Microsimulation-tutorial] (Krijkamp et al 2018 
-# Sick-Sicker model).
+# Sick-Sicker model). 
 # programmed by Carlos Dommar D'Lima - carlos.dommar@gmail.com
 # This code extends the "sick-sicker" model of the original authors to a
 # multi-state cervix cancer model
@@ -79,10 +79,10 @@ n_i <- (2)*10^5         # number of simulated individuals
 n_i <- (5)*10^5            # number of simulated individuals
 #n_i <- 10^7            # number of simulated individuals
 n_i <- 5*10^3               # number of simulated individuals
+n_i <- 10^2               # number of simulated individuals
 #n_i <- 10^6               # number of simulated individuals
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 ################################################################################
- 
 
 ################################################################################
 ### (THIS IS WORK IN PROGRESS):
@@ -103,7 +103,6 @@ n_t <- n_t * 1
 }
 ################################################################################
 
-
 ################################################################################
 #v_n <- rownames(my_Probs)
 v_n <- colnames(my_Probs)
@@ -123,7 +122,6 @@ cost_Vec = c(0, 39.54, 288.91, 1552.27, 1552.27,
            5759.81, 12903.63, 23032.41, 35323.14, 0, 0, 0)
 utilityCoefs = c(1, 1, 0.987, 0.87, 0.87, 0.76, 0.67, 0.67, 0.67, 0.938, 0, 0)
 ################################################################################
-
 
 ################################################################################
 ## ---- FUNCTIONS -----                                                       ##  
@@ -146,7 +144,6 @@ transition_prob<-P[state1,state2]
 return(transition_prob)
 }
 ################################################################################
-# 
 
 ################################################################################
 ## ---- Probability Function ----                                             ##
@@ -179,15 +176,13 @@ Probs <- function(M_it, my_Probs) {
 }
 ################################################################################
 
- 
-
 ################################################################################
 library(data.table)
-Probs_3 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
+Probs_3 <- function(M_it, v_n, n_i, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
                     prob_matrix_4, prob_matrix_9, vacc_lbl) {
   # Ensure v_n is defined
   n_s <- length(v_n)  # Number of health states
-  n_i <- M_it %>% length() %>% max() # Number of individuals
+  #n_i <- M_it %>% length() %>% max() # Number of individuals
   #v_n <- colnames(prob_matrix) # Get the health states, trans matrix need to be square 
   # add M_it a column with the individuals' ID as the row number and the health state as the value
   M_it <- data.table(ID = 1:n_i, health_state = M_it)
@@ -247,11 +242,11 @@ Probs_3 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_imm
   ## Convert the cleaned data.table to a matrix (rows = individuals, columns = states)
   #P_matrix <- as.matrix(P_combined_clean)
   P_matrix <- as.matrix(P_combined)
+  #cat("P_matrix: ", head(P_matrix), "\n")
+  #cat("P_matrix dimension (inside the function - before returning it): ", dim(P_matrix), "\n")
   return(P_matrix)
 }
 ################################################################################
-
-
 
 ################################################################################
 Probs_3_optimized <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
@@ -295,7 +290,6 @@ P_matrix <- as.matrix(P_matrix)
 return(P_matrix)
 }
 ################################################################################
-
 
 ################################################################################
 Probs_3_optimized_v2 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
@@ -355,8 +349,6 @@ Probs_3_optimized_v2 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_mat
 }
 ################################################################################
 
-
-
 ################################################################################
 Probs_3_optimized_2 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
                               prob_matrix_4, prob_matrix_9, vacc_lbl) {
@@ -396,7 +388,6 @@ Probs_3_optimized_2 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matr
   return(as.matrix(P_matrix))
 }
 ################################################################################
-
 
 ################################################################################
 Probs_CoP <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
@@ -446,8 +437,6 @@ Probs_CoP <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_i
   return(P_matrix)
 }
 ################################################################################
-
-
 
 ################################################################################
 Probs_CoP_v2 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
@@ -506,8 +495,6 @@ Probs_CoP_v2 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_na
   return(P_matrix)
 }
 ################################################################################
-
-
 
 ################################################################################
 ## ----Sampling function
@@ -595,7 +582,6 @@ return(c_it) # return the costs
 }
 ################################################################################
 
-
 ################################################################################
 ## ---- Qalys Function ----                                                   ##
 ### Health outcome function 
@@ -624,7 +610,6 @@ return(u_it)
 }
 ################################################################################
 
-
 #################################################################################
 ### ----Time period related functions
 ############ WORK IN PROGRESS #########################
@@ -651,7 +636,6 @@ return(u_it)
 #}
 ########## WORK IN PROGRESS #################
 #################################################################################
-
 
 #################################################################################
 ##### ! NOT USED ! ############################
@@ -747,7 +731,6 @@ return(new_entries)
 }
 ################################################################################
 
-
 ################################################################################
 # ---- Function to update the next column based on the new entries ----       ##
 # This function updates the next column based on the new entries of diagnosed
@@ -769,7 +752,6 @@ update_column <- function(col, new_entries, next_col) {
   return(next_col)
 }
 #################################################################################
-
 
 ################################################################################
 # ---- Function to add new cases to the transition matrix ----                ##
@@ -871,7 +853,6 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
 }
 ################################################################################
 
-
 ################################################################################
 # Function to update the transition matrix with new cases
 my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
@@ -905,6 +886,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
   # Generate random seeds
   #seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  
   seeds <- sample(1:100000, numb_of_sims, replace = FALSE)  
+  seeds <- c(15066, 15706, 77451)
   ## fix the seeds for reproducibility::
   #seeds <- c(38222, 52130, 92742, 73352, 41494, 43929, 94560, 72382, 13846, 94537) %>% 
   #  as.integer()
@@ -921,12 +903,14 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
   # calculate the QALY discount weight based on the discount rate d_e                                             
   v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   
   
-  # Parallel processing using foreach
+  # Paralel processing using foreach
   simulation_results <- 
     foreach(sim = 1:numb_of_sims, .packages = c("dplyr", "tidyr", "purrr", "data.table") ) %dopar% { 
       ## clean memory:
       #if (step %% 10 == 0) gc()
+      cat("\n")
       cat("Running simulation", sim, "with seed", seeds[sim], "\n")
+      cat("-------------------------------------------------------\n")
       # Initialize a global vector to store all diagnosed individuals
       global_diagnosed <<- integer()
       symptomatics <-
@@ -976,12 +960,12 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         # Select the transition matrix based on the cycle `n_t`:
         # Since our age intervals start at 10 years old,
         age_in_loop <- t + 9
-        #cat("Cycle:", t, "Age:", age_in_loop, "\n")
+        cat("Simulation:", sim, "Cycle:", t, "Age:", age_in_loop, "\n")
         ########################################################################
         
         # update/correct n_s (<<- let change variable from inside a function):
         # q: there is a bad practice to use <<- in a function?
-        # a: Yes, it is a bad practice to use <<- in a function.
+        # a: es, it is a bad practice to use <<- in a function.
         # q: how can I avoid it in this case?
         # a: You can avoid it by passing the variable as an argument to the function.
         #n_s  <<- length(v_n)  
@@ -1064,7 +1048,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
           colnames()
         ######################################################################## 
         
-        
         ######################################################################## 
         my_age_prob_matrix_9 <- 
           my_age_prob_matrix_func(my_Prob_matrix = my_Probs9, 
@@ -1086,7 +1069,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         # transition probability matrix that depends on age:
         # Next time (t+1) transition
         # m_P is a (n_i x n_s) matrix with the probabilities of transitioning
-        m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
+        #m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
         
         # for vaccination I'll need a new Probs function:
         # use data.table for speed
@@ -1105,17 +1088,19 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         #               prob_matrix_4 = setDT(my_age_prob_matrix_4), 
         #               prob_matrix_9 = setDT(my_age_prob_matrix_9), 
         #               vacc_lbl = vacc_lbl)
-        m_P <- Probs_3(M_it = m_M[, t], v_n = v_n,
-                                   prob_matrix = setDT(my_age_prob_matrix, keep.rownames = TRUE), 
-                                   prob_matrix_2 = setDT(my_age_prob_matrix_2, keep.rownames = TRUE),
-                                   prob_matrix_2_nat_immunity = setDT(my_age_prob_matrix_2_nat_immunity, keep.rownames = TRUE),
-                                   prob_matrix_4 = setDT(my_age_prob_matrix_4, keep.rownames = TRUE), 
-                                   prob_matrix_9 = setDT(my_age_prob_matrix_9, keep.rownames = TRUE), 
-                                   vacc_lbl = vacc_lbl)
+        m_P <- Probs_3(M_it = m_M[, t], v_n = v_n, n_i = n_i,
+                       prob_matrix = setDT(my_age_prob_matrix, keep.rownames = TRUE), 
+                       prob_matrix_2 = setDT(my_age_prob_matrix_2, keep.rownames = TRUE),
+                       prob_matrix_2_nat_immunity = setDT(my_age_prob_matrix_2_nat_immunity, keep.rownames = TRUE),
+                       prob_matrix_4 = setDT(my_age_prob_matrix_4, keep.rownames = TRUE), 
+                       prob_matrix_9 = setDT(my_age_prob_matrix_9, keep.rownames = TRUE), 
+                       vacc_lbl = vacc_lbl)
+        cat("Dimension of m_P is (outside the function): ",dim(m_P),"\n")
         
         m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
                                                      # and store that state in  
                                                      # matrix m_M 
+        cat("Dimension of m_M is ",dim(m_M),"\n")
         ########################################################################    
         
         # m_M[, t + 1] <- update_column(m_M[, t], new_entries)
@@ -1278,7 +1263,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         dplyr::select(sim, age, CC_Death_by_diff) %>% 
         dplyr::as_tibble()
       
-      cat("At sim number:", sim,  " reported strategy is ", strategy, "\n")
+      #cat("At sim number:", sim,  " reported strategy is ", strategy, "\n")
       
       # Store the results from the simulation in a list
      results <- list(#strategy = strategy,
