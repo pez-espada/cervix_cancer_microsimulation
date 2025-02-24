@@ -81,7 +81,7 @@ n_i <- (5)*10^5            # number of simulated individuals
 n_i <- 5*10^3               # number of simulated individuals
 n_i <- 10^2               # number of simulated individuals
 #n_i <- 10^6               # number of simulated individuals
-n_t <- 5                  # time horizon, 75 cycles (it starts from 1)
+n_t <- 9                  # time horizon, 75 cycles (it starts from 1)
 ################################################################################
 
 ################################################################################
