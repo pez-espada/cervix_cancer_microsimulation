@@ -81,7 +81,7 @@ n_i <- (5)*10^5            # number of simulated individuals
 n_i <- 5*10^3               # number of simulated individuals
 n_i <- 10^2               # number of simulated individuals
 #n_i <- 10^6               # number of simulated individuals
-n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
+n_t <- 5                  # time horizon, 75 cycles (it starts from 1)
 ################################################################################
 
 ################################################################################
@@ -230,8 +230,8 @@ Probs_3 <- function(M_it, v_n, n_i, prob_matrix, prob_matrix_2, prob_matrix_2_na
     #P_dt <- as.data.table(P)
     #P_dt[, ID := ind]
     
-    # Convert all columns to appropriate types #ACHTUNG!
-    P <- as.data.table(lapply(P, type.convert, as.is = TRUE))
+    ## Convert all columns to appropriate types #ACHTUNG!
+    #P <- as.data.table(lapply(P, type.convert, as.is = TRUE))
     
     # Store in list
     P_list[[length(P_list) + 1]] <- P
@@ -887,6 +887,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
   #seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  
   seeds <- sample(1:100000, numb_of_sims, replace = FALSE)  
   seeds <- c(15066, 15706, 77451)
+  seeds <- c(15066, 77451)
+  seeds <- c(77451)
+  ## fix the seeds for reproducibility::
   ## fix the seeds for reproducibility::
   #seeds <- c(38222, 52130, 92742, 73352, 41494, 43929, 94560, 72382, 13846, 94537) %>% 
   #  as.integer()
@@ -902,10 +905,11 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
   v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   
   # calculate the QALY discount weight based on the discount rate d_e                                             
   v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   
-  
+  set.seed(123)
   # Paralel processing using foreach
   simulation_results <- 
     foreach(sim = 1:numb_of_sims, .packages = c("dplyr", "tidyr", "purrr", "data.table") ) %dopar% { 
+      library(dplyr)
       ## clean memory:
       #if (step %% 10 == 0) gc()
       cat("\n")
@@ -937,7 +941,11 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       
       seed <- seeds[sim]
       #seed <- 17
-      set.seed(seed) # set the seed for every individual 
+      #set.seed(seed) # set the seed for every individual 
+      
+      # Debugging before function calls
+      print("Before calling Costs_per_Cancer_Diag()")
+      print(str(m_M[, 1]))
       
       # estimate costs per individual for the initial health state
       m_C[, 1] <- Costs_per_Cancer_Diag(M_it = m_M[, 1], 
@@ -1465,7 +1473,7 @@ registerDoSEQ()        # for sequential
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 3
+numb_of_sims = 1
 strategy <- "natural_history"
 sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
