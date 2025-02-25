@@ -1084,7 +1084,8 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
         !!rlang::sym(transition_column) := rep(0, nrow(Tot_Trans_per_t_tbl)),
         #age = row_number() + 10, cycle = age - 9
         age = seq_len(nrow(Tot_Trans_per_t_tbl)) + 10,  
-        cycle = seq_len(nrow(Tot_Trans_per_t_tbl)) + 1
+        cycle = seq_len(nrow(Tot_Trans_per_t_tbl)) + 1,
+        cat("cycle, ", cycle, "\n")
       ) %>%
         add_row(!!rlang::sym(transition_column) := 0, age = 10, cycle = 1, .before = 1) %>% 
         slice(-n()) %>%
