@@ -1,4 +1,4 @@
-                      summarize_results_by_Strategy <- function(results_list, numb_of_sims) {
+summarize_results_by_Strategy <- function(results_list, numb_of_sims) {
   library(dplyr)
   
   result<-list()
@@ -15,7 +15,7 @@
   #  results_list[[i]][["Tot_Trans_per_t"]]<-NULL
   #}
   
-  
+  browser()
   cat("I have entered the Sandra's function\n")
   
   

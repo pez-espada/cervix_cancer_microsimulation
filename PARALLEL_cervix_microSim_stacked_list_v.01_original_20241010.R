@@ -79,7 +79,7 @@ n_i <- (2)*10^5         # number of simulated individuals
 n_i <- (5)*10^5            # number of simulated individuals
 #n_i <- 10^7            # number of simulated individuals
 n_i <- 5*10^3               # number of simulated individuals
-n_i <- 10^2               # number of simulated individuals
+n_i <- 10^3               # number of simulated individuals
 #n_i <- 10^6               # number of simulated individuals
 n_t <- 3                  # time horizon, 75 cycles (it starts from 1)
 ################################################################################
@@ -1665,6 +1665,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
   # stack results
   #source("./R/Sumarize_results_by_Strategy_Func.R")
   #source("/home/07075107P/microSim/cervix_cancer_microsimulation/R/Sumarize_results_by_Strategy_Func.R")
+  #source("/home/07075107P/microSim/cervix_cancer_microsimulation/R/Sumarize_results_by_Strategy_Func.R")
   #stacked_results <- 
   #  summarize_results_by_Strategy(results_list = simulation_results, 
   #                                numb_of_sims = numb_of_sims)
@@ -1835,6 +1836,7 @@ stopCluster(cl)
 # uncomment the following lines:
 #source("./R/sumarize_results_by_Strategy_Func_revised.R")
 source("./R/sumarize_results_by_Strategy_Func.R")
+source("./R/sumarize_results_by_Strategy_Func.R", local = TRUE) # for debugging
 stacked_results <- 
   summarize_results_by_Strategy(results_list = sim_no_trt, 
                                 numb_of_sims = numb_of_sims)
