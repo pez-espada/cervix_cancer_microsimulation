@@ -15,7 +15,7 @@ summarize_results_by_Strategy <- function(results_list, numb_of_sims) {
   #  results_list[[i]][["Tot_Trans_per_t"]]<-NULL
   #}
   
-  browser()
+  #browser()
   cat("I have entered the Sandra's function\n")
   
   
@@ -46,6 +46,10 @@ summarize_results_by_Strategy <- function(results_list, numb_of_sims) {
   #    df<-df[,c("sim","row_names",colnames(df)[1:(ncol(df)-2)])]
   #    return(df)
   #  }))
+  
+  # TESTING
+  lapply(results_list, function(x) "symptomatics" %in% names(x))
+  
   
   for (name_level_of_sim in names_sim) {
     result[[Strategy_name]][[name_level_of_sim]] <- bind_rows(lapply(seq_along(sim), function(i) {

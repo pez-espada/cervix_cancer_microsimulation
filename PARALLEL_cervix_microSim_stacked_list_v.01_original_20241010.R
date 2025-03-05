@@ -75,13 +75,14 @@ my_Probs9 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs9)
 my_Probs9 <- my_Probs9 %>% as.data.frame() #convert back to data.frame (no needed?)
 ################################################################################
 ## ----Model Parameters
-n_i <- (2)*10^5         # number of simulated individuals
-n_i <- (5)*10^5            # number of simulated individuals
+#n_i <- (5)*10^5            # number of simulated individuals
 #n_i <- 10^7            # number of simulated individuals
-n_i <- 5*10^3               # number of simulated individuals
+#n_i <- 5*10^3               # number of simulated individuals
 n_i <- 10^3               # number of simulated individuals
 #n_i <- 10^6               # number of simulated individuals
-n_t <- 3                  # time horizon, 75 cycles (it starts from 1)
+#n_t <- 3                  # time horizon, 3 cycles (it starts from 1)
+## notice that for small n_t the code fails at summarize_results_by_Strategy() funct
+n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 ################################################################################
 
 ################################################################################
@@ -178,8 +179,11 @@ Probs <- function(M_it, my_Probs) {
 
 ################################################################################
 library(data.table)
-Probs_3 <- function(M_it, v_n, n_i, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
-                    prob_matrix_4, prob_matrix_9, vacc_lbl) {
+Probs_3 <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2, 
+                    prob_matrix_2_nat_immunity, prob_matrix_4, 
+                    prob_matrix_9, vacc_lbl) {
+  # probably not necessary
+  set.seed(seed = seed)
   # Ensure v_n is defined
   n_s <- length(v_n)  # Number of health states
   #n_i <- M_it %>% length() %>% max() # Number of individuals
@@ -248,48 +252,94 @@ Probs_3 <- function(M_it, v_n, n_i, prob_matrix, prob_matrix_2, prob_matrix_2_na
 }
 ################################################################################
 
+
 ################################################################################
-Probs_3_optimized <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
-                              prob_matrix_4, prob_matrix_9, vacc_lbl) {
-  library(data.table)
+Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2, 
+                              prob_matrix_2_nat_immunity, prob_matrix_4, 
+                              prob_matrix_9, vacc_lbl) {
+  # Set seed only if necessary
+  if (!is.null(seed)) set.seed(seed)
   
-  # Convert inputs to data.table for efficiency
-  M_dt <- data.table(ID = seq_along(M_it), health_state = M_it)
-  vacc_lbl <- as.data.table(vacc_lbl)
+  # Prepare the individual state data
+  M_it <- data.table(ID = 1:n_i, health_state = M_it)
   
-  # Perform join to get vaccination and immunity status in a vectorized way
-  M_dt <- merge(M_dt, vacc_lbl, by = "ID", all.x = TRUE, sort = FALSE)
+  # Merge with vaccination label data
+  M_it <- merge(M_it, vacc_lbl, by = "ID", all.x = TRUE)
   
-  # Create a list of transition matrices for quick lookup
-  transition_matrices <- list(
-    no_vacc = prob_matrix,
-    vacc_2_no_immunity = prob_matrix_2,
-    vacc_2_immunity = prob_matrix_2_nat_immunity,
-    vacc_4 = prob_matrix_4,
-    vacc_9 = prob_matrix_9
-  )
+  # Create a matrix to store the probabilities
+  P_combined <- matrix(NA, nrow = n_i, ncol = length(v_n))
   
-  # Determine which transition matrix to use for each individual
-  M_dt[, trans_matrix := fifelse(
-    vacc_state == "no_vacc", "no_vacc",
-    fifelse(vacc_state == "vacc_2" & immuned, "vacc_2_immunity",
-            fifelse(vacc_state == "vacc_2", "vacc_2_no_immunity",
-                    fifelse(vacc_state == "vacc_4", "vacc_4",
-                            fifelse(vacc_state == "vacc_9", "vacc_9", NA_character_)))))]
-  #]
-
-# Get transition probabilities in a vectorized manner
-P_list <- lapply(transition_matrices, function(mat) mat[M_dt$health_state, on = "rn"])
-
-# Combine all results into a single matrix
-P_matrix <- rbindlist(P_list, use.names = FALSE, fill = TRUE)
-
-# Convert to matrix
-P_matrix <- as.matrix(P_matrix)
-
-return(P_matrix)
+  # Use data.table joins and vectorized selection
+  for (vacc_status in unique(M_it$vacc_state)) {
+    state_subset <- M_it[vacc_state == vacc_status]
+    
+    prob_mat <- switch(vacc_status,
+                       "no_vacc" = prob_matrix,
+                       "vacc_2" = ifelse(unique(state_subset$immuned), prob_matrix_2_nat_immunity, prob_matrix_2),
+                       "vacc_4" = prob_matrix_4,
+                       "vacc_9" = prob_matrix_9,
+                       stop("Unknown vaccination status detected")
+    )
+    
+    # Fetch probabilities for all individuals in one go
+    state_indices <- state_subset$health_state
+    P_combined[state_subset$ID, ] <- prob_mat[match(state_indices, prob_mat$rn), -c("rn", "Age.group", "Lower", "Larger"), with = FALSE]
+  }
+  
+  return(P_combined)
 }
+
 ################################################################################
+
+
+
+
+
+
+
+
+#################################################################################
+#Probs_3_optimized <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
+#                              prob_matrix_4, prob_matrix_9, vacc_lbl) {
+#  library(data.table)
+#  
+#  # Convert inputs to data.table for efficiency
+#  M_dt <- data.table(ID = seq_along(M_it), health_state = M_it)
+#  vacc_lbl <- as.data.table(vacc_lbl)
+#  
+#  # Perform join to get vaccination and immunity status in a vectorized way
+#  M_dt <- merge(M_dt, vacc_lbl, by = "ID", all.x = TRUE, sort = FALSE)
+#  
+#  # Create a list of transition matrices for quick lookup
+#  transition_matrices <- list(
+#    no_vacc = prob_matrix,
+#    vacc_2_no_immunity = prob_matrix_2,
+#    vacc_2_immunity = prob_matrix_2_nat_immunity,
+#    vacc_4 = prob_matrix_4,
+#    vacc_9 = prob_matrix_9
+#  )
+#  
+#  # Determine which transition matrix to use for each individual
+#  M_dt[, trans_matrix := fifelse(
+#    vacc_state == "no_vacc", "no_vacc",
+#    fifelse(vacc_state == "vacc_2" & immuned, "vacc_2_immunity",
+#            fifelse(vacc_state == "vacc_2", "vacc_2_no_immunity",
+#                    fifelse(vacc_state == "vacc_4", "vacc_4",
+#                            fifelse(vacc_state == "vacc_9", "vacc_9", NA_character_)))))]
+#  #]
+#
+## Get transition probabilities in a vectorized manner
+#P_list <- lapply(transition_matrices, function(mat) mat[M_dt$health_state, on = "rn"])
+#
+## Combine all results into a single matrix
+#P_matrix <- rbindlist(P_list, use.names = FALSE, fill = TRUE)
+#
+## Convert to matrix
+#P_matrix <- as.matrix(P_matrix)
+#
+#return(P_matrix)
+#}
+#################################################################################
 
 ################################################################################
 Probs_3_optimized_v2 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
@@ -501,7 +551,7 @@ Probs_CoP_v2 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_na
 # Efficient implementation of the rMultinom() function of the Hmisc package #### 
 # This function samples the next health state of each individual based on the
 # transition probabilities of the current health state of each individual.
-samplev <- function (probs, m) {
+samplev <- function (probs, m, seed) {
   d <- dim(probs) # i.e. number of individuals times number of states: n_i x n_s
   n <- d[1]       # number of individuals n_s
   k <- d[2]       # number of states
@@ -532,6 +582,7 @@ samplev <- function (probs, m) {
   ##############################################################################
   
   ### Random sampling, binning, and moving states: 
+  set.seed(seed = seed)
   for (j in 1:m) {
     un <- rep(runif(n), rep(k, n)) # repeat `runif(n)` `rep(k,n)`times
     # this create a numeric of `n_i x n_s` that 
@@ -558,27 +609,27 @@ samplev <- function (probs, m) {
 # This cost is only charged once in the patient's lifetime.
 # NOTE: need to decide if the cost is applied on current time `t` or `t+1` as it is now.
 Costs_per_Cancer_Diag <- function (M_it, cost_Vec, symptomatics, time_iteration, Trt = FALSE) {
-c_it <- rep(0, length(M_it))
-#ci_t <- 0
-if(nrow(symptomatics) > 0 ) {
-  c_it[symptomatics %>% 
-         dplyr::filter(DiagnosedState == "FIGO.I" & TimeStep == time_iteration) %>% 
-         select(ID) %>% as.list() %>% 
-         unlist()] <- cost_Vec[which(v_n %in% "FIGO.I")]
-  c_it[symptomatics %>% 
-         dplyr::filter(DiagnosedState == "FIGO.II" & TimeStep == time_iteration) %>% 
-         select(ID) %>% as.list() %>% 
-         unlist()] <- cost_Vec[which(v_n %in% "FIGO.II")]
-  c_it[symptomatics %>%
-         dplyr::filter(DiagnosedState == "FIGO.III" & TimeStep == time_iteration) %>% 
-         select(ID) %>% as.list() %>% 
-         unlist()] <- cost_Vec[which(v_n %in% "FIGO.III")]
-  c_it[symptomatics %>% 
-         dplyr::filter(DiagnosedState == "FIGO.IV" & TimeStep == time_iteration) %>% 
-         select(ID) %>% as.list() %>% 
-         unlist()] <- cost_Vec[which(v_n %in% "FIGO.IV")]
-}
-return(c_it) # return the costs
+  c_it <- rep(0, length(M_it))
+  #ci_t <- 0
+  if(nrow(symptomatics) > 0 ) {
+    c_it[symptomatics %>% 
+           dplyr::filter(DiagnosedState == "FIGO.I" & TimeStep == time_iteration) %>% 
+           select(ID) %>% as.list() %>% 
+           unlist()] <- cost_Vec[which(v_n %in% "FIGO.I")]
+    c_it[symptomatics %>% 
+           dplyr::filter(DiagnosedState == "FIGO.II" & TimeStep == time_iteration) %>% 
+           select(ID) %>% as.list() %>% 
+           unlist()] <- cost_Vec[which(v_n %in% "FIGO.II")]
+    c_it[symptomatics %>%
+           dplyr::filter(DiagnosedState == "FIGO.III" & TimeStep == time_iteration) %>% 
+           select(ID) %>% as.list() %>% 
+           unlist()] <- cost_Vec[which(v_n %in% "FIGO.III")]
+    c_it[symptomatics %>% 
+           dplyr::filter(DiagnosedState == "FIGO.IV" & TimeStep == time_iteration) %>% 
+           select(ID) %>% as.list() %>% 
+           unlist()] <- cost_Vec[which(v_n %in% "FIGO.IV")]
+  }
+  return(c_it) # return the costs
 }
 ################################################################################
 
@@ -694,40 +745,42 @@ stored_list <- vector("list", n_t)
 # a dataframe with `ID, TimeStep`, `state`, and `RecoveredFromState` columns.
 # The function also updates the global vector `global_diagnosed` with the IDs of
 # individuals who have been diagnosed.
-diagnose_column <- function(col, time_step) {
-new_entries <- data.frame(ID = integer(), 
-                          TimeStep = integer(),
-                          DiagnosedState = character(),
-                          RecoveredFromState = logical())
-
-for (state_idx in seq_along(states_to_check)) {
-  state <- states_to_check[state_idx]
-  prob_symptom <- symptom_prob_vec[state_idx]
-  prob_survival <- survival_prob_vec[state_idx]
-  in_state <- which(col == state)
-  if (length(in_state) > 0) {
-    # Remove individuals who have already been diagnosed
-    in_state <- setdiff(in_state, global_diagnosed)
+# RANDOM FUNCTION:
+diagnose_column <- function(col, time_step, seed) {
+  new_entries <- data.frame(ID = integer(), 
+                            TimeStep = integer(),
+                            DiagnosedState = character(),
+                            RecoveredFromState = logical())
+  # random seed:
+  set.seed(seed = seed)
+  for (state_idx in seq_along(states_to_check)) {
+    state <- states_to_check[state_idx]
+    prob_symptom <- symptom_prob_vec[state_idx]
+    prob_survival <- survival_prob_vec[state_idx]
+    in_state <- which(col == state)
     if (length(in_state) > 0) {
-      # Store based on diagnose probability
-      to_store <- in_state[runif(length(in_state)) < prob_symptom]
-      if (length(to_store) > 0) {
-        # Add these individuals to the global diagnosed list
-        global_diagnosed <<- c(global_diagnosed, to_store)
-        # Check another probability to potentially change their state to "Survival"
-        recovered <- to_store[runif(length(to_store)) < prob_survival]
-        # Store the individuals' IDs, time steps, diagnosed states, and recovery status
-        new_entries <- rbind(new_entries, data.frame(
-          ID = to_store, 
-          TimeStep = time_step, 
-          DiagnosedState = state, 
-          RecoveredFromState = to_store %in% recovered))
+      # Remove individuals who have already been diagnosed
+      in_state <- setdiff(in_state, global_diagnosed)
+      if (length(in_state) > 0) {
+        # Store based on diagnose probability
+        to_store <- in_state[runif(length(in_state)) < prob_symptom]
+        if (length(to_store) > 0) {
+          # Add these individuals to the global diagnosed list
+          global_diagnosed <<- c(global_diagnosed, to_store)
+          # Check another probability to potentially change their state to "Survival"
+          recovered <- to_store[runif(length(to_store)) < prob_survival]
+          # Store the individuals' IDs, time steps, diagnosed states, and recovery status
+          new_entries <- rbind(new_entries, data.frame(
+            ID = to_store, 
+            TimeStep = time_step, 
+            DiagnosedState = state, 
+            RecoveredFromState = to_store %in% recovered))
+        }
       }
     }
   }
-}
-rownames(new_entries) <- NULL
-return(new_entries)
+  rownames(new_entries) <- NULL
+  return(new_entries)
 }
 ################################################################################
 
@@ -783,7 +836,7 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
         #slice_tail(n = -1) %>%
         # Remove the last row
         deplyr::mutate(age = 10:(10 + n() - 1),  # Adjust age to start from 10
-               cycle = age - 9)  # Adjust cycle
+                       cycle = age - 9)  # Adjust cycle
     } else {
       # Handle missing transition columns
       warning(paste0("Transition '", transition_column,
@@ -798,7 +851,7 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
         #slice(-nrow(.)) %>%
         #slice_tail(n = -1) %>%
         dplyr::mutate(age = 10:(10 + n() - 1), 
-               cycle = age - 9)
+                      cycle = age - 9)
     }
     return(transition_cases)
     
@@ -1193,10 +1246,6 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
 
 
 
-################################################################################
-
-
-
 
 
 ################################################################################
@@ -1226,40 +1275,31 @@ my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
 # This version stacks solution of simulations but produces a list with stacked elements
 # check the `MicroSim` for any improvements or issues.
 MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
+                     seeds,
                      v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE, 
                      TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix, vaccination = FALSE) 
 {
-  # Generate random seeds
-  #seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  
-  seeds <- sample(1:100000, numb_of_sims, replace = FALSE)  
-  seeds <- c(15066, 15706, 77451)
-  seeds <- c(15066, 77451)
-  seeds <- c(77451)
-  ## fix the seeds for reproducibility::
-  ## fix the seeds for reproducibility::
-  #seeds <- c(38222, 52130, 92742, 73352, 41494, 43929, 94560, 72382, 13846, 94537) %>% 
-  #  as.integer()
-  #seeds <- c(20422, 63139, 3575,  9449,  4055,  
-  #           6931, 92384, 24048, 25109,  7757,
-  #           25889, 32227, 57572, 36484, 38944,  
-  #           4074, 45156, 93585, 48543, 57217) %>%
-  #  as.integer()
-  
   simulation_results <- list() 
   
-  #calculate the cost discount weight based on the discount rate d_c 
+  # calculate the cost discount weight based on the discount rate d_c 
   v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   
   # calculate the QALY discount weight based on the discount rate d_e                                             
   v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   
-  set.seed(123)
   # Paralel processing using foreach
   simulation_results <- 
     foreach(sim = 1:numb_of_sims, .packages = c("dplyr", "tidyr", "purrr", "data.table"), .export = c("new_cases_2") ) %dopar% { 
       library(dplyr)
       ## clean memory:
       #if (step %% 10 == 0) gc()
+      
+      #set.seed(seed = seeds[sim])
+      seed <- seeds[sim]
+      #seed <- 123 + sim
+      set.seed(seed)
+      
       cat("\n")
       cat("Running simulation", sim, "with seed", seeds[sim], "\n")
+      #cat("Running simulation", sim, "with seed", seed, "\n")
       cat("-------------------------------------------------------\n")
       # Initialize a global vector to store all diagnosed individuals
       global_diagnosed <<- integer()
@@ -1267,12 +1307,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         data.frame(ID = integer(), TimeStep = integer(), 
                    DiagnosedState = character(), 
                    RecoveredFromState = logical(), stringsAsFactors = FALSE)
-      
-      ## NOTA: PONER FUERA DEL LOOP (??)
-      ##calculate the cost discount weight based on the discount rate d_c 
-      #v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   
-      ## calculate the QALY discount weight based on the discount rate d_e                                             
-      #v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   
       
       # Create the matrix capturing the state name/costs/health outcomes 
       # for all individuals at each time point:
@@ -1285,9 +1319,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       
       m_M[, 1] <- v_M_1  # indicate the initial health state   
       
-      seed <- seeds[sim]
-      #seed <- 17
-      #set.seed(seed) # set the seed for every individual 
       
       # Debugging before function calls
       print("Before calling Costs_per_Cancer_Diag()")
@@ -1297,7 +1328,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       m_C[, 1] <- Costs_per_Cancer_Diag(M_it = m_M[, 1], 
                                         symptomatics = symptomatics,
                                         time_iteration = 1,
-                                        cost_Vec = cost_Vec,  
+                                         cost_Vec = cost_Vec,  
                                         Trt)             
       
       # estimate QALYs per individual for the initial health state 
@@ -1314,7 +1345,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         # Select the transition matrix based on the cycle `n_t`:
         # Since our age intervals start at 10 years old,
         age_in_loop <- t + 9
-        cat("Simulation:", sim, "Cycle:", t, "Age:", age_in_loop, "\n")
+        cat("Simulation:", sim, "Cycle:", t, ", ", "Age:", age_in_loop, ", ", "seed:", seed, "\n")
         ########################################################################
         
         # update/correct n_s (<<- let change variable from inside a function):
@@ -1326,7 +1357,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         
         ######################################################################## 
         #new code:
-        new_entries <- diagnose_column(m_M[, t], t)
+        # RANDOM FUNCTION:
+        new_entries <- diagnose_column(m_M[, t], t, seed)
         
         if (!is.null(new_entries)) {
           stored_list[[t]] <- new_entries
@@ -1442,7 +1474,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         #               prob_matrix_4 = setDT(my_age_prob_matrix_4), 
         #               prob_matrix_9 = setDT(my_age_prob_matrix_9), 
         #               vacc_lbl = vacc_lbl)
-        m_P <- Probs_3(M_it = m_M[, t], v_n = v_n, n_i = n_i,
+        m_P <- Probs_3_optimized(M_it = m_M[, t], v_n = v_n, n_i = n_i, seed = seed,
                        prob_matrix = setDT(my_age_prob_matrix, keep.rownames = TRUE), 
                        prob_matrix_2 = setDT(my_age_prob_matrix_2, keep.rownames = TRUE),
                        prob_matrix_2_nat_immunity = setDT(my_age_prob_matrix_2_nat_immunity, keep.rownames = TRUE),
@@ -1451,7 +1483,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
                        vacc_lbl = vacc_lbl)
         cat("Dimension of m_P is (outside the function): ",dim(m_P),"\n")
         
-        m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
+        # RANDOM FUNCTION: 
+        m_M[, t + 1] <- samplev(probs = m_P, m = 1, seed = seed)  # sample the next health state 
                                                      # and store that state in  
                                                      # matrix m_M 
         cat("Dimension of m_M is ",dim(m_M),"\n")
@@ -1553,7 +1586,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         Tot_Trans_per_t <- NULL
       }
       
-      Tot_Trans_per_t <- Tot_Trans_per_t %>% as.tibble()
+      Tot_Trans_per_t <- Tot_Trans_per_t %>% as_tibble()
       # New cases:
       new_CIN1 <- new_cases_2(state1 = "HR.HPV.infection", state2 = "CIN1", 
                               Tot_Trans_per_t = Tot_Trans_per_t)
@@ -1622,8 +1655,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       
       # Store the results from the simulation in a list
      results <- list(#strategy = strategy,
-                      #seed = seeds[sim],
-                      seed = seed,
+                      seed = seeds[sim],
+                      #seed = seed,
                       #sim_numb = sim, 
                       #m_M = m_M, 
                       #m_C = m_C, 
@@ -1647,6 +1680,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
                       new_CC_Death = new_CC_Death,
                       CC_Death_by_diff = CC_Death_by_diff)  
       results$seed <- seeds[sim]
+      #results$seed <- seed
       #simulation_results[sim] <- list(results)
       #simulation_results[sim] <- results
       cat("At sim number:", sim,  " tc_hat_undisc is ", tc_hat_undisc, "\n")
@@ -1705,11 +1739,11 @@ if (is_slurm()) {
   # On local machine, use all available cores (or limit if needed)
   #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
   ## Register fewer cores (adjust based on server resources)
-  #n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
   #n_cores <- detectCores()  # Try using 8 or fewer cores
   #n_cores <- min(detectCores())  # Try using 8 or fewer cores
   #n_cores <- 6  # Try using 8 or fewer cores
-  n_cores <- 6
+  #n_cores <- 6
 }
 # for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
 # five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
@@ -1728,7 +1762,8 @@ vacc_coverage <- c(0.357, 0.0, 0.0)
 nat_immunity_linked_to_vacc <- c(0.0, 0.0, 0.0)
 
 ################################################################################
-generate_vaccine_labels <- function(n_i, vacc_coverage, nat_immunity) {
+# RANDOM FUNCTION
+generate_vaccine_labels <- function(n_i, vacc_coverage, nat_immunity, seed) {
   # Ensure the sum of coverage is valid
   if (sum(vacc_coverage) > 1) {
     stop("The sum of vacc_coverage cannot exceed 1.")
@@ -1765,6 +1800,8 @@ generate_vaccine_labels <- function(n_i, vacc_coverage, nat_immunity) {
   #vacc_lbl$ID <- seq_len(nrow(vacc_lbl))
   #return(vacc_lbl)
   # For vaccinated individuals, check if they overcome their immunity probability
+  # random seed
+  set.seed(seed)
   
   for (i in 1:n_i) {
     if (vacc_lbl[i] == "vacc_2") {
@@ -1790,9 +1827,10 @@ generate_vaccine_labels <- function(n_i, vacc_coverage, nat_immunity) {
   return(result_df)
 }
 ################################################################################
-
+# RANDOM FUNCTION:
+seed <- 123
 vacc_lbl <-
-  generate_vaccine_labels(n_i, vacc_coverage, nat_immunity_linked_to_vacc)
+  generate_vaccine_labels(n_i, vacc_coverage, nat_immunity_linked_to_vacc, seed)
 
 ################################################################################
 
@@ -1821,9 +1859,14 @@ registerDoSEQ()        # for sequential
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 1
+numb_of_sims = 2
+# Generate random seeds
+set.seed(123) # fix random seed for sample
+seeds <- sample(1:100000, numb_of_sims, replace = FALSE)  
 strategy <- "natural_history"
+strategy <- "vacc_2_test"
 sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
+                        seeds = seeds, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, seed = 2, Pmatrix = Pmatrix)
@@ -2410,10 +2453,10 @@ if (is.na(slurm_job_id)) {
 }
 cat("SLURM job ID:", slurm_job_id, "\n")
 
-# Save simulation result:
+## Save simulation result:
 ## Use job ID in file name
 #output_file <-
-#  paste0("data/testing_stability/stacked_sims_20x10E6x75_20250116_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
+#  paste0("data/testing_stability/stacked_sims_20x10E4x75_20250305B_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
 #saveRDS(object = sim_result, file = output_file)
 
 cat("I have written out the results\n")
