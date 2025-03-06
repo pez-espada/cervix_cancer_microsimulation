@@ -267,26 +267,51 @@ Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2,
   M_it <- merge(M_it, vacc_lbl, by = "ID", all.x = TRUE)
   
   # Create a matrix to store the probabilities
-  P_combined <- matrix(NA, nrow = n_i, ncol = length(v_n))
+  P_combined <- matrix(NA, nrow = n_i, ncol = length(v_n) + 1) # additional column for ID
+  P_combined[, 1] <- 1:n_i # ID column
   
   # Use data.table joins and vectorized selection
   for (vacc_status in unique(M_it$vacc_state)) {
+    # subset all individuals with a specific vacc_state
     state_subset <- M_it[vacc_state == vacc_status]
-    
+    # determine the prob matrix corresponding to the vacc_state of the subset
     prob_mat <- switch(vacc_status,
                        "no_vacc" = prob_matrix,
-                       "vacc_2" = ifelse(unique(state_subset$immuned), prob_matrix_2_nat_immunity, prob_matrix_2),
+                       "vacc_2" = if (any(state_subset$immuned)) {
+                         prob_matrix_2_nat_immunity
+                       } else {
+                         prob_matrix_2
+                       },
                        "vacc_4" = prob_matrix_4,
                        "vacc_9" = prob_matrix_9,
                        stop("Unknown vaccination status detected")
     )
+    # drop unnecessary columns:
+    prob_mat <- prob_mat[, c("Age.group", "Lower", "Larger") := NULL]
     
-    # Fetch probabilities for all individuals in one go
-    state_indices <- state_subset$health_state
-    P_combined[state_subset$ID, ] <- prob_mat[match(state_indices, prob_mat$rn), -c("rn", "Age.group", "Lower", "Larger"), with = FALSE]
+  #   # Fetch probabilities for all individuals in one go
+  #   state_indices <- state_subset$health_state
+  #   P_combined[state_subset$ID, ] <- prob_mat[match(state_indices, prob_mat$rn), -c("rn", "Age.group", "Lower", "Larger"), with = FALSE]
+  # }
+    
+    # Fill the P_combined matrix based on the prob_mat
+    for (i in 1:nrow(state_subset)) {
+      current_id <- state_subset$ID[i]
+      current_health_state <- state_subset$health_state[i]
+      prob_row <- prob_mat[prob_mat$rn == current_health_state, ]
+      
+      if (nrow(prob_row) == 0) {
+        cat("No match found for health state:", current_health_state, "for ID:", current_id, "\n")
+        next
+      }
+      
+      # Fill the corresponding row in P_combined, starting from the 2nd column
+      P_combined[current_id, 2:ncol(P_combined)] <- as.numeric(prob_row[1, -1])
+    }
   }
   
-  return(P_combined)
+  
+  return(P_combined[, -1]) # remove first ID column
 }
 
 ################################################################################
