@@ -78,7 +78,7 @@ my_Probs9 <- my_Probs9 %>% as.data.frame() #convert back to data.frame (no neede
 #n_i <- (5)*10^5            # number of simulated individuals
 #n_i <- 10^7            # number of simulated individuals
 #n_i <- 5*10^3               # number of simulated individuals
-n_i <- 10^3               # number of simulated individuals
+n_i <- 10^4               # number of simulated individuals
 #n_i <- 10^6               # number of simulated individuals
 #n_t <- 3                  # time horizon, 3 cycles (it starts from 1)
 ## notice that for small n_t the code fails at summarize_results_by_Strategy() funct
@@ -256,7 +256,23 @@ Probs_3 <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2,
 ################################################################################
 Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2, 
                               prob_matrix_2_nat_immunity, prob_matrix_4, 
-                              prob_matrix_9, vacc_lbl) {
+                              prob_matrix_9, vacc_lbl, age) {
+  
+  
+  # DEBUGGING 1:
+  tryCatch(
+    {
+      if (age ==11 & seed == 22360) {
+        stop("DEBUGGING TIME! seek at individual 4070 and check transition! \n")
+      }
+    },
+    error = function(e) {
+      cat("Error caught:", e$message, "\n")
+      browser()  # Drop ito interactive debug mode
+    }
+  )
+ 
+   
   # Set seed only if necessary
   if (!is.null(seed)) set.seed(seed)
   
@@ -289,10 +305,10 @@ Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2,
     # drop unnecessary columns:
     prob_mat <- prob_mat[, c("Age.group", "Lower", "Larger") := NULL]
     
-  #   # Fetch probabilities for all individuals in one go
-  #   state_indices <- state_subset$health_state
-  #   P_combined[state_subset$ID, ] <- prob_mat[match(state_indices, prob_mat$rn), -c("rn", "Age.group", "Lower", "Larger"), with = FALSE]
-  # }
+    #   # Fetch probabilities for all individuals in one go
+    #   state_indices <- state_subset$health_state
+    #   P_combined[state_subset$ID, ] <- prob_mat[match(state_indices, prob_mat$rn), -c("rn", "Age.group", "Lower", "Larger"), with = FALSE]
+    # }
     
     # Fill the P_combined matrix based on the prob_mat
     for (i in 1:nrow(state_subset)) {
@@ -300,18 +316,35 @@ Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2,
       current_health_state <- state_subset$health_state[i]
       prob_row <- prob_mat[prob_mat$rn == current_health_state, ]
       
-      if (nrow(prob_row) == 0) {
-        cat("No match found for health state:", current_health_state, "for ID:", current_id, "\n")
-        next
-      }
+      #if (nrow(prob_row) == 0) {
+      #  cat("No match found for health state:", current_health_state, "for ID:", current_id, "\n")
+      #  next
+      #}
+     
+       
+      ## DEBUGGING 2:
+      #tryCatch(
+      #  {
+      #    if (nrow(prob_row) == 0) {
+      #      stop("No match found for health state: ", current_health_state, " for ID: ", current_id)
+      #    }
+      #  },
+      #  error = function(e) {
+      #    cat("Error caught:", e$message, "\n")
+      #    browser()  # Drop into interactive debug mode
+      #  }
+      #)
+      
+      
+      
       
       # Fill the corresponding row in P_combined, starting from the 2nd column
       P_combined[current_id, 2:ncol(P_combined)] <- as.numeric(prob_row[1, -1])
     }
   }
-  
-  
-  return(P_combined[, -1]) # remove first ID column
+  P_combined <- P_combined[, -1]  # remove first ID column
+  colnames(P_combined) <- v_n
+  return(P_combined)
 }
 
 ################################################################################
@@ -1478,8 +1511,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         # Extract the transition probabilities of each individuals at cycle t
         # given the individual current state and the corresponding 
         # transition probability matrix that depends on age:
-        # Next time (t+1) transition
-        # m_P is a (n_i x n_s) matrix with the probabilities of transitioning
+        # Next time (t+1) transition:
+        
+        ## m_P is a (n_i x n_s) matrix with the probabilities of transitioning
         #m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
         
         # for vaccination I'll need a new Probs function:
@@ -1505,7 +1539,8 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
                        prob_matrix_2_nat_immunity = setDT(my_age_prob_matrix_2_nat_immunity, keep.rownames = TRUE),
                        prob_matrix_4 = setDT(my_age_prob_matrix_4, keep.rownames = TRUE), 
                        prob_matrix_9 = setDT(my_age_prob_matrix_9, keep.rownames = TRUE), 
-                       vacc_lbl = vacc_lbl)
+                       vacc_lbl = vacc_lbl,
+                       age = age_in_loop)
         cat("Dimension of m_P is (outside the function): ",dim(m_P),"\n")
         
         # RANDOM FUNCTION: 
@@ -1864,7 +1899,7 @@ vacc_lbl <-
 # 6-hours timeout to prevent socket drop issues
 cl <- makeCluster(n_cores, timeout = 6*60*60) 
 clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
-                    "Probs_3", "vacc_lbl", "Probs_CoP", "Probs_CoP_v2",
+                    "Probs_3", "vacc_lbl", "Probs_CoP", "Probs_CoP_v2", "Probs_3_optimized",
                     "my_Probs", "my_Probs2","my_Probs4", "my_Probs9", 
                     "my_Probs2_nat_immunity", "utilityCoefs", "v_n", "samplev", 
                     "my_age_prob_matrix_func","diagnose_column", 
@@ -1884,9 +1919,11 @@ registerDoSEQ()        # for sequential
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 2
+numb_of_sims = 4 
+
 # Generate random seeds
 set.seed(123) # fix random seed for sample
+set.seed(321) # fix random seed for sample
 seeds <- sample(1:100000, numb_of_sims, replace = FALSE)  
 strategy <- "natural_history"
 strategy <- "vacc_2_test"
@@ -1904,7 +1941,7 @@ stopCluster(cl)
 # uncomment the following lines:
 #source("./R/sumarize_results_by_Strategy_Func_revised.R")
 source("./R/sumarize_results_by_Strategy_Func.R")
-source("./R/sumarize_results_by_Strategy_Func.R", local = TRUE) # for debugging
+#source("./R/sumarize_results_by_Strategy_Func.R", local = TRUE) # for debugging
 stacked_results <- 
   summarize_results_by_Strategy(results_list = sim_no_trt, 
                                 numb_of_sims = numb_of_sims)
@@ -2481,7 +2518,7 @@ cat("SLURM job ID:", slurm_job_id, "\n")
 ## Save simulation result:
 ## Use job ID in file name
 #output_file <-
-#  paste0("data/testing_stability/stacked_sims_20x10E4x75_20250305B_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
+#  paste0("data/testing_stability/stacked_sims_4x10E4x75_20250312_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
 #saveRDS(object = sim_result, file = output_file)
 
 cat("I have written out the results\n")
@@ -2922,3 +2959,8 @@ if (numb_of_sims >=60) {
 df <- sim_result[["No Intervention"]]$TR %>% select(FIGO.I, FIGO.II, FIGO.III, FIGO.IV) 
 # select(FIGO.I, FIGO.II, FIGO.III, FIGO.IV) and summarize by columns
 df <- df %>% summarise(across(everything(), sum, na.rm = TRUE))
+
+# DEBUGGING
+cat("\n")
+cat("I HAVE REACHED THE END OF THE SCRIPT FINE.\n")
+cat("WITH n_i = ", n_i,  " , numb_of_sims = ", numb_of_sims, "\n")
