@@ -9,6 +9,12 @@
 ################################################################################
 rm(list = ls())
 library(tidyverse)
+#library(future)
+
+## For debuging purposes:
+#options(error = recover)
+## after debugging, you can set the error option back to the default:
+#options(error = NULL)
 
 ## to prevent conflicts in the parallel environment:
 #setwd(dir = "/home/07075107P/microSim/cervix_cancer_microsimulation")
@@ -260,17 +266,17 @@ Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2,
   
   
   # DEBUGGING 1:
-  tryCatch(
-    {
-      if (age ==11 & seed == 22360) {
-        stop("DEBUGGING TIME! seek at individual 4070 and check transition! \n")
-      }
-    },
-    error = function(e) {
-      cat("Error caught:", e$message, "\n")
-      browser()  # Drop ito interactive debug mode
-    }
-  )
+  #tryCatch(
+  #  {
+  #    if (age ==11 & seed == 22360) {
+  #      stop("DEBUGGING TIME! seek at individual 4070 and check transition! \n")
+  #    }
+  #  },
+  #  error = function(e) {
+  #    cat("Error caught:", e$message, "\n")
+  #    browser()  # Drop ito interactive debug mode
+  #  }
+  #)
  
    
   # Set seed only if necessary
@@ -334,6 +340,21 @@ Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2,
       #    browser()  # Drop into interactive debug mode
       #  }
       #)
+      
+      
+      # DEBUGGING 3:
+      tryCatch(
+        {
+          if (nrow(prob_row) == 0) {
+            stop("No match found for health state: ", current_health_state, " for ID: ", current_id)
+          }
+        },
+        error = function(e) {
+          cat("Error caught:", e$message, "\n")
+          print(ls())  # List variables in the environment
+          browser()  # Drop into interactive debug mode
+        }
+      )
       
       
       
@@ -1350,10 +1371,10 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       ## clean memory:
       #if (step %% 10 == 0) gc()
       
-      #set.seed(seed = seeds[sim])
+      set.seed(seed = seeds[sim])
       seed <- seeds[sim]
       #seed <- 123 + sim
-      set.seed(seed)
+      #set.seed(seed)
       
       cat("\n")
       cat("Running simulation", sim, "with seed", seeds[sim], "\n")
@@ -1919,7 +1940,7 @@ registerDoSEQ()        # for sequential
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 4 
+numb_of_sims = 4
 
 # Generate random seeds
 set.seed(123) # fix random seed for sample
