@@ -264,7 +264,6 @@ Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2,
                               prob_matrix_2_nat_immunity, prob_matrix_4, 
                               prob_matrix_9, vacc_lbl, age) {
   
-  
   # DEBUGGING 1:
   #tryCatch(
   #  {
@@ -277,25 +276,34 @@ Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2,
   #    browser()  # Drop ito interactive debug mode
   #  }
   #)
- 
-   
+  
+  
   # Set seed only if necessary
   if (!is.null(seed)) set.seed(seed)
   
-  # Prepare the individual state data
-  M_it <- data.table(ID = 1:n_i, health_state = M_it)
+  # add ID:
+  ##M_it <- data.table(ID = 1:n_i, health_state = M_it)
+  #M_it <- cbind(ID = 1:nrow(M_it), health_state = M_it)
+  #
+  ## Merge with vaccination label data
+  #M_it <- merge(M_it, vacc_lbl, by = "ID", all.x = TRUE)
   
-  # Merge with vaccination label data
-  M_it <- merge(M_it, vacc_lbl, by = "ID", all.x = TRUE)
+  M_it <- tibble(ID = as.integer(1:length(M_it)), health_state = M_it)
+  
+  # merge data with vacc_lbl:
+  M_it <- M_it %>% dplyr::left_join(vacc_lbl, by = "ID")
   
   # Create a matrix to store the probabilities
   P_combined <- matrix(NA, nrow = n_i, ncol = length(v_n) + 1) # additional column for ID
   P_combined[, 1] <- 1:n_i # ID column
   
+  
+  
   # Use data.table joins and vectorized selection
   for (vacc_status in unique(M_it$vacc_state)) {
     # subset all individuals with a specific vacc_state
-    state_subset <- M_it[vacc_state == vacc_status]
+    #state_subset <- M_it[vacc_state == vacc_status]
+    state_subset <- M_it %>% dplyr::filter(vacc_state == vacc_status)
     # determine the prob matrix corresponding to the vacc_state of the subset
     prob_mat <- switch(vacc_status,
                        "no_vacc" = prob_matrix,
@@ -309,12 +317,20 @@ Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2,
                        stop("Unknown vaccination status detected")
     )
     # drop unnecessary columns:
-    prob_mat <- prob_mat[, c("Age.group", "Lower", "Larger") := NULL]
+    #prob_mat <- prob_mat[, c("Age.group", "Lower", "Larger") := NULL]
+    prob_mat <-  prob_mat %>% 
+      dplyr::select(-c(Age.group, Lower, Larger))
     
-    #   # Fetch probabilities for all individuals in one go
-    #   state_indices <- state_subset$health_state
-    #   P_combined[state_subset$ID, ] <- prob_mat[match(state_indices, prob_mat$rn), -c("rn", "Age.group", "Lower", "Larger"), with = FALSE]
-    # }
+    
+    #############################################################################
+    ## let's try something different: use the tested Probs() function
+    ## for each state_subset
+    #
+    ## before calling the Probs() func lets prepare its arguments:
+    #M_it_2 <- M_it %>% as.tibble() %>% dplyr::select(ID, health_state)
+    #############################################################################
+    
+    
     
     # Fill the P_combined matrix based on the prob_mat
     for (i in 1:nrow(state_subset)) {
@@ -326,8 +342,8 @@ Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2,
       #  cat("No match found for health state:", current_health_state, "for ID:", current_id, "\n")
       #  next
       #}
-     
-       
+      
+      
       ## DEBUGGING 2:
       #tryCatch(
       #  {
@@ -357,68 +373,20 @@ Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2,
       )
       
       
-      
-      
       # Fill the corresponding row in P_combined, starting from the 2nd column
       P_combined[current_id, 2:ncol(P_combined)] <- as.numeric(prob_row[1, -1])
-    }
-  }
+    } # for nrow
+    
+  } # for vacc_status
+  
   P_combined <- P_combined[, -1]  # remove first ID column
   colnames(P_combined) <- v_n
   return(P_combined)
+  
 }
 
 ################################################################################
 
-
-
-
-
-
-
-
-#################################################################################
-#Probs_3_optimized <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
-#                              prob_matrix_4, prob_matrix_9, vacc_lbl) {
-#  library(data.table)
-#  
-#  # Convert inputs to data.table for efficiency
-#  M_dt <- data.table(ID = seq_along(M_it), health_state = M_it)
-#  vacc_lbl <- as.data.table(vacc_lbl)
-#  
-#  # Perform join to get vaccination and immunity status in a vectorized way
-#  M_dt <- merge(M_dt, vacc_lbl, by = "ID", all.x = TRUE, sort = FALSE)
-#  
-#  # Create a list of transition matrices for quick lookup
-#  transition_matrices <- list(
-#    no_vacc = prob_matrix,
-#    vacc_2_no_immunity = prob_matrix_2,
-#    vacc_2_immunity = prob_matrix_2_nat_immunity,
-#    vacc_4 = prob_matrix_4,
-#    vacc_9 = prob_matrix_9
-#  )
-#  
-#  # Determine which transition matrix to use for each individual
-#  M_dt[, trans_matrix := fifelse(
-#    vacc_state == "no_vacc", "no_vacc",
-#    fifelse(vacc_state == "vacc_2" & immuned, "vacc_2_immunity",
-#            fifelse(vacc_state == "vacc_2", "vacc_2_no_immunity",
-#                    fifelse(vacc_state == "vacc_4", "vacc_4",
-#                            fifelse(vacc_state == "vacc_9", "vacc_9", NA_character_)))))]
-#  #]
-#
-## Get transition probabilities in a vectorized manner
-#P_list <- lapply(transition_matrices, function(mat) mat[M_dt$health_state, on = "rn"])
-#
-## Combine all results into a single matrix
-#P_matrix <- rbindlist(P_list, use.names = FALSE, fill = TRUE)
-#
-## Convert to matrix
-#P_matrix <- as.matrix(P_matrix)
-#
-#return(P_matrix)
-#}
-#################################################################################
 
 ################################################################################
 Probs_3_optimized_v2 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
@@ -1554,12 +1522,20 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         #               prob_matrix_4 = setDT(my_age_prob_matrix_4), 
         #               prob_matrix_9 = setDT(my_age_prob_matrix_9), 
         #               vacc_lbl = vacc_lbl)
+        #m_P <- Probs_3_optimized(M_it = m_M[, t], v_n = v_n, n_i = n_i, seed = seed,
+        #               prob_matrix = setDT(my_age_prob_matrix, keep.rownames = TRUE), 
+        #               prob_matrix_2 = setDT(my_age_prob_matrix_2, keep.rownames = TRUE),
+        #               prob_matrix_2_nat_immunity = setDT(my_age_prob_matrix_2_nat_immunity, keep.rownames = TRUE),
+        #               prob_matrix_4 = setDT(my_age_prob_matrix_4, keep.rownames = TRUE), 
+        #               prob_matrix_9 = setDT(my_age_prob_matrix_9, keep.rownames = TRUE), 
+        #               vacc_lbl = vacc_lbl,
+        #               age = age_in_loop)
         m_P <- Probs_3_optimized(M_it = m_M[, t], v_n = v_n, n_i = n_i, seed = seed,
-                       prob_matrix = setDT(my_age_prob_matrix, keep.rownames = TRUE), 
-                       prob_matrix_2 = setDT(my_age_prob_matrix_2, keep.rownames = TRUE),
-                       prob_matrix_2_nat_immunity = setDT(my_age_prob_matrix_2_nat_immunity, keep.rownames = TRUE),
-                       prob_matrix_4 = setDT(my_age_prob_matrix_4, keep.rownames = TRUE), 
-                       prob_matrix_9 = setDT(my_age_prob_matrix_9, keep.rownames = TRUE), 
+                       prob_matrix = my_age_prob_matrix, 
+                       prob_matrix_2 = my_age_prob_matrix_2,
+                       prob_matrix_2_nat_immunity = my_age_prob_matrix_2_nat_immunity,
+                       prob_matrix_4 = my_age_prob_matrix_4, 
+                       prob_matrix_9 = my_age_prob_matrix_9, 
                        vacc_lbl = vacc_lbl,
                        age = age_in_loop)
         cat("Dimension of m_P is (outside the function): ",dim(m_P),"\n")
@@ -2971,6 +2947,7 @@ if (numb_of_sims >=60) {
   
   # Plot the moving average
   library(zoo)
+  
   moving_avg <- rollmean(average_cost, 10, align = "center")
   
   plot(average_cost, type = "l", main = "Average Cost over Simulations")
