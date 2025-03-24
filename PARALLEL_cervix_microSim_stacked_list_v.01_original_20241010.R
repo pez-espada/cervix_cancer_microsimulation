@@ -183,6 +183,56 @@ Probs <- function(M_it, my_Probs) {
 }
 ################################################################################
 
+
+
+
+
+
+################################################################################
+Probs <- function(M_it, my_Probs) {
+  n_s <- length(v_n)
+  n_i <- dim(M_it)[1] #sandra
+  m_P_it <- matrix(NA, n_s, n_i) 
+  ID <-M_it$ID #sandra
+  M_it<-M_it$health_state #sandra
+  rownames(m_P_it) <- v_n
+  
+  for (i in 1:length(v_n)) {
+    state_mask <- !is.na(M_it) & M_it == v_n[i]
+    if (sum(state_mask) > 0) {
+      m_P_it[, state_mask] <- 
+        lapply(X = v_n, function(x) trans_prb(P = my_Probs, state1 =
+                                                v_n[i], state2 = x)) %>%
+        unlist()
+    } else {
+      ## Debugging:
+      #cat("State", v_n[i], "is not present in M_it at this time step\n")
+    }
+  }
+  
+  if (any(is.na(m_P_it))) {
+    # Diagnostic message
+    cat("Transition probabilities contain NA values\n")
+  }
+  
+  #if(colSums(m_P_it, na.rm = TRUE) >= .991){
+  if(colSums(m_P_it, na.rm = TRUE) > 1){
+    #stop("Probabilities do not sum to 1")
+    cat("Probabilities do not sum to 1\n")
+  }else{
+    t_m_P_it<-t(m_P_it) #sandra
+    t_m_P_it<-cbind(ID,t_m_P_it) #sandra
+    return(t_m_P_it)
+  }
+}
+################################################################################
+
+
+
+
+
+
+
 ################################################################################
 library(data.table)
 Probs_3 <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2, 
@@ -264,19 +314,28 @@ Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2,
                               prob_matrix_2_nat_immunity, prob_matrix_4, 
                               prob_matrix_9, vacc_lbl, age) {
   
-  # DEBUGGING 1:
-  #tryCatch(
-  #  {
-  #    if (age ==11 & seed == 22360) {
-  #      stop("DEBUGGING TIME! seek at individual 4070 and check transition! \n")
-  #    }
-  #  },
-  #  error = function(e) {
-  #    cat("Error caught:", e$message, "\n")
-  #    browser()  # Drop ito interactive debug mode
-  #  }
-  #)
+  #DEBUGGING 1:
+  tryCatch(
+    {
+      if (age ==11 & seed == 22360) {
+        stop("DEBUGGING TIME! seek at individual 4070 and check transition! \n")
+      }
+    },
+    error = function(e) {
+      cat("Error caught:", e$message, "\n")
+      #traceback()
+      #browser()  # Drop ito interactive debug mode
+      #invokeRestart("recover")  # Allows debugging in the original environment
+      #debugger()
+    }
+  )
   
+  #if (age ==11 & seed == 22360) {
+  #  cat("\n")
+  #  cat("Error caught: DEBUGGING TIME! seek at individual 4070 and check transition! \n" )
+  #  cat("\n")
+  #  debugger()
+  #}
   
   # Set seed only if necessary
   if (!is.null(seed)) set.seed(seed)
@@ -298,12 +357,13 @@ Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2,
   P_combined[, 1] <- 1:n_i # ID column
   
   
-  
+  current_row <- 1
   # Use data.table joins and vectorized selection
   for (vacc_status in unique(M_it$vacc_state)) {
     # subset all individuals with a specific vacc_state
     #state_subset <- M_it[vacc_state == vacc_status]
     state_subset <- M_it %>% dplyr::filter(vacc_state == vacc_status)
+    
     # determine the prob matrix corresponding to the vacc_state of the subset
     prob_mat <- switch(vacc_status,
                        "no_vacc" = prob_matrix,
@@ -321,63 +381,47 @@ Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2,
     prob_mat <-  prob_mat %>% 
       dplyr::select(-c(Age.group, Lower, Larger))
     
-    
     #############################################################################
     ## let's try something different: use the tested Probs() function
     ## for each state_subset
     #
-    ## before calling the Probs() func lets prepare its arguments:
-    #M_it_2 <- M_it %>% as.tibble() %>% dplyr::select(ID, health_state)
+    # before calling the Probs() func lets prepare its arguments:
+    M_it_2 <- state_subset  %>% dplyr::select(ID, health_state)
+    
+    P_combined[current_row : (dim(state_subset)[1] + current_row - 1), ] <-  
+      Probs(M_it = M_it_2, my_Probs = prob_mat)
+    
+    current_row <- current_row + dim(state_subset)[1]
+    
     #############################################################################
-    
-    
-    
-    # Fill the P_combined matrix based on the prob_mat
-    for (i in 1:nrow(state_subset)) {
-      current_id <- state_subset$ID[i]
-      current_health_state <- state_subset$health_state[i]
-      prob_row <- prob_mat[prob_mat$rn == current_health_state, ]
-      
-      #if (nrow(prob_row) == 0) {
-      #  cat("No match found for health state:", current_health_state, "for ID:", current_id, "\n")
-      #  next
-      #}
-      
-      
-      ## DEBUGGING 2:
-      #tryCatch(
-      #  {
-      #    if (nrow(prob_row) == 0) {
-      #      stop("No match found for health state: ", current_health_state, " for ID: ", current_id)
-      #    }
-      #  },
-      #  error = function(e) {
-      #    cat("Error caught:", e$message, "\n")
-      #    browser()  # Drop into interactive debug mode
-      #  }
-      #)
-      
-      
-      # DEBUGGING 3:
-      tryCatch(
-        {
-          if (nrow(prob_row) == 0) {
-            stop("No match found for health state: ", current_health_state, " for ID: ", current_id)
-          }
-        },
-        error = function(e) {
-          cat("Error caught:", e$message, "\n")
-          print(ls())  # List variables in the environment
-          browser()  # Drop into interactive debug mode
-        }
-      )
-      
-      
-      # Fill the corresponding row in P_combined, starting from the 2nd column
-      P_combined[current_id, 2:ncol(P_combined)] <- as.numeric(prob_row[1, -1])
-    } # for nrow
-    
   } # for vacc_status
+    
+    ## Fill the P_combined matrix based on the prob_mat
+    #for (i in 1:nrow(state_subset)) {
+    #  current_id <- state_subset$ID[i]
+    #  current_health_state <- state_subset$health_state[i]
+    #  #prob_row <- prob_mat[prob_mat$rn == current_health_state, ]
+    #  prob_row <- prob_mat[current_health_state,]
+    #  
+    #  # DEBUGGING 3:
+    #  tryCatch(
+    #    {
+    #      if (nrow(prob_row) == 0) {
+    #        stop("No match found for health state: ", current_health_state, " for ID: ", current_id)
+    #      }
+    #    },
+    #    error = function(e) {
+    #      cat("Error caught:", e$message, "\n")
+    #      print(ls())  # List variables in the environment
+    #      browser()  # Drop into interactive debug mode
+    #    }
+    #  )
+    #  # Fill the corresponding row in P_combined, starting from the 2nd column
+    #  #P_combined[current_id, 2:ncol(P_combined)] <- as.numeric(prob_row[1, -1])
+    #  P_combined[current_id, 2:ncol(P_combined)] <- as.numeric(prob_row)
+    #} # for nrow
+    
+ # } # for vacc_status
   
   P_combined <- P_combined[, -1]  # remove first ID column
   colnames(P_combined) <- v_n
@@ -445,6 +489,7 @@ Probs_3_optimized_v2 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_mat
   return(as.matrix(P_matrix))
 }
 ################################################################################
+ 
 
 ################################################################################
 Probs_3_optimized_2 <- function(M_it, v_n, prob_matrix, prob_matrix_2, prob_matrix_2_nat_immunity,
@@ -612,6 +657,13 @@ samplev <- function (probs, m, seed) {
   # consisting in of health-state stored in
   # `lev[1]`, "H" in our case.
   
+  
+  # Handle NA in probs
+  if (any(is.na(probs))) {
+    warning("NA detected in transition probabilities, replacing with uniform distribution")
+    probs[is.na(probs)] <- 1 / k
+  }
+  
   ##############################################################################
   ########## Creating the matrix of cumulative distributions U #################
   U <- t(probs)    # transpose probs from (`n_i*n_s`) to (`n_s*n_i`)
@@ -623,6 +675,9 @@ samplev <- function (probs, m, seed) {
     # The last element of each column must sum 1 (or close enough:)
     U[i, ] <- U[i, ] + U[i - 1, ]
   }
+  
+  U[k, ] <- 1  # Force last row to be exactly 1
+  
   if (any((U[k, ] - 1) > 1e-04))
     stop("error in multinom: probabilities do not sum to 1")
   ##############################################################################
@@ -641,10 +696,17 @@ samplev <- function (probs, m, seed) {
     # runif() is run it produces a new random sample
     # i.e. it does not seem dependent on the seed
     
-    # Here's where we choose the individuals' next states:
-    ran[, j] <- lev[1 + colSums(un > U)]
+    ## Here's where we choose the individuals' next states:
+    #ran[, j] <- lev[1 + colSums(un > U)]
+    
+    ran[, j] <- lev[1 + pmin(colSums(un > U), k - 1)]
   }
-  ran
+  cat("\n")
+  cat("Unique states computed by samplev() is/are:\n")
+  ran %>% unique() %>% print()
+  cat("\n")
+  
+  return(ran)
 }
 ################################################################################
 
@@ -1577,6 +1639,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       
       # Combine stored entries in a single data frame
       symptomatics <- bind_rows(stored_list)
+      cat("=================================================\n")
       cat("symprotamics dimensions: ", dim(symptomatics),"\n")
       tc_disc <- m_C[,1:n_t] %*% v_dwc       # total (discounted) cost per individual
       te_disc <- m_E[,1:n_t] %*% v_dwe       # total (discounted) QALYs per individual 
@@ -1916,7 +1979,7 @@ registerDoSEQ()        # for sequential
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 4
+numb_of_sims = 3
 
 # Generate random seeds
 set.seed(123) # fix random seed for sample
@@ -2515,8 +2578,12 @@ cat("SLURM job ID:", slurm_job_id, "\n")
 ## Save simulation result:
 ## Use job ID in file name
 #output_file <-
-#  paste0("data/testing_stability/stacked_sims_4x10E4x75_20250312_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
+#  #paste0("data/testing_stability/stacked_sims_20x10E5x75_20250323_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
+#  paste0("data/last_results_20250324/stacked_sims_10x10E5x75_20250324_TEST_sim_", slurm_job_id, ".rds")
 #saveRDS(object = sim_result, file = output_file)
+
+## to load a pre-run simulation:
+#sim_result <- readRDS(file = "data/testing_stability/stacked_sims_20x10E5x75_2025")
 
 cat("I have written out the results\n")
 
