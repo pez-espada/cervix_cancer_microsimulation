@@ -332,13 +332,6 @@ Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2,
     }
   )
   
-  #if (age ==11 & seed == 22360) {
-  #  cat("\n")
-  #  cat("Error caught: DEBUGGING TIME! seek at individual 4070 and check transition! \n" )
-  #  cat("\n")
-  #  debugger()
-  #}
-  
   # Set seed only if necessary
   if (!is.null(seed)) set.seed(seed)
   
@@ -398,41 +391,16 @@ Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2,
     
     #############################################################################
   } # for vacc_status
-    
-    ## Fill the P_combined matrix based on the prob_mat
-    #for (i in 1:nrow(state_subset)) {
-    #  current_id <- state_subset$ID[i]
-    #  current_health_state <- state_subset$health_state[i]
-    #  #prob_row <- prob_mat[prob_mat$rn == current_health_state, ]
-    #  prob_row <- prob_mat[current_health_state,]
-    #  
-    #  # DEBUGGING 3:
-    #  tryCatch(
-    #    {
-    #      if (nrow(prob_row) == 0) {
-    #        stop("No match found for health state: ", current_health_state, " for ID: ", current_id)
-    #      }
-    #    },
-    #    error = function(e) {
-    #      cat("Error caught:", e$message, "\n")
-    #      print(ls())  # List variables in the environment
-    #      browser()  # Drop into interactive debug mode
-    #    }
-    #  )
-    #  # Fill the corresponding row in P_combined, starting from the 2nd column
-    #  #P_combined[current_id, 2:ncol(P_combined)] <- as.numeric(prob_row[1, -1])
-    #  P_combined[current_id, 2:ncol(P_combined)] <- as.numeric(prob_row)
-    #} # for nrow
-    
- # } # for vacc_status
   
+  P_combined <- P_combined[order(P_combined[,1]), ]
+    
   P_combined <- P_combined[, -1]  # remove first ID column
   colnames(P_combined) <- v_n
   return(P_combined)
   
 }
-
 ################################################################################
+
 
 
 ################################################################################
@@ -1982,7 +1950,7 @@ registerDoSEQ()        # for sequential
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 3
+numb_of_sims = 10
 
 # Generate random seeds
 set.seed(123) # fix random seed for sample
