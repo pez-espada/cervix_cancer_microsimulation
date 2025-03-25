@@ -177,6 +177,7 @@ Probs <- function(M_it, my_Probs) {
     # Diagnostic message
     #cat("Transition probabilities contain NA values\n")
   }
+  
   ifelse(colSums(m_P_it, na.rm = TRUE) >= .991, 
          return(t(m_P_it)), 
          stop("Probabilities do not sum to 1"))
@@ -211,14 +212,15 @@ Probs <- function(M_it, my_Probs) {
   }
   
   if (any(is.na(m_P_it))) {
+    
     # Diagnostic message
     cat("Transition probabilities contain NA values\n")
   }
   
   #if(colSums(m_P_it, na.rm = TRUE) >= .991){
-  if(colSums(m_P_it, na.rm = TRUE) > 1){
-    #stop("Probabilities do not sum to 1")
-    cat("Probabilities do not sum to 1\n")
+  if(any(colSums(m_P_it, na.rm = TRUE) > 1)) {
+    stop("Probabilities do not sum to 1")
+    #cat("Probabilities do not sum to 1\n")
   }else{
     t_m_P_it<-t(m_P_it) #sandra
     t_m_P_it<-cbind(ID,t_m_P_it) #sandra
@@ -326,7 +328,7 @@ Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2,
       #traceback()
       #browser()  # Drop ito interactive debug mode
       #invokeRestart("recover")  # Allows debugging in the original environment
-      #debugger()
+      debugger()
     }
   )
   
@@ -390,6 +392,7 @@ Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2,
     
     P_combined[current_row : (dim(state_subset)[1] + current_row - 1), ] <-  
       Probs(M_it = M_it_2, my_Probs = prob_mat)
+    #Test_Prob <-   Probs(M_it = M_it_2, my_Probs = prob_mat)
     
     current_row <- current_row + dim(state_subset)[1]
     
