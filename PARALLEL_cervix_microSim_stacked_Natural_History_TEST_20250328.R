@@ -2,46 +2,42 @@
 ################################################################################
 # This code is a modified version of the original code from:
 # [https://github.com/DARTH-git/Microsimulation-tutorial] (Krijkamp et al 2018 
-# Sick-Sicker model). 
-# programmed by Carlos Dommar D'Lima - carlos.dommar@gmail.com
+# Sick-Sicker model).
 # This code extends the "sick-sicker" model of the original authors to a
 # multi-state cervix cancer model
+# this program is based on the code 
+# PARALLEL_cervix_microSim_stacked_list_v.01_original_20241010.R
+# version commit:da4c88fcce630e8a003acfcead6c91e63b3e5df4 of the
+# git repository: https://github.com/pez-espada/cervix_cancer_microsimulation
 ################################################################################
 rm(list = ls())
 library(tidyverse)
-#library(future)
-
-## For debuging purposes:
-#options(error = recover)
-## after debugging, you can set the error option back to the default:
-#options(error = NULL)
 
 ## to prevent conflicts in the parallel environment:
 #setwd(dir = "/home/07075107P/microSim/cervix_cancer_microsimulation")
 
 ensure_library <- function(...) {
-  pkgs <- unlist(list(...))
-  pkgs <- gsub("[\"']", "", pkgs) # Remove quotes
-  sapply(pkgs, function(pkg) {
-    if (!requireNamespace(pkg, quietly = TRUE)) {
-      install.packages(pkg)
-    }
-    library(pkg, character.only = TRUE)
-  })
+pkgs <- unlist(list(...))
+pkgs <- gsub("[\"']", "", pkgs) # Remove quotes
+sapply(pkgs, function(pkg) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+  library(pkg, character.only = TRUE)
+})
 }
 ################################################################################
 
-my_Probs <- readRDS(file = "./data/probs.rds") # natural history transition matrix
-my_Probs2 <- readRDS(file = "./data/probs2.rds")  # vaccination transition matrix
-# vaccination 2 associated immunity transition matrix
-my_Probs2_nat_immunity <- readRDS(file = "./data/probs3.rds") 
-my_Probs4 <- readRDS(file = "./data/probs3.rds") # vaccination transition matrix
-my_Probs9 <- readRDS(file = "./data/probs3.rds") # vaccination transition matrix
+my_Probs <- readRDS(file = "./data/probs.rds") # natural history
 
-# arbitrary correction of an obvious error;
-my_Probs2$Other.Death[my_Probs2$Other.Death == 8.150000e+08] <- 8.150000e-08
-my_Probs2 <- my_Probs2 %>%
-  dplyr::rename("CC_Death" = "Death")
+my_Probs <- # transition matrix (for all sim cycles) 
+  my_Probs %>%
+  as_tibble() # I need a tibble to use 'rename' function down there:
+
+# Tidying up a bit the transition matrix:
+my_Probs <- my_Probs %>% dplyr::rename("H" = "Well")
+
+my_Probs <- my_Probs %>% as.data.frame() #convert back to data.frame (no needed?)
 
 ################################################################################
 # Function to extract and convert numbers from factor levels
@@ -52,39 +48,19 @@ return(numbers)
 }
 ################################################################################
 
-################################################################################
-my_Probs_cleaning_Func <- function(Probs_matrix) {
-  # Tidying up a bit the transition matrix:
-  Probs_matrix  <- Probs_matrix %>% dplyr::rename("H" = "Well")
-  Probs_matrix  <- Probs_matrix %>% as.data.frame() #convert back to data.frame (no needed?)
-  Probs_matrix$Lower  <- sapply(Probs_matrix$Age.group, function(x) extract_numbers(x)[1])
-  Probs_matrix$Larger <- sapply(Probs_matrix$Age.group, function(x) extract_numbers(x)[2])
-  return(Probs_matrix) 
-}
-################################################################################
+# Apply the function to the Range column and create new columns
+my_Probs$Lower  <- sapply(my_Probs$Age.group, function(x) extract_numbers(x)[1])
+my_Probs$Larger <- sapply(my_Probs$Age.group, function(x) extract_numbers(x)[2])
+# For the last cycle/iteration we need to adjust the last transition matrix:
+#my_Probs$Larger <- 
+#  ifelse(my_Probs$Larger == max(my_Probs$Larger), my_Probs$Larger + 1, my_Probs$Larger) 
 
 
-# Tidying up a bit the transition matrix:
-my_Probs <- my_Probs_cleaning_Func(Probs_matrix = my_Probs)
-my_Probs <- my_Probs %>% as.data.frame() #convert back to data.frame (no needed?)
-
-my_Probs2 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs2)
-my_Probs2 <- my_Probs2 %>% as.data.frame() #convert back to data.frame (no needed?)
-
-my_Probs2_nat_immunity <- my_Probs_cleaning_Func(Probs_matrix = my_Probs2_nat_immunity)
-my_Probs2_nat_immunity <- my_Probs2_nat_immunity %>% as.data.frame() #convert back to data.frame (no needed?)
-
-my_Probs4 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs4)
-my_Probs4 <- my_Probs4 %>% as.data.frame() #convert back to data.frame (no needed?)
-
-my_Probs9 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs9)
-my_Probs9 <- my_Probs9 %>% as.data.frame() #convert back to data.frame (no needed?)
-################################################################################
 ## ----Model Parameters
+#n_i <- 10^5               # number of simulated individuals
 n_i <- 10^5               # number of simulated individuals
-#n_t <- 3                  # time horizon, 3 cycles (it starts from 1)
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
-################################################################################
+ 
 
 ################################################################################
 ### (THIS IS WORK IN PROGRESS):
@@ -105,8 +81,9 @@ n_t <- n_t * 1
 }
 ################################################################################
 
+
 ################################################################################
-#v_n <- rownames(my_Probs)
+v_n <- rownames(my_Probs)
 v_n <- colnames(my_Probs)
 v_n <- v_n[-c(1,14,15)]
 n_s   <- length(v_n)                # the number of health states
@@ -124,6 +101,7 @@ cost_Vec = c(0, 39.54, 288.91, 1552.27, 1552.27,
            5759.81, 12903.63, 23032.41, 35323.14, 0, 0, 0)
 utilityCoefs = c(1, 1, 0.987, 0.87, 0.87, 0.76, 0.67, 0.67, 0.67, 0.938, 0, 0)
 ################################################################################
+
 
 ################################################################################
 ## ---- FUNCTIONS -----                                                       ##  
@@ -147,159 +125,6 @@ return(transition_prob)
 }
 ################################################################################
 
-#################################################################################
-### ---- Probability Function ----                                             ##
-### The Probs function that updates the transition probabilities of every cycle:
-#Probs <- function(M_it, my_Probs) {
-#  n_s <- length(v_n)
-#  n_i <- length(M_it)
-#  m_P_it <- matrix(NA, n_s, n_i) 
-#  rownames(m_P_it) <- v_n
-#  for (i in 1:length(v_n)) {
-#    state_mask <- !is.na(M_it) & M_it == v_n[i]
-#    
-#    if (sum(state_mask) > 0) {
-#      m_P_it[, state_mask] <- 
-#        lapply(X = v_n, function(x) trans_prb(P = my_Probs, state1 =
-#                                                v_n[i], state2 = x)) %>%
-#        unlist()
-#    } else {
-#      ## Debugging:
-#      #cat("State", v_n[i], "is not present in M_it at this time step\n")
-#    }
-#  }
-#  if (any(is.na(m_P_it))) {
-#    # Diagnostic message
-#    #cat("Transition probabilities contain NA values\n")
-#  }
-#  
-#  ifelse(colSums(m_P_it, na.rm = TRUE) >= .991, 
-#         return(t(m_P_it)), 
-#         stop("Probabilities do not sum to 1"))
-#}
-#################################################################################
-
-
-# New Probs fnct:
-################################################################################
-Probs <- function(M_it, my_Probs) {
-  n_s <- length(v_n)
-  n_i <- dim(M_it)[1]
-  m_P_it <- matrix(NA, n_s, n_i) 
-  ID <-M_it$ID 
-  M_it<-M_it$health_state 
-  rownames(m_P_it) <- v_n
-  
-  for (i in 1:length(v_n)) {
-    state_mask <- !is.na(M_it) & M_it == v_n[i]
-    
-    if (sum(state_mask) > 0) {
-      m_P_it[, state_mask] <- 
-        lapply(X = v_n, function(x) trans_prb(P = my_Probs, state1 =
-                                                v_n[i], state2 = x)) %>%
-        unlist()
-    } else {
-      ## Debugging:
-      #cat("State", v_n[i], "is not present in M_it at this time step\n")
-    }
-  }
-  if (any(is.na(m_P_it))) {
-    # Diagnostic message
-    cat("Transition probabilities contain NA values\n")
-  }
-  
-  #if(colSums(m_P_it, na.rm = TRUE) >= .991){
-  #if(any(colSums(m_P_it, na.rm = TRUE) > 1)) {
-  #  stop("Probabilities do not sum to 1")  # HERE IT BREAKS AT CYCLE 5!!
-  #}else{
-    t_m_P_it<-t(m_P_it)
-    t_m_P_it<-cbind(ID,t_m_P_it)
-    return(t_m_P_it)
-  #}
-}
-################################################################################
-
-################################################################################
-Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2, 
-                              prob_matrix_2_nat_immunity, prob_matrix_4, 
-                              prob_matrix_9, vacc_lbl, age) {
-  ##DEBUGGING 1:
-  #tryCatch(
-  #  {
-  #    if (age ==11 & seed == 22360) {
-  #      stop("DEBUGGING TIME! seek at individual 4070 and check transition! \n")
-  #    }
-  #  },
-  #  error = function(e) {
-  #    cat("Error caught:", e$message, "\n")
-  #    #traceback()
-  #    #browser()  # Drop into interactive debug mode
-  #    #invokeRestart("recover")  # Allows debugging in the original environment
-  #    debugger()
-  #  }
-  #)
-  
-  # Set seed only if necessary
-  if (!is.null(seed)) set.seed(seed)
-  
-  M_it <- tibble(ID = as.integer(1:length(M_it)), health_state = M_it)
-  
-  # merge data with vacc_lbl:
-  M_it <- M_it %>% dplyr::left_join(vacc_lbl, by = "ID")
-  
-  # Create a matrix to store the probabilities
-  P_combined <- matrix(NA, nrow = n_i, ncol = length(v_n) + 1) # additional column for ID
-  P_combined[, 1] <- 1:n_i # ID column
-  
-  current_row <- 1
-  # Use data.table joins and vectorized selection
-  for (vacc_status in unique(M_it$vacc_state)) {
-    # subset all individuals with a specific vacc_state
-    #state_subset <- M_it[vacc_state == vacc_status]
-    state_subset <- M_it %>% dplyr::filter(vacc_state == vacc_status)
-    
-    # determine the prob matrix corresponding to the vacc_state of the subset
-    prob_mat <- switch(vacc_status,
-                       "no_vacc" = prob_matrix,
-                       "vacc_2" = if (any(state_subset$immuned)) {
-                         prob_matrix_2_nat_immunity
-                       } else {
-                         prob_matrix_2
-                       },
-                       "vacc_4" = prob_matrix_4,
-                       "vacc_9" = prob_matrix_9,
-                       stop("Unknown vaccination status detected")
-    )
-    # drop unnecessary columns:
-    #prob_mat <- prob_mat[, c("Age.group", "Lower", "Larger") := NULL]
-    prob_mat <-  prob_mat %>% 
-      dplyr::select(-c(Age.group, Lower, Larger))
-    
-    #############################################################################
-    ## let's try something different: use the tested Probs() function
-    ## for each state_subset
-    #
-    # before calling the Probs() func lets prepare its arguments:
-    M_it_2 <- state_subset  %>% dplyr::select(ID, health_state)
-    
-    P_combined[current_row : (dim(state_subset)[1] + current_row - 1), ] <-  
-      Probs(M_it = M_it_2, my_Probs = prob_mat)
-    #Test_Prob <-   Probs(M_it = M_it_2, my_Probs = prob_mat)
-    
-    current_row <- current_row + dim(state_subset)[1]
-    
-    #############################################################################
-  } # for vacc_status
-  
-  # sort by ID:
-  P_combined <- P_combined[order(P_combined[,1]), ]
-    
-  P_combined <- P_combined[, -1]  # remove first ID column
-  colnames(P_combined) <- v_n
-  return(P_combined)
-}
-################################################################################
-
 
 ################################################################################
 ## ----Sampling function
@@ -320,13 +145,6 @@ samplev <- function (probs, m, seed) {
   # consisting in of health-state stored in
   # `lev[1]`, "H" in our case.
   
-  
-  ## Handle NA in probs
-  #if (any(is.na(probs))) {
-  #  warning("NA detected in transition probabilities, replacing with uniform distribution")
-  #  probs[is.na(probs)] <- 1 / k
-  #}
-  
   ##############################################################################
   ########## Creating the matrix of cumulative distributions U #################
   U <- t(probs)    # transpose probs from (`n_i*n_s`) to (`n_s*n_i`)
@@ -338,16 +156,13 @@ samplev <- function (probs, m, seed) {
     # The last element of each column must sum 1 (or close enough:)
     U[i, ] <- U[i, ] + U[i - 1, ]
   }
-  
-  #U[k, ] <- 1  # Force last row to be exactly 1
-  
   if (any((U[k, ] - 1) > 1e-04))
     stop("error in multinom: probabilities do not sum to 1")
   ##############################################################################
   ##############################################################################
   
-  ### Random sampling, binning, and moving states: 
-  set.seed(seed = seed)
+  #### Random sampling, binning, and moving states: 
+  #set.seed(seed = seed)
   for (j in 1:m) {
     # RANDOM GEN CODE HERE:
     un <- rep(runif(n), rep(k, n)) # repeat `runif(n)` `rep(k,n)`times
@@ -360,19 +175,46 @@ samplev <- function (probs, m, seed) {
     # runif() is run it produces a new random sample
     # i.e. it does not seem dependent on the seed
     
-    ## Here's where we choose the individuals' next states:
-    #ran[, j] <- lev[1 + colSums(un > U)]
-    
-    ran[, j] <- lev[1 + pmin(colSums(un > U), k - 1)]
+    # Here's where we choose the individuals' next states:
+    ran[, j] <- lev[1 + colSums(un > U)]
   }
-  #cat("\n")
-  #cat("Unique states computed by samplev() is/are:\n")
-  #ran %>% unique() %>% print()
-  #cat("\n")
-  
-  return(ran)
+  ran
 }
 ################################################################################
+
+
+################################################################################
+## ---- Probability Function ----                                             ##
+## The Probs function that updates the transition probabilities of every cycle:
+Probs <- function(M_it, my_Probs) {
+  n_s <- length(v_n)
+  n_i <- length(M_it)
+  m_P_it <- matrix(NA, n_s, n_i) 
+  rownames(m_P_it) <- v_n
+  
+  for (i in 1:length(v_n)) {
+    state_mask <- !is.na(M_it) & M_it == v_n[i]
+    
+    if (sum(state_mask) > 0) {
+      m_P_it[, state_mask] <- 
+        lapply(X = v_n, function(x) trans_prb(P = my_Probs, state1 =
+                                                v_n[i], state2 = x)) %>%
+        unlist()
+    } else {
+      ## Debugging:
+      #cat("State", v_n[i], "is not present in M_it at this time step\n")
+    }
+  }
+  if (any(is.na(m_P_it))) {
+    # Diagnostic message
+    cat("Transition probabilities contain NA values\n")
+  }
+  ifelse(colSums(m_P_it, na.rm = TRUE) >= .991, 
+         return(t(m_P_it)), 
+         stop("Probabilities do not sum to 1"))
+}
+################################################################################
+
 
 ################################################################################
 ## ---- Costs Function ----                                                   ##
@@ -435,6 +277,7 @@ return(u_it)
 }
 ################################################################################
 
+
 #################################################################################
 ### ----Time period related functions
 ############ WORK IN PROGRESS #########################
@@ -461,6 +304,7 @@ return(u_it)
 #}
 ########## WORK IN PROGRESS #################
 #################################################################################
+
 
 #################################################################################
 ##### ! NOT USED ! ############################
@@ -525,8 +369,8 @@ diagnose_column <- function(col, time_step, seed) {
                             TimeStep = integer(),
                             DiagnosedState = character(),
                             RecoveredFromState = logical())
-  # random seed:
-  set.seed(seed = seed)
+  ## random seed:
+  #set.seed(seed = seed)
   for (state_idx in seq_along(states_to_check)) {
     state <- states_to_check[state_idx]
     prob_symptom <- symptom_prob_vec[state_idx]
@@ -536,7 +380,7 @@ diagnose_column <- function(col, time_step, seed) {
       # Remove individuals who have already been diagnosed
       in_state <- setdiff(in_state, global_diagnosed)
       if (length(in_state) > 0) {
-        # Store based on diagnose probability  
+        # Store based on diagnose probability
         # (RANDOM GEN CODE HERE):
         to_store <- in_state[runif(length(in_state)) < prob_symptom]
         if (length(to_store) > 0) {
@@ -558,7 +402,7 @@ diagnose_column <- function(col, time_step, seed) {
   return(new_entries)
 }
 ################################################################################
- 
+
 
 ################################################################################
 # ---- Function to update the next column based on the new entries ----       ##
@@ -587,7 +431,6 @@ update_column <- function(col, new_entries, next_col) {
 # ---- Function to add new cases to the transition matrix ----                ##
 # This function adds new rows to the transition matrix for individuals who have
 # been diagnosed with cancer. It also updates the age and cycle columns.
-## ORIGINAL ##
 new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
   # Convert the data to a tibble for easier manipulation
   Tot_Trans_per_t_tbl <- as_tibble(Tot_Trans_per_t)
@@ -607,13 +450,11 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
       # transition column = 0, and delete the last row (age = 85)
       transition_cases <- transition_cases %>%
         # Add row at the beginning
-        dplyr::add_row(!!transition_column := 0, age = 10, cycle = 1, .before = 1) %>%  
-        dplyr::slice(-n()) %>%  
-        #slice(-nrow(.)) %>%
-        #slice_tail(n = -1) %>%
+        add_row(!!transition_column := 0, age = 10, cycle = 1, .before = 1) %>%  
+        slice(-n()) %>%  
         # Remove the last row
-        dplyr::mutate(age = 10:(10 + n() - 1),  # Adjust age to start from 10
-                       cycle = age - 9)  # Adjust cycle
+        mutate(age = 10:(10 + n() - 1),  # Adjust age to start from 10
+               cycle = age - 9)  # Adjust cycle
     } else {
       # Handle missing transition columns
       warning(paste0("Transition '", transition_column,
@@ -623,12 +464,10 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
         age = row_number() + 10,
         cycle = age - 9
       ) %>%
-        dplyr::add_row(!!transition_column := 0, age = 10, cycle = 1, .before = 1) %>%  
-        dplyr::slice(-n()) %>%
-        #slice(-nrow(.)) %>%
-        #slice_tail(n = -1) %>%
-        dplyr::mutate(age = 10:(10 + n() - 1), 
-                      cycle = age - 9)
+        add_row(!!transition_column := 0, age = 10, cycle = 1, .before = 1) %>%  
+        slice(-n()) %>%
+        mutate(age = 10:(10 + n() - 1), 
+               cycle = age - 9)
     }
     return(transition_cases)
     
@@ -671,17 +510,15 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
     # a list of arguments across multiple positions or inputs.
     transition_cases <- Tot_Trans_per_t_tbl %>%
       dplyr::select(all_of(existing_cols)) %>%
-      dplyr::bind_cols(missing_df) %>%  
-      dplyr::rowwise() %>%
-      dplyr::mutate(!!paste0(state2, "_per_t") := sum(c_across(everything()), na.rm = TRUE)) %>%
-      dplyr::ungroup() %>%
+      bind_cols(missing_df) %>%  
+      rowwise() %>%
+      mutate(!!paste0(state2, "_per_t") := sum(c_across(everything()), na.rm = TRUE)) %>%
+      ungroup() %>%
       dplyr::mutate(age = row_number() + 10,  
                     cycle = age - 9) %>%
-      dplyr::add_row(!!paste0(state2, "_per_t") := 0, age = 10, cycle = 1, .before = 1) %>%
-      dplyr::slice(-n()) %>%
-      #slice(-nrow(.)) %>%
-      #slice_tail(n = -1) %>%
-      dplyr::mutate(age = 10:(10 + n() - 1), cycle = age - 9) #%>%
+      add_row(!!paste0(state2, "_per_t") := 0, age = 10, cycle = 1, .before = 1) %>%
+      slice(-n()) %>%
+      mutate(age = 10:(10 + n() - 1), cycle = age - 9) #%>%
     #dplyr::select(-matches("sim\\.x$")) %>%
     #dplyr::select(-sim.1)
     
@@ -689,330 +526,6 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
   }
 }
 ################################################################################
-
-
-
-
-################################################################################
-library(dplyr)
-library(tibble)
-# Altenative function 1:
-new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
-  Tot_Trans_per_t_tbl <- as_tibble(Tot_Trans_per_t)
-  
-  if (length(state1) == 1) {
-    transition_column <- paste0(state1, "->", state2)
-    
-    if (transition_column %in% colnames(Tot_Trans_per_t_tbl)) {
-      transition_cases <- Tot_Trans_per_t_tbl %>%
-        dplyr::select(all_of(transition_column)) %>%  
-        dplyr::mutate(age = row_number() + 10,
-                      cycle = age - 9) %>% 
-        dplyr::add_row(!!transition_column := 0, age = 10, cycle = 1, .before = 1) %>% 
-        dplyr::slice(-n()) %>%
-        dplyr::mutate(age = 10:(10 + n() - 1), 
-                      cycle = age - 9)
-    } else {
-      warning(paste0("Transition '", transition_column,
-                     "' not found! Using a column of zeros."))
-      transition_cases <- tibble(
-        !!transition_column := rep(0, nrow(Tot_Trans_per_t_tbl)),  
-        age = row_number() + 10,
-        cycle = age - 9
-      ) %>%
-        dplyr::add_row(!!transition_column := 0, age = 10, cycle = 1, .before = 1) %>% 
-        dplyr::slice(-n()) %>%
-        dplyr::mutate(age = 10:(10 + n() - 1), 
-                      cycle = age - 9)
-    }
-    return(transition_cases)
-    
-  } else if (length(state1) > 1) {
-    transition_columns <- paste0(state1, "->", state2)
-    
-    existing_cols <- intersect(transition_columns, colnames(Tot_Trans_per_t_tbl))
-    missing_cols <- setdiff(transition_columns, colnames(Tot_Trans_per_t_tbl))
-    
-    if (length(missing_cols) > 0) {
-      warning(paste0("Some transitions not found: ",
-                     paste(missing_cols, collapse = ", "),
-                     ". Using columns of zeros for these."))
-    }
-    
-    missing_df <- tibble(
-      !!!setNames(lapply(missing_cols, 
-                         function(x) rep(0, nrow(Tot_Trans_per_t_tbl))), 
-                  missing_cols)
-    )
-    
-    transition_cases <- Tot_Trans_per_t_tbl %>%
-      dplyr::select(all_of(existing_cols)) %>%
-      dplyr::bind_cols(missing_df) %>%  
-      dplyr::rowwise() %>%
-      dplyr::mutate(!!paste0(state2, "_per_t") := sum(c_across(everything()), na.rm = TRUE)) %>%
-      dplyr::ungroup() %>%
-      dplyr::mutate(age = row_number() + 10,
-                    cycle = age - 9) %>%
-      dplyr::add_row(!!paste0(state2, "_per_t") := 0, age = 10, cycle = 1, .before = 1) %>%
-      dplyr::slice(-n()) %>%
-      dplyr::mutate(age = 10:(10 + n() - 1), cycle = age - 9)
-    
-    return(transition_cases)
-  }
-}
-################################################################################
-
-
-
-
-
-################################################################################
-# Altenative function 2:
-new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
-  Tot_Trans_per_t_tbl <- as_tibble(Tot_Trans_per_t)
-  
-  if (length(state1) == 1) {
-    transition_column <- paste0(state1, "->", state2)
-    
-    if (transition_column %in% colnames(Tot_Trans_per_t_tbl)) {
-      transition_cases <- Tot_Trans_per_t_tbl %>%
-        dplyr::select(all_of(transition_column)) %>%  
-        dplyr::mutate(age = row_number() + 10,
-                      cycle = age - 9)
-    } else {
-      warning(paste0("Transition '", transition_column, "' not found! Using a column of zeros."))
-      transition_cases <- tibble(
-        transition_value = rep(0, nrow(Tot_Trans_per_t_tbl)),
-        age = row_number() + 10,
-        cycle = age - 9
-      )
-    }
-    return(transition_cases)
-  } else if (length(state1) > 1) {
-    transition_columns <- paste0(state1, "->", state2)
-    
-    existing_cols <- intersect(transition_columns, colnames(Tot_Trans_per_t_tbl))
-    missing_cols <- setdiff(transition_columns, colnames(Tot_Trans_per_t_tbl))
-    
-    if (length(missing_cols) > 0) {
-      warning(paste0("Some transitions not found: ", paste(missing_cols, collapse = ", "), ". Using columns of zeros for these."))
-    }
-    
-    missing_df <- tibble(
-      transition_value = rep(0, nrow(Tot_Trans_per_t_tbl))
-    )
-    
-    transition_cases <- Tot_Trans_per_t_tbl %>%
-      dplyr::select(all_of(existing_cols)) %>%
-      dplyr::bind_cols(missing_df) %>%
-      dplyr::rowwise() %>%
-      dplyr::mutate(transition_sum = sum(c_across(everything()), na.rm = TRUE)) %>%
-      dplyr::ungroup() %>%
-      dplyr::mutate(age = row_number() + 10,
-                    cycle = age - 9)
-    
-    return(transition_cases)
-  }
-}
-################################################################################
-
-
-
-
-
-
-################################################################################
-# Altenative function 3:
-new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
-  Tot_Trans_per_t_tbl <- as_tibble(Tot_Trans_per_t)
-  
-  if (length(state1) == 1) {
-    transition_column <- paste0(state1, "->", state2)
-    
-    if (transition_column %in% colnames(Tot_Trans_per_t_tbl)) {
-      transition_cases <- Tot_Trans_per_t_tbl %>%
-        select(all_of(transition_column)) %>%
-        mutate(age = row_number() + 10, cycle = age - 9) %>%
-        add_row(!!rlang::sym(transition_column) := 0, age = 10, cycle = 1, .before = 1) %>%
-        slice(-n()) %>%
-        mutate(age = 10:(10 + n() - 1), cycle = age - 9)
-    } else {
-      warning(paste0("Transition '", transition_column, "' not found! Using a column of zeros."))
-      transition_cases <- tibble(
-        !!rlang::sym(transition_column) := rep(0, nrow(Tot_Trans_per_t_tbl)),
-        age = row_number() + 10, cycle = age - 9
-      ) %>%
-        add_row(!!rlang::sym(transition_column) := 0, age = 10, cycle = 1, .before = 1) %>%
-        slice(-n()) %>%
-        mutate(age = 10:(10 + n() - 1), cycle = age - 9)
-    }
-    return(transition_cases)
-  } else if (length(state1) > 1) {
-    transition_columns <- paste0(state1, "->", state2)
-    
-    existing_cols <- intersect(transition_columns, colnames(Tot_Trans_per_t_tbl))
-    missing_cols <- setdiff(transition_columns, colnames(Tot_Trans_per_t_tbl))
-    
-    if (length(missing_cols) > 0) {
-      warning(paste0("Some transitions not found: ", paste(missing_cols, collapse = ", "), ". Using columns of zeros for these."))
-    }
-    
-    missing_df <- tibble(
-      !!!setNames(lapply(missing_cols, function(x) rep(0, nrow(Tot_Trans_per_t_tbl))), missing_cols)
-    )
-    
-    transition_cases <- Tot_Trans_per_t_tbl %>%
-      select(all_of(existing_cols)) %>%
-      bind_cols(missing_df) %>%
-      rowwise() %>%
-      mutate(!!rlang::sym(paste0(state2, "_per_t")) := sum(c_across(everything()), na.rm = TRUE)) %>%
-      ungroup() %>%
-      mutate(age = row_number() + 10, cycle = age - 9) %>%
-      add_row(!!rlang::sym(paste0(state2, "_per_t")) := 0, age = 10, cycle = 1, .before = 1) %>%
-      slice(-n()) %>%
-      mutate(age = 10:(10 + n() - 1), cycle = age - 9)
-    
-    return(transition_cases)
-  }
-}
-################################################################################
-
-
-
-
-
-
-
-################################################################################
-# Altenative function 4:
-new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
-  Tot_Trans_per_t_tbl <- as_tibble(Tot_Trans_per_t)
-  
-  if (length(state1) == 1) {
-    transition_column <- paste0(state1, "->", state2)
-    
-    if (transition_column %in% colnames(Tot_Trans_per_t_tbl)) {
-      transition_cases <- Tot_Trans_per_t_tbl %>%
-        select(all_of(transition_column)) %>%  
-        mutate(age = row_number() + 10, cycle = age - 9) %>% 
-        add_row(!!rlang::sym(transition_column) := 0, age = 10, cycle = 1, .before = 1) %>% 
-        slice(-n()) %>%
-        mutate(age = 10:(10 + n() - 1), cycle = age - 9)
-    } else {
-      warning(paste0("Transition '", transition_column, "' not found! Using a column of zeros."))
-      transition_cases <- tibble(
-        !!rlang::sym(transition_column) := rep(0, nrow(Tot_Trans_per_t_tbl)),
-        #age = row_number() + 10, cycle = age - 9
-        age = seq_len(nrow(Tot_Trans_per_t_tbl)) + 10,  
-        cycle = seq_len(nrow(Tot_Trans_per_t_tbl)) + 1,
-        cat("cycle, ", cycle, "\n")
-      ) %>%
-        add_row(!!rlang::sym(transition_column) := 0, age = 10, cycle = 1, .before = 1) %>% 
-        slice(-n()) %>%
-        mutate(age = 10:(10 + n() - 1), cycle = age - 9)
-    }
-    return(transition_cases)
-  } else if (length(state1) > 1) {
-    transition_columns <- paste0(state1, "->", state2)
-    
-    existing_cols <- intersect(transition_columns, colnames(Tot_Trans_per_t_tbl))
-    missing_cols <- setdiff(transition_columns, colnames(Tot_Trans_per_t_tbl))
-    
-    if (length(missing_cols) > 0) {
-      warning(paste0("Some transitions not found: ", paste(missing_cols, collapse = ", "), ". Using columns of zeros for these."))
-    }
-    
-    missing_df <- tibble(
-      !!!setNames(lapply(missing_cols, function(x) rep(0, nrow(Tot_Trans_per_t_tbl))), missing_cols)
-    )
-    
-    transition_cases <- Tot_Trans_per_t_tbl %>%
-      select(all_of(existing_cols)) %>%
-      bind_cols(missing_df) %>%
-      rowwise() %>%
-      mutate(!!rlang::sym(paste0(state2, "_per_t")) := sum(c_across(everything()), na.rm = TRUE)) %>%
-      ungroup() %>%
-      mutate(age = row_number() + 10, cycle = age - 9) %>%
-      add_row(!!rlang::sym(paste0(state2, "_per_t")) := 0, age = 10, cycle = 1, .before = 1) %>%
-      slice(-n()) %>%
-      mutate(age = 10:(10 + n() - 1), cycle = age - 9)
-    
-    return(transition_cases)
-  }
-}
-################################################################################
-
-
-
-
-
-
-#################################################################################
-## Altenative function 5:
-#new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
-#  Tot_Trans_per_t_tbl <- as_tibble(Tot_Trans_per_t)
-#  
-#  if (length(state1) == 1) {
-#    transition_column <- paste0(state1, "->", state2)
-#    
-#    if (transition_column %in% colnames(Tot_Trans_per_t_tbl)) {
-#      transition_cases <- Tot_Trans_per_t_tbl %>%
-#        select(all_of(transition_column)) %>%  
-#        mutate(age = row_number() + 10,
-#               cycle = age - 9) %>%
-#        add_row(transition_column = 0, age = 10, cycle = 1, .before = 1) %>% 
-#        slice(-n()) %>%
-#        mutate(age = 10:(10 + n() - 1), 
-#               cycle = age - 9)
-#    } else {
-#      warning(paste0("Transition '", transition_column, "' not found! Using a column of zeros."))
-#      transition_cases <- tibble(
-#        transition_value = rep(0, nrow(Tot_Trans_per_t_tbl)),  
-#        age = row_number() + 10,
-#        cycle = age - 9
-#      ) %>%
-#        add_row(transition_value = 0, age = 10, cycle = 1, .before = 1) %>% 
-#        slice(-n()) %>%
-#        mutate(age = 10:(10 + n() - 1), 
-#               cycle = age - 9)
-#    }
-#    return(transition_cases)
-#  } else if (length(state1) > 1) {
-#    transition_columns <- paste0(state1, "->", state2)
-#    
-#    existing_cols <- intersect(transition_columns, colnames(Tot_Trans_per_t_tbl))
-#    missing_cols <- setdiff(transition_columns, colnames(Tot_Trans_per_t_tbl))
-#    
-#    if (length(missing_cols) > 0) {
-#      warning(paste0("Some transitions not found: ", paste(missing_cols, collapse = ", "), ". Using columns of zeros for these."))
-#    }
-#    
-#    missing_df <- tibble(
-#      transition_value = rep(0, nrow(Tot_Trans_per_t_tbl))
-#    )
-#    
-#    transition_cases <- Tot_Trans_per_t_tbl %>%
-#      select(all_of(existing_cols)) %>%
-#      bind_cols(missing_df) %>%
-#      rowwise() %>%
-#      mutate(transition_sum = sum(c_across(everything()), na.rm = TRUE)) %>%
-#      ungroup() %>%
-#      mutate(age = row_number() + 10,
-#             cycle = age - 9) %>%
-#      add_row(transition_sum = 0, age = 10, cycle = 1, .before = 1) %>%
-#      slice(-n()) %>%
-#      mutate(age = 10:(10 + n() - 1), cycle = age - 9)
-#    
-#    return(transition_cases)
-#  }
-#}
-#################################################################################
-
-
-
-
-
-
 
 
 ################################################################################
@@ -1024,7 +537,6 @@ my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
 }
 ################################################################################
 
- 
 
 ################################################################################
 ## THE MICROSIMULATION MAIN FUNCTION
@@ -1036,26 +548,51 @@ MicroSim <- function(strategy="natural_history",
                      v_M_1, n_i, n_t, v_n, d_c, d_e, 
                      TR_out = TRUE, TS_out = TRUE, Trt = FALSE,  
                      seed = 1, 
-                     Pmatrix) {
+                     Pmatrix, vaccination = FALSE,
+                     use_parallel = TRUE, 
+                     reproducible = TRUE, 
+                     master_seed = 123) 
+{
+  cl <- NULL  # Ensure cl exists in all cases
+  
+  if (use_parallel) {
+    n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+    cat("Number of cores: ", n_cores, "\n")
+    # 6-hours timeout to prevent socket drop issues
+    cl <- makeCluster(n_cores, timeout = 6*60*60) 
+    clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
+                        "my_Probs", "utilityCoefs", "v_n", "samplev", 
+                        "my_age_prob_matrix_func","diagnose_column", 
+                        "update_column", "states_to_check", "symptom_prob_vec",
+                        "survival_prob_vec", #"global_diagnosed", 
+                        "cost_Vec", "new_cases_2"))
+    registerDoParallel(cl)
+  } else {
+    registerDoSEQ()  # Runs sequentially for debugging
+  }
+  
+  # Generate independent seeds for each simulation run
+  if (reproducible && is.null(seeds)) {
+    set.seed(master_seed)
+    seeds <- sample.int(1e6, numb_of_sims)  # Generate unique seeds
+  } else {
+    seeds <- NULL  # No reproducibility
+  }
   
   simulation_results <- list() 
   
-  # calculate the cost discount weight based on the discount rate d_c 
+  #calculate the cost discount weight based on the discount rate d_c 
   v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   
   # calculate the QALY discount weight based on the discount rate d_e                                             
   v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   
   
   # Parallel processing using foreach
   simulation_results <- 
-    foreach(sim = 1:numb_of_sims, .packages = c("dplyr", "tidyr", "purrr", "data.table"), .export = c("new_cases_2") ) %dopar% { 
-      #library(dplyr)
+    foreach(sim = 1:numb_of_sims, .packages = c("dplyr", "tidyr", "purrr") ) %dopar% { 
       ## clean memory:
       #if (step %% 10 == 0) gc()
       
-      #set.seed(seed = seeds[sim])
-      seed <- seeds[sim]
-      #seed <- 123 + sim
-      #set.seed(seed)
+      if (!is.null(seeds)) set.seed(seeds[sim])  # Use independent seed for each sim
       
       cat("\n")
       cat("\n")
@@ -1072,19 +609,21 @@ MicroSim <- function(strategy="natural_history",
         data.frame(ID = integer(), TimeStep = integer(), 
                    DiagnosedState = character(), 
                    RecoveredFromState = logical(), stringsAsFactors = FALSE)
- 
-           
+      
+      
       # Create the matrix capturing the state name/costs/health outcomes 
       # for all individuals at each time point:
       #m_M <- m_C <- m_E <-  matrix(nrow = n_i, ncol = (n_t + 1), 
       m_M <- m_C <- m_E <- 
         matrix(nrow = n_i, ncol = (n_t), 
                dimnames = list( 1:n_i, 
-                                paste0("cycle_", 1:(n_t),
-                                       sep = "")))  
+                                paste0("cycle_", 1:(n_t), sep = "")))  
       
       m_M[, 1] <- v_M_1  # indicate the initial health state   
       
+      #seed <- seeds[sim]
+      ##seed <- 17
+      #set.seed(seed) # set the seed for every individual 
       
       # estimate costs per individual for the initial health state
       m_C[, 1] <- Costs_per_Cancer_Diag(M_it = m_M[, 1], 
@@ -1097,7 +636,7 @@ MicroSim <- function(strategy="natural_history",
       m_E[, 1] <- Effs(m_M[, 1], Trt, utilityCoefs = utilityCoefs)  
       
       stored_list <- list()
-      
+       
       ###################### run over all the cycles ########################### 
       # loop runs over all the cycles of the simulation. It updates the
       # health state of each individual at each cycle, estimates the costs and
@@ -1111,10 +650,19 @@ MicroSim <- function(strategy="natural_history",
         cat("Simulation:", sim, "Cycle:", t, ", ", "Age:", age_in_loop, ", ", "seed:", seed, "\n")
         ########################################################################
         
+        ########################################################################
+        
+        # update/correct n_s (<<- let change variable from inside a function):
+        # q: there is a bad practice to use <<- in a function?
+        # a: Yes, it is a bad practice to use <<- in a function.
+        # q: how can I avoid it in this case?
+        # a: You can avoid it by passing the variable as an argument to the function.
+        #n_s  <<- length(v_n)  
+        
         ######################################################################## 
         #new code:
         # RANDOM FUNCTION:
-        new_entries <- diagnose_column(m_M[, t], t, seed) 
+        new_entries <- diagnose_column(m_M[, t], t, seed)
         
         if (!is.null(new_entries)) {
           stored_list[[t]] <- new_entries
@@ -1127,11 +675,6 @@ MicroSim <- function(strategy="natural_history",
         ########################################################################
         # NOTE: if my_age_in_loop = age_in_loop (without adding 1), then the 
         # microsim does not agree with the markov (for whatever reason)
-        
-        ## Here I need to modify the following function to extract the the right
-        ## transition matrix based on the age of the individual at each cycle, and
-        ## the corresponding transition matrix that depends on vaccination strategies
-        ######################################################################## 
         my_age_prob_matrix <- 
           my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
                                   my_age_in_loop = (age_in_loop + 1))
@@ -1140,97 +683,17 @@ MicroSim <- function(strategy="natural_history",
           my_age_prob_matrix %>%
           dplyr::select(-c(Age.group, Lower, Larger)) %>% 
           colnames()
-        ######################################################################## 
-       
-        ######################################################################## 
-        my_age_prob_matrix_2 <- 
-          my_age_prob_matrix_func(my_Prob_matrix = my_Probs2, 
-                                  my_age_in_loop = (age_in_loop + 1))
-        #rename age column:
-        my_age_prob_matrix_2 <- 
-          my_age_prob_matrix_2 %>%
-          dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
-          dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))# %>% setDT()
-        # Add colnames and update `v_n`:
-        rownames(my_age_prob_matrix_2) <- v_n <<- 
-          my_age_prob_matrix_2 %>%
-          dplyr::select(-c(Age.group, Lower, Larger)) %>% 
-          colnames()
-        ######################################################################## 
-        
-        ######################################################################## 
-        my_age_prob_matrix_2_nat_immunity <- 
-          my_age_prob_matrix_func(my_Prob_matrix = my_Probs2_nat_immunity, 
-                                  my_age_in_loop = (age_in_loop + 1))
-        #rename age column:
-        my_age_prob_matrix_2_nat_immunity <- 
-          my_age_prob_matrix_2_nat_immunity %>%
-          dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
-          dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
-        # Add colnames and update `v_n`:
-        rownames(my_age_prob_matrix_2_nat_immunity) <- v_n <<- 
-          my_age_prob_matrix_2_nat_immunity %>%
-          dplyr::select(-c(Age.group, Lower, Larger)) %>% 
-          colnames()
-        ######################################################################## 
-        
-        ######################################################################## 
-        my_age_prob_matrix_4 <- 
-          my_age_prob_matrix_func(my_Prob_matrix = my_Probs4, 
-                                  my_age_in_loop = (age_in_loop + 1))
-        #rename age column:
-        my_age_prob_matrix_4 <- 
-          my_age_prob_matrix_4 %>%
-          dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
-          dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
-        # Add colnames and update `v_n`:
-        rownames(my_age_prob_matrix_4) <- v_n <<- 
-          my_age_prob_matrix_4 %>%
-          dplyr::select(-c(Age.group, Lower, Larger)) %>% 
-          colnames()
-        ######################################################################## 
-        
-        ######################################################################## 
-        my_age_prob_matrix_9 <- 
-          my_age_prob_matrix_func(my_Prob_matrix = my_Probs9, 
-                                  my_age_in_loop = (age_in_loop + 1))
-        #rename age column:
-        my_age_prob_matrix_9 <- 
-          my_age_prob_matrix_9 %>%
-          dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
-          dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
-        # Add colnames and update `v_n`:
-        rownames(my_age_prob_matrix_9) <- v_n <<- 
-          my_age_prob_matrix_9 %>%
-          dplyr::select(-c(Age.group, Lower, Larger)) %>% 
-          colnames()
-        ######################################################################## 
         
         # Extract the transition probabilities of each individuals at cycle t
         # given the individual current state and the corresponding 
         # transition probability matrix that depends on age:
-        # Next time (t+1) transition:
-        
-        ## m_P is a (n_i x n_s) matrix with the probabilities of transitioning
-        #m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
-        
-        # for vaccination I'll need a new Probs function:
-        # use data.table for speed
-        m_P <- Probs_3_optimized(M_it = m_M[, t], v_n = v_n, n_i = n_i, seed = seed,
-                       prob_matrix = my_age_prob_matrix, 
-                       prob_matrix_2 = my_age_prob_matrix_2,
-                       prob_matrix_2_nat_immunity = my_age_prob_matrix_2_nat_immunity,
-                       prob_matrix_4 = my_age_prob_matrix_4, 
-                       prob_matrix_9 = my_age_prob_matrix_9, 
-                       vacc_lbl = vacc_lbl,
-                       age = age_in_loop)
-        cat("Dimension of m_P is (outside the function): ",dim(m_P),"\n")
+        # Next time (t+1) transition
+        m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
         
         # RANDOM FUNCTION: 
         m_M[, t + 1] <- samplev(probs = m_P, m = 1, seed = seed)  # sample the next health state 
-                                                     # and store that state in  
-                                                     # matrix m_M 
-        cat("Dimension of m_M is ",dim(m_M),"\n")
+        # and store that state in  
+        # matrix m_M 
         ########################################################################    
         
         # m_M[, t + 1] <- update_column(m_M[, t], new_entries)
@@ -1263,8 +726,6 @@ MicroSim <- function(strategy="natural_history",
       
       # Combine stored entries in a single data frame
       symptomatics <- bind_rows(stored_list)
-      cat("=================================================\n")
-      cat("symprotamics dimensions: ", dim(symptomatics),"\n")
       tc_disc <- m_C[,1:n_t] %*% v_dwc       # total (discounted) cost per individual
       te_disc <- m_E[,1:n_t] %*% v_dwe       # total (discounted) QALYs per individual 
       
@@ -1330,7 +791,6 @@ MicroSim <- function(strategy="natural_history",
         Tot_Trans_per_t <- NULL
       }
       
-      Tot_Trans_per_t <- Tot_Trans_per_t %>% as_tibble()
       # New cases:
       new_CIN1 <- new_cases_2(state1 = "HR.HPV.infection", state2 = "CIN1", 
                               Tot_Trans_per_t = Tot_Trans_per_t)
@@ -1395,12 +855,12 @@ MicroSim <- function(strategy="natural_history",
         dplyr::select(sim, age, CC_Death_by_diff) %>% 
         dplyr::as_tibble()
       
-      #cat("At sim number:", sim,  " reported strategy is ", strategy, "\n")
+      cat("At sim number:", sim,  " reported strategy is ", strategy, "\n")
       
       # Store the results from the simulation in a list
      results <- list(#strategy = strategy,
-                      seed = seeds[sim],
-                      #seed = seed,
+                      #seed = seeds[sim],
+                      seed = seed,
                       #sim_numb = sim, 
                       #m_M = m_M, 
                       #m_C = m_C, 
@@ -1424,41 +884,25 @@ MicroSim <- function(strategy="natural_history",
                       new_CC_Death = new_CC_Death,
                       CC_Death_by_diff = CC_Death_by_diff)  
       results$seed <- seeds[sim]
-      #results$seed <- seed
       #simulation_results[sim] <- list(results)
       #simulation_results[sim] <- results
       cat("At sim number:", sim,  " tc_hat_undisc is ", tc_hat_undisc, "\n")
       rm(symptomatics)
       #rm(TS) 
-      
-      ## Write to a log file to track worker outputs
-      #cat(sprintf("Simulation %d, Length: %d\n", sim, length(output)), 
-      #    file = "debug_log.txt", append = TRUE)
       return(results)
       #gc() #Force memory cleanup after each sim/batch 
       
     } # end of `foreach/dopar` loop
   
-  #return(simulation_results)
-  # stack results
-  #source("./R/Sumarize_results_by_Strategy_Func.R")
-  #source("/home/07075107P/microSim/cervix_cancer_microsimulation/R/Sumarize_results_by_Strategy_Func.R")
-  #source("/home/07075107P/microSim/cervix_cancer_microsimulation/R/Sumarize_results_by_Strategy_Func.R")
-  #stacked_results <- 
-  #  summarize_results_by_Strategy(results_list = simulation_results, 
-  #                                numb_of_sims = numb_of_sims)
+  # Stop cluster **inside the function** if it was created
+  if (!is.null(cl)) stopCluster(cl)
   
-  #stopCluster(cl)  # Stop the cluster when done
-  #return(stacked_results)
   return(simulation_results)
 } # end of MicroSim function
 ################################################################################
 
 
 ################################################################################
-                  ###################################
-                  ## Pre-simulation Computations: ##
-                  ###################################
 ################################################################################
 ### Prepare Parallelize code ###
 library(parallel)
@@ -1472,130 +916,44 @@ is_slurm <- function() {
 }
 ################################################################################
  
-################################################################################
-# Determine number of cores
-if (is_slurm()) {
-  # In Slurm, use the cores requested by the job
-  n_cores <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
-  cat("I'm in slurm!\n")
-} else {
-  cat("I'm NOT in slurm!\n")
-  # On local machine, use all available cores (or limit if needed)
-  #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
-  ## Register fewer cores (adjust based on server resources)
-  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
-  #n_cores <- detectCores()  # Try using 8 or fewer cores
-  #n_cores <- min(detectCores())  # Try using 8 or fewer cores
-  #n_cores <- 6  # Try using 8 or fewer cores
-  #n_cores <- 6
-}
-# for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
-# five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
-# in 3.3-3.4 minutes but the system becomes unstable and leading to crash often.
-# in the office desktop with 3 cores it takes 12.1434, that's roughly 3.6 times slower
-#n_cores <- 5 # for personal Lenovo .
-cat("Number of cores: ", n_cores, "\n")
-################################################################################
+#################################################################################
+## Determine number of cores
+#if (is_slurm()) {
+#  # In Slurm, use the cores requested by the job
+#  n_cores <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
+#  cat("I'm in slurm!\n")
+#} else {
+#  cat("I'm NOT in slurm!\n")
+#  # On local machine, use all available cores (or limit if needed)
+#  #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
+#  ## Register fewer cores (adjust based on server resources)
+#  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+#  #n_cores <- detectCores()  # Try using 8 or fewer cores
+#  #n_cores <- min(detectCores())  # Try using 8 or fewer cores
+#  #n_cores <- 6  # Try using 8 or fewer cores
+#}
+## for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
+## five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
+## in 3.3-3.4 minutes but the system becomes unstable and leading to crash often.
+## in the office desktop with 3 cores it takes 12.1434, that's roughly 3.6 times slower
+##n_cores <- 5 # for personal Lenovo .
+#cat("Number of cores: ", n_cores, "\n")
+#################################################################################
  
-################################################################################
-## Vaccination strategies:
-# Paramters:
-# vaccination coverage for vacc 2, 4 and 9:
-vacc_coverage <- c(0.357, 0.0, 0.0) 
-#vacc_coverage <- c(0.0, 0.0, 0.0) 
-# natural immunity associated with vacc 2, 4, and 9:
-nat_immunity_linked_to_vacc <- c(0.0, 0.0, 0.0)
 
-################################################################################
-# RANDOM FUNCTION
-generate_vaccine_labels <- function(n_i, vacc_coverage, nat_immunity, seed) {
-  # Ensure the sum of coverage is valid
-  if (sum(vacc_coverage) > 1) {
-    stop("The sum of vacc_coverage cannot exceed 1.")
-  }
-  
-  # Calculate the number of individuals for each vaccine
-  n_vacc_2 <- round(vacc_coverage[1] * n_i)
-  n_vacc_4 <- round(vacc_coverage[2] * n_i)
-  n_vacc_9 <- round(vacc_coverage[3] * n_i)
-  
-  # Remaining individuals are "no_vacc"
-  n_no_vacc <- n_i - (n_vacc_2 + n_vacc_4 + n_vacc_9)
-  
-  if (n_no_vacc < 0) {
-    stop("The specified coverage results in more vaccinated individuals than n_i.")
-  }
-  
-  # Create the label vector
-  vacc_lbl <- c(
-    rep("vacc_2", n_vacc_2),
-    rep("vacc_4", n_vacc_4),
-    rep("vacc_9", n_vacc_9),
-    rep("no_vacc", n_no_vacc)
-  )
-  
-  # Shuffle the vector randomly
-  vacc_lbl <- sample(vacc_lbl, size = n_i, replace = FALSE)
-  
-  # Initialize the 'immuned' vector with FALSE for everyone
-  immuned <- rep(FALSE, n_i)
-  
-  ## as data frame:
-  #vacc_lbl <- as.data.frame(vacc_lbl)
-  #vacc_lbl$ID <- seq_len(nrow(vacc_lbl))
-  #return(vacc_lbl)
-  # For vaccinated individuals, check if they overcome their immunity probability
-  # random seed
-  set.seed(seed)
-  
-  for (i in 1:n_i) {
-    if (vacc_lbl[i] == "vacc_2") {
-      # Check if individual overcomes immunity probability for vacc_2
-      immuned[i] <- runif(1) < nat_immunity[1]
-    } else if (vacc_lbl[i] == "vacc_4") {
-      # Check if individual overcomes immunity probability for vacc_4
-      immuned[i] <- runif(1) < nat_immunity[2]
-    } else if (vacc_lbl[i] == "vacc_9") {
-      # Check if individual overcomes immunity probability for vacc_9
-      immuned[i] <- runif(1) < nat_immunity[3]
-    }
-    # Individuals with "no_vacc" remain FALSE for immunity
-  }
-  
-  # Create the final data frame with ID, vacc_state, and immuned status
-  result_df <- data.frame(
-    ID = seq_len(n_i),
-    vacc_state = vacc_lbl,
-    immuned = immuned
-  )
-  
-  return(result_df)
-}
-################################################################################
-# RANDOM FUNCTION:
-seed <- 123
-vacc_lbl <-
-  generate_vaccine_labels(n_i, vacc_coverage, nat_immunity_linked_to_vacc, seed)
-
-################################################################################
-
-
-################################################################################
-# 6-hours timeout to prevent socket drop issues
-cl <- makeCluster(n_cores, timeout = 6*60*60) 
-clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
-                    "vacc_lbl", "Probs_3_optimized",
-                    "my_Probs", "my_Probs2","my_Probs4", "my_Probs9", 
-                    "my_Probs2_nat_immunity", "utilityCoefs", "v_n", "samplev", 
-                    "my_age_prob_matrix_func","diagnose_column", 
-                    "update_column", "states_to_check", 
-                    "symptom_prob_vec", "survival_prob_vec", #"global_diagnosed", 
-                    "cost_Vec", "new_cases_2"))
-registerDoParallel(cl) # for parallel
+#################################################################################
+## 6-hours timeout to prevent socket drop issues
+#cl <- makeCluster(n_cores, timeout = 6*60*60) 
+#clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
+#                    "my_Probs", "utilityCoefs", "v_n", "samplev", 
+#                    "my_age_prob_matrix_func","diagnose_column", 
+#                    "update_column", "states_to_check", "symptom_prob_vec",
+#                    "survival_prob_vec", #"global_diagnosed", 
+#                    "cost_Vec", "new_cases_2"))
+##registerDoParallel(cl) # for parallel
 #registerDoSEQ()        # for sequential
-################################################################################
-################################################################################
-
+#################################################################################
+#################################################################################
 
 
 ################################################################################
@@ -1604,21 +962,25 @@ registerDoParallel(cl) # for parallel
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
+#numb_of_sims = 20
 numb_of_sims = 3
 
 ## Generate random seeds
 #set.seed(123) # fix random seed for sample
 #set.seed(321) # fix random seed for sample
 seeds <- sample(1:100000, numb_of_sims, replace = FALSE)  
+
 strategy <- "natural_history"
-strategy <- "vacc_2_test"
 sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
                         seeds = seeds, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
-                        Trt = FALSE, seed = 2, Pmatrix = Pmatrix)
-# Stop the cluster when done
-stopCluster(cl)  
+                        Trt = FALSE, seed = 2, Pmatrix = Pmatrix, 
+                        master_seed = 123, 
+                        reproducible = TRUE, 
+                        use_parallel = TRUE)
+## Stop the cluster when done
+#stopCluster(cl)  
 
 # For stacking outside the function, we need to comment the stacking function
 # inside  de the MicroSim function, and return the results as a list by commenting
@@ -1626,7 +988,6 @@ stopCluster(cl)
 # uncomment the following lines:
 #source("./R/sumarize_results_by_Strategy_Func_revised.R")
 source("./R/sumarize_results_by_Strategy_Func.R")
-#source("./R/sumarize_results_by_Strategy_Func.R", local = TRUE) # for debugging
 stacked_results <- 
   summarize_results_by_Strategy(results_list = sim_no_trt, 
                                 numb_of_sims = numb_of_sims)
@@ -2053,17 +1414,11 @@ mean_FIGO_prevalence_Func <- function(sim_stalked_result, my_Probs) {
 
 # Initialize the result with the original structure
 sim_result <-  other_mean_mortality_result 
-## Concatenate the prevalence to the sim result 
-#other_mean_mortality_result <-
-#  other_mean_mortality_func(sim_stalked_result = 
-#                              other_mean_mortality_result, my_Probs = my_Probs)  
-
 # Concatenate the prevalence to the sim result 
 sim_result <-
 mean_FIGO_prevalence_Func(sim_stalked_result = 
                               sim_result, my_Probs = my_Probs)  
 ################################################################################
-
 
 
 ################################################################################
@@ -2203,14 +1558,12 @@ cat("SLURM job ID:", slurm_job_id, "\n")
 ## Save simulation result:
 ## Use job ID in file name
 #output_file <-
-#  #paste0("data/testing_stability/stacked_sims_20x10E5x75_20250323_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
-#  paste0("data/last_results_20250324/stacked_sims_10x10E5x75_20250324_TEST_sim_", slurm_job_id, ".rds")
+#  paste0("data/natural_history/stacked_sims_20x10E6x75_20250211_madeinPADO_PARA_NATURAL_HISTORY_2_", slurm_job_id, ".rds")
 #saveRDS(object = sim_result, file = output_file)
+#cat("I have written out the results\n")
 
-## to load a pre-run simulation:
-#sim_result <- readRDS(file = "data/testing_stability/stacked_sims_20x10E5x75_2025")
-
-cat("I have written out the results\n")
+## Load previoulsy produced results (COMMENT OFF WHEN PRODUCING A NEW SIMULATION):
+#sim_result <- readRDS("data/natural_history/stacked_sims_20x10E6x75_20250211_madeinPADO_PARA_NATURAL_HISTORY_2_7073.rds")
 
 ### ----Convert .Rmd to .R
 #library(knitr)
@@ -2292,7 +1645,7 @@ long_micro_sim_df <- averaged_micro_sim_df %>%
 # Plot the data using ggplot2
 ggplot(long_micro_sim_df, aes(x = age, y = Average, color = Stage)) +
   geom_line() +
-  labs(title = "Averaged CIN and FIGO Stages by Age Across All Simulations",
+  labs(title = "NAT HIST: Averaged CIN and FIGO Stages by Age Across All Simulations",
        x = "Age",
        y = "Average Count",
        color = "Stage") +
@@ -2325,7 +1678,7 @@ markov_df_long_data <- markov_df %>%
 ggplot(markov_df_long_data, aes(x = age, y = value, color = `Health state`)) +
   geom_line(linewidth=1, alpha=0.7) +
   labs(x = "Age", y = "Value", color = "Health state") +
-  ggtitle(expression(paste("Markov cohort simulation for ", 10^6, " individuals"))) + 
+  ggtitle(expression(paste("NAT HIST: Markov cohort simulation for ", 10^6, " individuals"))) + 
   theme_minimal()  # Optional: customize the theme
 
 ################################################################################
@@ -2479,7 +1832,7 @@ plot_comparison <- function(data, measure_name) {
     geom_bar(stat = "identity", position = "dodge") +
     labs(
       title = paste(
-        measure_name, "Comparison\n",
+        measure_name, "NAT HIST: Comparison\n",
         "N =", sim_result[[1]]$numb_of_ind, 
         ";  cycles=", sim_result[[1]]$numb_of_cycles, 
         "Parallelized\n", 
@@ -2518,7 +1871,7 @@ plot_FIGO_prevalence <-
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
   labs(
-    title = "Mean FIGO Prevalence by Age Interval",
+    title = "NAT HIST: Mean FIGO Prevalence by Age Interval",
     x = "Age Interval",
     y = "Mean Prevalence (%)",
     color = "FIGO Stage"
@@ -2549,7 +1902,7 @@ plot_mean_FIGO <-
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
   labs(
-    title = "Mean FIGO by Age Interval",
+    title = "NAT HIST: Mean FIGO by Age Interval",
     x = "Age Interval",
     y = "Mean",
     color = "FIGO Stage"
@@ -2582,7 +1935,7 @@ plot_mean_Diagnosed_FIGO <-
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
   labs(
-    title = "Mean Diagnosed FIGO by Age Interval",
+    title = "NAT HIST: Mean Diagnosed FIGO by Age Interval",
     x = "Age Interval",
     y = "Mean",
     color = "FIGO Stage"
@@ -2639,7 +1992,6 @@ if (numb_of_sims >=60) {
   
   # Plot the moving average
   library(zoo)
-  
   moving_avg <- rollmean(average_cost, 10, align = "center")
   
   plot(average_cost, type = "l", main = "Average Cost over Simulations")
@@ -2649,8 +2001,3 @@ if (numb_of_sims >=60) {
 df <- sim_result[["No Intervention"]]$TR %>% select(FIGO.I, FIGO.II, FIGO.III, FIGO.IV) 
 # select(FIGO.I, FIGO.II, FIGO.III, FIGO.IV) and summarize by columns
 df <- df %>% summarise(across(everything(), sum, na.rm = TRUE))
-
-# DEBUGGING
-cat("\n")
-cat("I HAVE REACHED THE END OF THE SCRIPT FINE.\n")
-cat("WITH n_i = ", n_i,  " , numb_of_sims = ", numb_of_sims, "\n")
