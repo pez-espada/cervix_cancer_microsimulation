@@ -161,8 +161,9 @@ samplev <- function (probs, m) {
   ##############################################################################
   ##############################################################################
   
-  ### Random sampling, binning, and moving states: 
+  #### Random sampling, binning, and moving states: 
   for (j in 1:m) {
+    # RANDOM GEN CODE HERE:
     un <- rep(runif(n), rep(k, n)) # repeat `runif(n)` `rep(k,n)`times
     # this create a numeric of `n_i x n_s` that 
     # sample  an uniformed distributed number 
@@ -222,27 +223,27 @@ Probs <- function(M_it, my_Probs) {
 # This cost is only charged once in the patient's lifetime.
 # NOTE: need to decide if the cost is applied on current time `t` or `t+1` as it is now.
 Costs_per_Cancer_Diag <- function (M_it, cost_Vec, symptomatics, time_iteration, Trt = FALSE) {
-c_it <- rep(0, length(M_it))
-#ci_t <- 0
-if(nrow(symptomatics) > 0 ) {
-  c_it[symptomatics %>% 
-         dplyr::filter(DiagnosedState == "FIGO.I" & TimeStep == time_iteration) %>% 
-         select(ID) %>% as.list() %>% 
-         unlist()] <- cost_Vec[which(v_n %in% "FIGO.I")]
-  c_it[symptomatics %>% 
-         dplyr::filter(DiagnosedState == "FIGO.II" & TimeStep == time_iteration) %>% 
-         select(ID) %>% as.list() %>% 
-         unlist()] <- cost_Vec[which(v_n %in% "FIGO.II")]
-  c_it[symptomatics %>%
-         dplyr::filter(DiagnosedState == "FIGO.III" & TimeStep == time_iteration) %>% 
-         select(ID) %>% as.list() %>% 
-         unlist()] <- cost_Vec[which(v_n %in% "FIGO.III")]
-  c_it[symptomatics %>% 
-         dplyr::filter(DiagnosedState == "FIGO.IV" & TimeStep == time_iteration) %>% 
-         select(ID) %>% as.list() %>% 
-         unlist()] <- cost_Vec[which(v_n %in% "FIGO.IV")]
-}
-return(c_it) # return the costs
+  c_it <- rep(0, length(M_it))
+  #ci_t <- 0
+  if(nrow(symptomatics) > 0 ) {
+    c_it[symptomatics %>% 
+           dplyr::filter(DiagnosedState == "FIGO.I" & TimeStep == time_iteration) %>% 
+           select(ID) %>% as.list() %>% 
+           unlist()] <- cost_Vec[which(v_n %in% "FIGO.I")]
+    c_it[symptomatics %>% 
+           dplyr::filter(DiagnosedState == "FIGO.II" & TimeStep == time_iteration) %>% 
+           select(ID) %>% as.list() %>% 
+           unlist()] <- cost_Vec[which(v_n %in% "FIGO.II")]
+    c_it[symptomatics %>%
+           dplyr::filter(DiagnosedState == "FIGO.III" & TimeStep == time_iteration) %>% 
+           select(ID) %>% as.list() %>% 
+           unlist()] <- cost_Vec[which(v_n %in% "FIGO.III")]
+    c_it[symptomatics %>% 
+           dplyr::filter(DiagnosedState == "FIGO.IV" & TimeStep == time_iteration) %>% 
+           select(ID) %>% as.list() %>% 
+           unlist()] <- cost_Vec[which(v_n %in% "FIGO.IV")]
+  }
+  return(c_it) # return the costs
 }
 ################################################################################
 
@@ -361,12 +362,12 @@ stored_list <- vector("list", n_t)
 # a dataframe with `ID, TimeStep`, `state`, and `RecoveredFromState` columns.
 # The function also updates the global vector `global_diagnosed` with the IDs of
 # individuals who have been diagnosed.
+# RANDOM FUNCTION:
 diagnose_column <- function(col, time_step) {
   new_entries <- data.frame(ID = integer(), 
                             TimeStep = integer(),
                             DiagnosedState = character(),
                             RecoveredFromState = logical())
-  
   for (state_idx in seq_along(states_to_check)) {
     state <- states_to_check[state_idx]
     prob_symptom <- symptom_prob_vec[state_idx]
@@ -377,6 +378,7 @@ diagnose_column <- function(col, time_step) {
       in_state <- setdiff(in_state, global_diagnosed)
       if (length(in_state) > 0) {
         # Store based on diagnose probability
+        # (RANDOM GEN CODE HERE):
         to_store <- in_state[runif(length(in_state)) < prob_symptom]
         if (length(to_store) > 0) {
           # Add these individuals to the global diagnosed list
@@ -537,21 +539,43 @@ my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
 ## THE MICROSIMULATION MAIN FUNCTION
 # This version stacks solution of simulations but produces a list with stacked elements
 # check the `MicroSim` for any improvements or issues.
-MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
-                     v_M_1, n_i, n_t, v_n, d_c, d_e, TR_out = TRUE, 
-                     TS_out = TRUE, Trt = FALSE,  seed = 1, Pmatrix, vaccination = FALSE) 
+MicroSim <- function(strategy="natural_history", 
+                     numb_of_sims = 20,
+                     #seeds,
+                     v_M_1, n_i, n_t, v_n, d_c, d_e, 
+                     TR_out = TRUE, TS_out = TRUE, Trt = FALSE,  
+                     #seed = 1, 
+                     Pmatrix, vaccination = FALSE,
+                     use_parallel = TRUE, 
+                     reproducible = TRUE, 
+                     master_seed = 123) 
 {
-  # Generate random seeds
-  #seeds <- sample(1:10000, numb_of_sims, replace = FALSE)  
-  seeds <- sample(1:100000, numb_of_sims, replace = FALSE)  
-  ## fix the seeds for reproducibility::
-  #seeds <- c(38222, 52130, 92742, 73352, 41494, 43929, 94560, 72382, 13846, 94537) %>% 
-  #  as.integer()
-  #seeds <- c(20422, 63139, 3575,  9449,  4055,  
-  #           6931, 92384, 24048, 25109,  7757,
-  #           25889, 32227, 57572, 36484, 38944,  
-  #           4074, 45156, 93585, 48543, 57217) %>%
-  #  as.integer()
+  cl <- NULL  # Ensure cl exists in all cases
+  
+  if (use_parallel) {
+    n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+    cat("Number of cores: ", n_cores, "\n")
+    # 6-hours timeout to prevent socket drop issues
+    cl <- makeCluster(n_cores, timeout = 6*60*60) 
+    clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
+                        "my_Probs", "utilityCoefs", "v_n", "samplev", 
+                        "my_age_prob_matrix_func","diagnose_column", 
+                        "update_column", "states_to_check", "symptom_prob_vec",
+                        "survival_prob_vec", #"global_diagnosed", 
+                        "cost_Vec", "new_cases_2"))
+    registerDoParallel(cl)
+  } else {
+    registerDoSEQ()  # Runs sequentially for debugging
+  }
+  
+  # Generate independent seeds for each simulation run
+  if (reproducible && !is.null(master_seed)) {
+    set.seed(master_seed)
+    seeds <- sample.int(1e6, numb_of_sims)  # Generate unique seeds
+    cat("LAS SEMILLAS SON:", seeds, "\n")
+  } else {
+    seeds <- NULL  # No reproducibility
+  }
   
   simulation_results <- list() 
   
@@ -565,7 +589,17 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
     foreach(sim = 1:numb_of_sims, .packages = c("dplyr", "tidyr", "purrr") ) %dopar% { 
       ## clean memory:
       #if (step %% 10 == 0) gc()
+      
+      if (!is.null(seeds)) set.seed(seeds[sim])  # Use independent seed for each sim
+      
+      cat("\n")
+      cat("\n")
+      cat("\n")
+      cat("-------------------------------------------------------\n")
+      cat("-------------------------------------------------------\n")
       cat("Running simulation", sim, "with seed", seeds[sim], "\n")
+      cat("-------------------------------------------------------\n")
+      
       # Initialize a global vector to store all diagnosed individuals
       global_diagnosed <<- integer()
       symptomatics <-
@@ -573,11 +607,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
                    DiagnosedState = character(), 
                    RecoveredFromState = logical(), stringsAsFactors = FALSE)
       
-      ## NOTA: PONER FUERA DEL LOOP (??)
-      ##calculate the cost discount weight based on the discount rate d_c 
-      #v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   
-      ## calculate the QALY discount weight based on the discount rate d_e                                             
-      #v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   
       
       # Create the matrix capturing the state name/costs/health outcomes 
       # for all individuals at each time point:
@@ -589,9 +618,6 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       
       m_M[, 1] <- v_M_1  # indicate the initial health state   
       
-      seed <- seeds[sim]
-      #seed <- 17
-      set.seed(seed) # set the seed for every individual 
       
       # estimate costs per individual for the initial health state
       m_C[, 1] <- Costs_per_Cancer_Diag(M_it = m_M[, 1], 
@@ -601,7 +627,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
                                         Trt)             
       
       # estimate QALYs per individual for the initial health state 
-      m_E[, 1] <- Effs(m_M[, 1], Trt, cl = 1, utilityCoefs = utilityCoefs)  
+      m_E[, 1] <- Effs(m_M[, 1], Trt, utilityCoefs = utilityCoefs)  
       
       stored_list <- list()
        
@@ -615,6 +641,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         # Select the transition matrix based on the cycle `n_t`:
         # Since our age intervals start at 10 years old,
         age_in_loop <- t + 9
+        cat("Simulation:", sim, "Cycle:", t, ", ", "Age:", age_in_loop, ", ", "seed:", seeds[sim], "\n")
+        ########################################################################
+        
         ########################################################################
         
         # update/correct n_s (<<- let change variable from inside a function):
@@ -626,6 +655,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         
         ######################################################################## 
         #new code:
+        # RANDOM FUNCTION:
         new_entries <- diagnose_column(m_M[, t], t)
         
         if (!is.null(new_entries)) {
@@ -654,6 +684,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
         # Next time (t+1) transition
         m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
         
+        # RANDOM FUNCTION: 
         m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
         # and store that state in  
         # matrix m_M 
@@ -823,7 +854,7 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       # Store the results from the simulation in a list
      results <- list(#strategy = strategy,
                       #seed = seeds[sim],
-                      seed = seed,
+                      seed = seeds[sim],
                       #sim_numb = sim, 
                       #m_M = m_M, 
                       #m_C = m_C, 
@@ -857,16 +888,9 @@ MicroSim <- function(strategy="natural_history", numb_of_sims = 20,
       
     } # end of `foreach/dopar` loop
   
-  #return(simulation_results)
-  # stack results
-  #source("./R/Sumarize_results_by_Strategy_Func.R")
-  #source("/home/07075107P/microSim/cervix_cancer_microsimulation/R/Sumarize_results_by_Strategy_Func.R")
-  #stacked_results <- 
-  #  summarize_results_by_Strategy(results_list = simulation_results, 
-  #                                numb_of_sims = numb_of_sims)
+  # Stop cluster **inside the function** if it was created
+  if (!is.null(cl)) stopCluster(cl)
   
-  #stopCluster(cl)  # Stop the cluster when done
-  #return(stacked_results)
   return(simulation_results)
 } # end of MicroSim function
 ################################################################################
@@ -886,44 +910,44 @@ is_slurm <- function() {
 }
 ################################################################################
  
-################################################################################
-# Determine number of cores
-if (is_slurm()) {
-  # In Slurm, use the cores requested by the job
-  n_cores <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
-  cat("I'm in slurm!\n")
-} else {
-  cat("I'm NOT in slurm!\n")
-  # On local machine, use all available cores (or limit if needed)
-  #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
-  ## Register fewer cores (adjust based on server resources)
-  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
-  #n_cores <- detectCores()  # Try using 8 or fewer cores
-  #n_cores <- min(detectCores())  # Try using 8 or fewer cores
-  #n_cores <- 6  # Try using 8 or fewer cores
-}
-# for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
-# five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
-# in 3.3-3.4 minutes but the system becomes unstable and leading to crash often.
-# in the office desktop with 3 cores it takes 12.1434, that's roughly 3.6 times slower
-#n_cores <- 5 # for personal Lenovo .
-cat("Number of cores: ", n_cores, "\n")
-################################################################################
+#################################################################################
+## Determine number of cores
+#if (is_slurm()) {
+#  # In Slurm, use the cores requested by the job
+#  n_cores <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
+#  cat("I'm in slurm!\n")
+#} else {
+#  cat("I'm NOT in slurm!\n")
+#  # On local machine, use all available cores (or limit if needed)
+#  #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
+#  ## Register fewer cores (adjust based on server resources)
+#  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+#  #n_cores <- detectCores()  # Try using 8 or fewer cores
+#  #n_cores <- min(detectCores())  # Try using 8 or fewer cores
+#  #n_cores <- 6  # Try using 8 or fewer cores
+#}
+## for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
+## five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
+## in 3.3-3.4 minutes but the system becomes unstable and leading to crash often.
+## in the office desktop with 3 cores it takes 12.1434, that's roughly 3.6 times slower
+##n_cores <- 5 # for personal Lenovo .
+#cat("Number of cores: ", n_cores, "\n")
+#################################################################################
  
 
-################################################################################
-# 6-hours timeout to prevent socket drop issues
-cl <- makeCluster(n_cores, timeout = 6*60*60) 
-clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
-                    "my_Probs", "utilityCoefs", "v_n", "samplev", 
-                    "my_age_prob_matrix_func","diagnose_column", 
-                    "update_column", "states_to_check", "symptom_prob_vec",
-                    "survival_prob_vec", #"global_diagnosed", 
-                    "cost_Vec", "new_cases_2"))
-registerDoParallel(cl) # for parallel
+#################################################################################
+## 6-hours timeout to prevent socket drop issues
+#cl <- makeCluster(n_cores, timeout = 6*60*60) 
+#clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
+#                    "my_Probs", "utilityCoefs", "v_n", "samplev", 
+#                    "my_age_prob_matrix_func","diagnose_column", 
+#                    "update_column", "states_to_check", "symptom_prob_vec",
+#                    "survival_prob_vec", #"global_diagnosed", 
+#                    "cost_Vec", "new_cases_2"))
+##registerDoParallel(cl) # for parallel
 #registerDoSEQ()        # for sequential
-################################################################################
-################################################################################
+#################################################################################
+#################################################################################
 
 
 ################################################################################
@@ -934,13 +958,21 @@ p = Sys.time()
 # run for no treatment
 #numb_of_sims = 20
 numb_of_sims = 3
+
+
 strategy <- "natural_history"
 sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
+                        #seeds = seeds, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
-                        Trt = FALSE, seed = 2, Pmatrix = Pmatrix)
-# Stop the cluster when done
-stopCluster(cl)  
+                        Trt = FALSE, 
+                        #seed = 2, 
+                        Pmatrix = Pmatrix, 
+                        master_seed = 123, 
+                        reproducible = TRUE, 
+                        use_parallel = FALSE)
+## Stop the cluster when done
+#stopCluster(cl)  
 
 # For stacking outside the function, we need to comment the stacking function
 # inside  de the MicroSim function, and return the results as a list by commenting
@@ -1515,62 +1547,6 @@ if (is.na(slurm_job_id)) {
 }
 cat("SLURM job ID:", slurm_job_id, "\n")
 
-## Save simulation result:
-## Use job ID in file name
-#output_file <-
-#  paste0("data/natural_history/stacked_sims_20x10E6x75_20250211_madeinPADO_PARA_NATURAL_HISTORY_2_", slurm_job_id, ".rds")
-#saveRDS(object = sim_result, file = output_file)
-#cat("I have written out the results\n")
-
-## Load previoulsy produced results (COMMENT OFF WHEN PRODUCING A NEW SIMULATION):
-#sim_result <- readRDS("data/natural_history/stacked_sims_20x10E6x75_20250211_madeinPADO_PARA_NATURAL_HISTORY_2_7073.rds")
-
-### ----Convert .Rmd to .R
-#library(knitr)
-## purl("your_script.Rmd", output = "your_script.R")
-## example:
-#purl("Cervix_MicroSim_RMarkdown_v.072_B.Rmd", output = "cervix_microSim_stacked_list.R")
-#purl("Cervix_MicroSim_RMarkdown_v.072_B.Rmd", output = "cervix_microSim_stacked_list_B.R")
-
-
-## ----Cost-Efectivenes
-####################### Cost-effectiveness analysis #############################
-## store the mean costs (and MCSE) of each strategy in a new variable C (vector costs)
-#v_C  <- c(sim_no_trt$tc_hat_disc, sim_trt$tc_hat_disc) 
-#sd_C <- c(sd(sim_no_trt$tc_disc), sd(sim_trt$tc_disc)) / sqrt(n_i)
-## store the mean QALYs (and MCSE) of each strategy in a new variable E (vector effects)
-#v_E  <- c(sim_no_trt$te_hat_disc, sim_trt$te_hat_disc)
-#sd_E <- c(sd(sim_no_trt$te_disc), sd(sim_trt$te_disc)) / sqrt(n_i)
-#
-#delta_C <- v_C[2] - v_C[1]                   # calculate incremental costs
-#delta_E <- v_E[2] - v_E[1]                   # calculate incremental QALYs
-## Monte Carlo Squared Error (MCSE) of incremental costs:
-#sd_delta_E <- sd(sim_trt$te - sim_no_trt$te) / sqrt(n_i) 
-## Monte Carlo Squared Error (MCSE) of incremental QALYs:
-#sd_delta_C <- sd(sim_trt$tc_disc - sim_no_trt$tc_disc) / sqrt(n_i) 
-#ICER    <- delta_C / delta_E                 # calculate the ICER
-#results <- c(delta_C, delta_E, ICER)         # store the values in a new variable
-#
-## Create full incremental cost-effectiveness analysis table
-#table_micro <- data.frame(
-#  c(round(v_C, 0),  ""),           # costs per arm
-#  c(round(sd_C, 0), ""),           # MCSE for costs
-#  c(round(v_E, 3),  ""),           # health outcomes per arm
-#  c(round(sd_E, 3), ""),           # MCSE for health outcomes
-#  c("", round(delta_C, 0),   ""),  # incremental costs
-#  c("", round(sd_delta_C, 0),""),  # MCSE for incremental costs
-#  c("", round(delta_E, 3),   ""),  # incremental QALYs 
-#  c("", round(sd_delta_E, 3),""),  # MCSE for health outcomes (QALYs) gained
-#  c("", round(ICER, 0),      "")   # ICER
-#)
-## name the rows:
-#rownames(table_micro) <- c(v_Trt, "* are MCSE values")  
-## name the columns:
-#colnames(table_micro) <-  
-#  c("Costs", "*",  "QALYs", "*", "Incremental Costs",
-#    "*", "QALYs Gained", "*", "ICER")
-#table_micro  # print the table 
-
 
 ## ----Plot curves
 ## This R chunk is a plot routine (not part of the main program):
@@ -1605,7 +1581,7 @@ long_micro_sim_df <- averaged_micro_sim_df %>%
 # Plot the data using ggplot2
 ggplot(long_micro_sim_df, aes(x = age, y = Average, color = Stage)) +
   geom_line() +
-  labs(title = "Averaged CIN and FIGO Stages by Age Across All Simulations",
+  labs(title = "NAT HIST: Averaged CIN and FIGO Stages by Age Across All Simulations",
        x = "Age",
        y = "Average Count",
        color = "Stage") +
@@ -1638,7 +1614,7 @@ markov_df_long_data <- markov_df %>%
 ggplot(markov_df_long_data, aes(x = age, y = value, color = `Health state`)) +
   geom_line(linewidth=1, alpha=0.7) +
   labs(x = "Age", y = "Value", color = "Health state") +
-  ggtitle(expression(paste("Markov cohort simulation for ", 10^6, " individuals"))) + 
+  ggtitle(expression(paste("NAT HIST: Markov cohort simulation for ", 10^6, " individuals"))) + 
   theme_minimal()  # Optional: customize the theme
 
 ################################################################################
@@ -1792,7 +1768,7 @@ plot_comparison <- function(data, measure_name) {
     geom_bar(stat = "identity", position = "dodge") +
     labs(
       title = paste(
-        measure_name, "Comparison\n",
+        measure_name, "NAT HIST: Comparison\n",
         "N =", sim_result[[1]]$numb_of_ind, 
         ";  cycles=", sim_result[[1]]$numb_of_cycles, 
         "Parallelized\n", 
@@ -1831,7 +1807,7 @@ plot_FIGO_prevalence <-
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
   labs(
-    title = "Mean FIGO Prevalence by Age Interval",
+    title = "NAT HIST: Mean FIGO Prevalence by Age Interval",
     x = "Age Interval",
     y = "Mean Prevalence (%)",
     color = "FIGO Stage"
@@ -1862,7 +1838,7 @@ plot_mean_FIGO <-
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
   labs(
-    title = "Mean FIGO by Age Interval",
+    title = "NAT HIST: Mean FIGO by Age Interval",
     x = "Age Interval",
     y = "Mean",
     color = "FIGO Stage"
@@ -1895,7 +1871,7 @@ plot_mean_Diagnosed_FIGO <-
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
   labs(
-    title = "Mean Diagnosed FIGO by Age Interval",
+    title = "NAT HIST: Mean Diagnosed FIGO by Age Interval",
     x = "Age Interval",
     y = "Mean",
     color = "FIGO Stage"
