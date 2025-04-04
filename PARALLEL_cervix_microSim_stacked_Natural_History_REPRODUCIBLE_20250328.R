@@ -51,15 +51,14 @@ return(numbers)
 # Apply the function to the Range column and create new columns
 my_Probs$Lower  <- sapply(my_Probs$Age.group, function(x) extract_numbers(x)[1])
 my_Probs$Larger <- sapply(my_Probs$Age.group, function(x) extract_numbers(x)[2])
-# For the last cycle/iteration we need to adjust the last transition matrix:
-#my_Probs$Larger <- 
-#  ifelse(my_Probs$Larger == max(my_Probs$Larger), my_Probs$Larger + 1, my_Probs$Larger) 
 
 
+################################################################################
 ## ----Model Parameters
 #n_i <- 10^5               # number of simulated individuals
-n_i <- 10^5               # number of simulated individuals
+n_i <- 10^4               # number of simulated individuals
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
+################################################################################
  
 
 ################################################################################
@@ -83,7 +82,7 @@ n_t <- n_t * 1
 
 
 ################################################################################
-v_n <- rownames(my_Probs)
+#v_n <- rownames(my_Probs)
 v_n <- colnames(my_Probs)
 v_n <- v_n[-c(1,14,15)]
 n_s   <- length(v_n)                # the number of health states
@@ -335,7 +334,7 @@ return(u_it)
 #################################################################################
 
 
-## ---- Symptomatic Individuals ----                                                         ##
+## ---- Symptomatic Individuals ----                                          ##
 # An individual can be in cancer states, i.e. FIGO.I, FIGO.II. FIGO.III and FIGO.IV
 # (in the model) and yet no develop symptoms. Form th Markov cohort model we have
 # that the probability of developing symptoms are 0.11, 0.23, 0.66, and 0.9 for
@@ -368,6 +367,7 @@ diagnose_column <- function(col, time_step) {
                             TimeStep = integer(),
                             DiagnosedState = character(),
                             RecoveredFromState = logical())
+  
   for (state_idx in seq_along(states_to_check)) {
     state <- states_to_check[state_idx]
     prob_symptom <- symptom_prob_vec[state_idx]
@@ -541,10 +541,8 @@ my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
 # check the `MicroSim` for any improvements or issues.
 MicroSim <- function(strategy="natural_history", 
                      numb_of_sims = 20,
-                     #seeds,
                      v_M_1, n_i, n_t, v_n, d_c, d_e, 
                      TR_out = TRUE, TS_out = TRUE, Trt = FALSE,  
-                     #seed = 1, 
                      Pmatrix, vaccination = FALSE,
                      use_parallel = TRUE, 
                      reproducible = TRUE, 
@@ -555,7 +553,7 @@ MicroSim <- function(strategy="natural_history",
   if (use_parallel) {
     n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
     cat("Number of cores: ", n_cores, "\n")
-    # 6-hours timeout to prevent socket drop issues
+    # 6-hours timeout to prevent socket drop issues:
     cl <- makeCluster(n_cores, timeout = 6*60*60) 
     clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
                         "my_Probs", "utilityCoefs", "v_n", "samplev", 
@@ -579,7 +577,7 @@ MicroSim <- function(strategy="natural_history",
   
   simulation_results <- list() 
   
-  #calculate the cost discount weight based on the discount rate d_c 
+  # calculate the cost discount weight based on the discount rate d_c 
   v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   
   # calculate the QALY discount weight based on the discount rate d_e                                             
   v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   
@@ -590,7 +588,8 @@ MicroSim <- function(strategy="natural_history",
       ## clean memory:
       #if (step %% 10 == 0) gc()
       
-      if (!is.null(seeds)) set.seed(seeds[sim])  # Use independent seed for each sim
+      #if (!is.null(seeds)) set.seed(seeds[sim])  # Use independent seed for each sim
+      seed <- seeds[sim]
       
       cat("\n")
       cat("\n")
@@ -655,6 +654,7 @@ MicroSim <- function(strategy="natural_history",
         
         ######################################################################## 
         #new code:
+        # Determining symptomatics-
         # RANDOM FUNCTION:
         new_entries <- diagnose_column(m_M[, t], t)
         
@@ -910,55 +910,14 @@ is_slurm <- function() {
 }
 ################################################################################
  
-#################################################################################
-## Determine number of cores
-#if (is_slurm()) {
-#  # In Slurm, use the cores requested by the job
-#  n_cores <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
-#  cat("I'm in slurm!\n")
-#} else {
-#  cat("I'm NOT in slurm!\n")
-#  # On local machine, use all available cores (or limit if needed)
-#  #n_cores <- parallel::detectCores() - 1  # Use one less than total to avoid overloading
-#  ## Register fewer cores (adjust based on server resources)
-#  n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
-#  #n_cores <- detectCores()  # Try using 8 or fewer cores
-#  #n_cores <- min(detectCores())  # Try using 8 or fewer cores
-#  #n_cores <- 6  # Try using 8 or fewer cores
-#}
-## for 250000 individuals x 75 cycles x 20 sims in a Lenovo 16GB Laptop use
-## five cores. It takes ca 3.5-3.7 minutes to run. Using 7 cores can run the same set
-## in 3.3-3.4 minutes but the system becomes unstable and leading to crash often.
-## in the office desktop with 3 cores it takes 12.1434, that's roughly 3.6 times slower
-##n_cores <- 5 # for personal Lenovo .
-#cat("Number of cores: ", n_cores, "\n")
-#################################################################################
- 
-
-#################################################################################
-## 6-hours timeout to prevent socket drop issues
-#cl <- makeCluster(n_cores, timeout = 6*60*60) 
-#clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
-#                    "my_Probs", "utilityCoefs", "v_n", "samplev", 
-#                    "my_age_prob_matrix_func","diagnose_column", 
-#                    "update_column", "states_to_check", "symptom_prob_vec",
-#                    "survival_prob_vec", #"global_diagnosed", 
-#                    "cost_Vec", "new_cases_2"))
-##registerDoParallel(cl) # for parallel
-#registerDoSEQ()        # for sequential
-#################################################################################
-#################################################################################
-
-
 ################################################################################
 ########################## Run the simulation ##################################
 ## START SIMULATION
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-#numb_of_sims = 20
-numb_of_sims = 3
-
+numb_of_sims = 5
+#numb_of_sims = 3
 
 strategy <- "natural_history"
 sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
@@ -970,9 +929,7 @@ sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims,
                         Pmatrix = Pmatrix, 
                         master_seed = 123, 
                         reproducible = TRUE, 
-                        use_parallel = FALSE)
-## Stop the cluster when done
-#stopCluster(cl)  
+                        use_parallel = TRUE)
 
 # For stacking outside the function, we need to comment the stacking function
 # inside  de the MicroSim function, and return the results as a list by commenting
@@ -1021,7 +978,6 @@ sim_no_trt[[1]]$te_hat_disc <- sim_no_trt[[1]]$te_hat_disc %>%
 ################################################################################
 ################################################################################
 
-
 ################################################################################
 ################################################################################
                   ###################################
@@ -1029,8 +985,8 @@ sim_no_trt[[1]]$te_hat_disc <- sim_no_trt[[1]]$te_hat_disc %>%
                   ###################################
 ################################################################################
 ################################################################################
-# # Prevalence is defined as number of infected divided by total alive individuals
-# # for that cycle/time step
+## Prevalence is defined as number of infected divided by total alive individuals
+## for that cycle/time step
 ################################################################################
 mean_prevalence_func <- function(sim_stalked_result, my_Probs) {
   # Extract unique age intervals and ensure Larger doesn't exceed 84
@@ -1525,7 +1481,6 @@ sim_result <-
 ################################################################################
 
 
-
 ################################################################################
 ################################################################################
 ## cleaning
@@ -1547,16 +1502,27 @@ if (is.na(slurm_job_id)) {
 }
 cat("SLURM job ID:", slurm_job_id, "\n")
 
+## Save simulation result:
+## Use job ID in file name
+#output_file <-
+#  #paste0("data/testing_stability/stacked_sims_20x10E5x75_20250323_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
+#  paste0("data/last_results_20250324/stacked_sims_20x10E4x75_20250401_NATURAL_HISTORY_sim_", slurm_job_id, ".rds")
+#saveRDS(object = sim_result, file = output_file)
+
+## to load a pre-run simulation:
+#sim_result <- readRDS(file = "data/testing_stability/stacked_sims_20x10E5x75_2025")
+
+### ----Convert .Rmd to .R
+#library(knitr)
+## purl("your_script.Rmd", output = "your_script.R")
+## example:
+#purl("Cervix_MicroSim_RMarkdown_v.072_B.Rmd", output = "cervix_microSim_stacked_list.R")
+#purl("Cervix_MicroSim_RMarkdown_v.072_B.Rmd", output = "cervix_microSim_stacked_list_B.R")
 
 ## ----Plot curves
 ## This R chunk is a plot routine (not part of the main program):
 library(RColorBrewer)
-#ensure_library("RColorBrewer")
-# Convert matrix to data frame
-#micro_sim_df <- sim_no_trt[[1]]$TR
-#micro_sim_df <- other_mean_mortality_result[[1]]$TR
 micro_sim_df <- sim_result[[1]]$TR
-
 # Load necessary libraries
 library(dplyr)
 library(tidyr)
@@ -1881,7 +1847,6 @@ plot_mean_Diagnosed_FIGO <-
 ################################################################################
 
 
-
 # Create plots for each measure
 plot_CN1_incidences <- plot_comparison(combined_data, "CN1_incidences")
 plot_CN2_incidences <- plot_comparison(combined_data, "CN2_incidences")
@@ -1903,7 +1868,7 @@ print(plot_CC_mortality)
 print(plot_mean_Diagnosed_FIGO)
 #print(plot_CC_by_diff_mortality)
 
-
+# Check for patterns and trends
 if (numb_of_sims >=60) {
   ################################################################################
   # For number of simulations of 60 we can analize the cost results to check
