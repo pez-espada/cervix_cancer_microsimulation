@@ -916,7 +916,7 @@ is_slurm <- function() {
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 5
+numb_of_sims = 3
 #numb_of_sims = 3
 
 strategy <- "natural_history"
@@ -925,6 +925,7 @@ sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims,
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, 
+                        #seed = 2, 
                         #seed = 2, 
                         Pmatrix = Pmatrix, 
                         master_seed = 123, 

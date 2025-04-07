@@ -81,7 +81,7 @@ my_Probs9 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs9)
 my_Probs9 <- my_Probs9 %>% as.data.frame() #convert back to data.frame (no needed?)
 ################################################################################
 ## ----Model Parameters
-n_i <- 10^6               # number of simulated individuals
+n_i <- 10^4               # number of simulated individuals
 #n_t <- 3                  # time horizon, 3 cycles (it starts from 1)
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 ################################################################################
@@ -1525,7 +1525,7 @@ vacc_lbl <-
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 # run for no treatment
-numb_of_sims = 20
+numb_of_sims = 3
 
 strategy <- "natural_history"
 strategy <- "vacc_2_test"
@@ -1538,7 +1538,7 @@ sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims,
                         Pmatrix = Pmatrix,
                         master_seed = 123,
                         reproducible = TRUE, 
-                        use_parallel = TRUE)
+                        use_parallel = FALSE)
 #stopCluster(cl)  
 
 # For stacking outside the function, we need to comment the stacking function
@@ -2119,10 +2119,10 @@ cat("SLURM job ID:", slurm_job_id, "\n")
 
 # Save simulation result:
 # Use job ID in file name
-output_file <-
-  #paste0("data/testing_stability/stacked_sims_20x10E5x75_20250323_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
-  paste0("data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_20250403_TEST_sim_", slurm_job_id, ".rds")
-saveRDS(object = sim_result, file = output_file)
+#output_file <-
+#  #paste0("data/testing_stability/stacked_sims_20x10E5x75_20250323_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
+#  paste0("data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_20250403_TEST_sim_", slurm_job_id, ".rds")
+#saveRDS(object = sim_result, file = output_file)
 
 ## to load a pre-run simulation:
 #sim_result <- readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_20250401_TEST_sim_13319.rds")
