@@ -123,6 +123,10 @@ c("No Treatment", "Treatment")    # store the strategy names
 cost_Vec = c(0, 39.54, 288.91, 1552.27, 1552.27, 
            5759.81, 12903.63, 23032.41, 35323.14, 0, 0, 0)
 utilityCoefs = c(1, 1, 0.987, 0.87, 0.87, 0.76, 0.67, 0.67, 0.67, 0.938, 0, 0)
+
+cost_vacc2 <- 34.8
+cost_vacc4 <- 0
+cost_vacc9 <- 0
 ################################################################################
 
 ################################################################################
@@ -373,7 +377,8 @@ samplev <- function (probs, m) {
 # individual due to cancer symptoms (FIGO.I-IV) at every cycle. 
 # This cost is only charged once in the patient's lifetime.
 # NOTE: need to decide if the cost is applied on current time `t` or `t+1` as it is now.
-Costs_per_Cancer_Diag <- function (M_it, cost_Vec, symptomatics, time_iteration, Trt = FALSE) {
+Costs_per_Cancer_Diag <- function (M_it, cost_Vec, symptomatics, 
+                                   time_iteration, Trt = FALSE) {
   #ci_t <- 0
   c_it <- rep(0, length(M_it))
   if(nrow(symptomatics) > 0 ) {
@@ -981,8 +986,9 @@ MicroSim <- function(strategy="natural_history",
                      Pmatrix,
                      use_parallel = TRUE, 
                      reproducible = TRUE, 
-                     master_seed = 123 
-                     ) 
+                     master_seed = 123,
+                     cost_vacc2, cost_vacc4, cost_vacc9
+) 
   {
   cl <- NULL  # Ensure cl exists in all cases
   
@@ -1021,6 +1027,26 @@ MicroSim <- function(strategy="natural_history",
   v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   
   # calculate the QALY discount weight based on the discount rate d_e                                             
   v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   
+  
+  # If vaccination, apply vaccination cost to those vaccinated individuals
+  # ONLY ONCE per sim batch:
+  #vacc_cost <- rep(0, n_i)
+  #if (any(vacc_coverage != 0)) { 
+  #  cat("we have vaccinatin here!\n")
+  #  # vacc_covverage pos1 is bivalent, pos2 is 4-valent and pos3 is 9-valent
+  #  if (vacc_coverage[1] != 0) {
+  #    vaccinated_id <- which(vacc_lbl$vacc_state == "vacc_2")
+  #    vacc_cost[vaccinated_id] <- cost_vacc2
+  #  }
+  #  if (vacc_coverage[2] != 0) {
+  #    vaccinated_id <- which(vacc_lbl$vacc_state == "vacc_4")
+  #    vacc_cost[vaccinated_id] <- cost_vacc4
+  #  }
+  #  if (vacc_coverage[2] != 0) {
+  #    vaccinated_id <- which(vacc_lbl$vacc_state == "vacc_9")
+  #    vacc_cost[vaccinated_id] <- cost_vacc4
+  #  }
+  #}
   
   # Parallel processing using foreach
   simulation_results <- 
@@ -1066,7 +1092,9 @@ MicroSim <- function(strategy="natural_history",
                                         time_iteration = 1,
                                         cost_Vec = cost_Vec,  
                                         Trt)             
-      
+      ## account for vaccination cost:
+      #m_C[, 1] <- m_C[, 1] + vacc_cost
+       
       # estimate QALYs per individual for the initial health state 
       m_E[, 1] <- Effs(m_M[, 1], Trt, utilityCoefs = utilityCoefs)  
       
@@ -1443,7 +1471,7 @@ is_slurm <- function() {
 # Paramters:
 # vaccination coverage for vacc 2, 4 and 9:
 #vacc_coverage <- c(0.357, 0.0, 0.0) 
-vacc_coverage <- c(0.0, 0.0, 0.0) 
+vacc_coverage <- c(0.6, 0.0, 0.0) 
 # natural immunity associated with vacc 2, 4, and 9:
 nat_immunity_linked_to_vacc <- c(0.0, 0.0, 0.0)
 
@@ -1530,16 +1558,14 @@ numb_of_sims = 3
 strategy <- "natural_history"
 strategy <- "vacc_2_test"
 sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
-                        #seeds = seeds, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, 
-                        #seed = 2, 
                         Pmatrix = Pmatrix,
                         master_seed = 123,
                         reproducible = TRUE, 
-                        use_parallel = FALSE)
-#stopCluster(cl)  
+                        use_parallel = FALSE,
+                        cost_vacc2, cost_vacc4, cost_vacc9)
 
 # For stacking outside the function, we need to comment the stacking function
 # inside  de the MicroSim function, and return the results as a list by commenting
