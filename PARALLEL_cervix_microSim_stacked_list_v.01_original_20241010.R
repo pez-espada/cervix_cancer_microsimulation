@@ -1028,8 +1028,8 @@ MicroSim <- function(strategy="natural_history",
   # calculate the QALY discount weight based on the discount rate d_e                                             
   v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   
   
-  # If vaccination, apply vaccination cost to those vaccinated individuals
-  # ONLY ONCE per sim batch:
+  ## If vaccination, apply vaccination cost to those vaccinated individuals
+  ## ONLY ONCE per sim batch:
   #vacc_cost <- rep(0, n_i)
   #if (any(vacc_coverage != 0)) { 
   #  cat("we have vaccinatin here!\n")
@@ -1044,7 +1044,7 @@ MicroSim <- function(strategy="natural_history",
   #  }
   #  if (vacc_coverage[2] != 0) {
   #    vaccinated_id <- which(vacc_lbl$vacc_state == "vacc_9")
-  #    vacc_cost[vaccinated_id] <- cost_vacc4
+  #    vacc_cost[vaccinated_id] <- cost_vacc9
   #  }
   #}
   
@@ -1094,6 +1094,9 @@ MicroSim <- function(strategy="natural_history",
                                         Trt)             
       ## account for vaccination cost:
       #m_C[, 1] <- m_C[, 1] + vacc_cost
+      #cat("Vacc_cost is: \n")
+      #vacc_cost %>% head(10)
+      #cat("\n")
        
       # estimate QALYs per individual for the initial health state 
       m_E[, 1] <- Effs(m_M[, 1], Trt, utilityCoefs = utilityCoefs)  
@@ -1467,11 +1470,10 @@ is_slurm <- function() {
  
 ################################################################################
 ## Vaccination strategies:
-## Vaccination strategies:
 # Paramters:
 # vaccination coverage for vacc 2, 4 and 9:
 #vacc_coverage <- c(0.357, 0.0, 0.0) 
-vacc_coverage <- c(0.0, 0.0, 0.0) 
+vacc_coverage <- c(0.6, 0.0, 0.0) 
 # natural immunity associated with vacc 2, 4, and 9:
 nat_immunity_linked_to_vacc <- c(0.0, 0.0, 0.0)
 
@@ -1505,6 +1507,8 @@ generate_vaccine_labels <- function(n_i, vacc_coverage, nat_immunity, seed) {
  
   # RANDOM GEN line: 
   # Shuffle the vector randomly
+  seed_2 <- 123
+  set.seed(seed_2)
   vacc_lbl <- sample(vacc_lbl, size = n_i, replace = FALSE)
   
   # Initialize the 'immuned' vector with FALSE for everyone

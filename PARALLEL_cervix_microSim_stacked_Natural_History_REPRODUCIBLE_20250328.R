@@ -930,7 +930,7 @@ sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims,
                         Pmatrix = Pmatrix, 
                         master_seed = 123, 
                         reproducible = TRUE, 
-                        use_parallel = TRUE)
+                        use_parallel = FALSE)
 
 # For stacking outside the function, we need to comment the stacking function
 # inside  de the MicroSim function, and return the results as a list by commenting
