@@ -1,4 +1,4 @@
-## ----Preamble
+## ----Preamble 
 ################################################################################
 # This code is a modified version of the original code from:
 # [https://github.com/DARTH-git/Microsimulation-tutorial] (Krijkamp et al 2018 
@@ -6,6 +6,7 @@
 # programmed by Carlos Dommar D'Lima - carlos.dommar@gmail.com
 # This code extends the "sick-sicker" model of the original authors to a
 # multi-state cervix cancer model
+# CORRECTED TRANSITIONS ON 2025/04/14
 ################################################################################
 rm(list = ls())
 library(tidyverse)
@@ -16,7 +17,7 @@ library(tidyverse)
 ## after debugging, you can set the error option back to the default:
 #options(error = NULL)
 
-## to prevent conflicts in the parallel environment:
+## To prevent conflicts in the parallel environment:
 #setwd(dir = "/home/07075107P/microSim/cervix_cancer_microsimulation")
 
 ensure_library <- function(...) {
@@ -33,15 +34,23 @@ ensure_library <- function(...) {
 
 my_Probs <- readRDS(file = "./data/probs.rds") # natural history transition matrix
 my_Probs2 <- readRDS(file = "./data/probs2.rds")  # vaccination transition matrix
+
+# CORRECTED TRANSITIONS (since 2025/04/14):
+library(readxl)
+my_Probs <- read_excel("data/corrected_transitions_20250414/Probs_20250414.xls")
+my_Probs <- my_Probs %>% dplyr::rename(Age.group = `Age group`)
+my_Probs2 <- read_excel("data/corrected_transitions_20250414/Probs2_20250414.xlsx")
+my_Probs2<- my_Probs2 %>% dplyr::rename(Age.group = `Age group`)
+
 # vaccination 2 associated immunity transition matrix
 my_Probs2_nat_immunity <- readRDS(file = "./data/probs3.rds") 
 my_Probs4 <- readRDS(file = "./data/probs3.rds") # vaccination transition matrix
 my_Probs9 <- readRDS(file = "./data/probs3.rds") # vaccination transition matrix
 
-# arbitrary correction of an obvious error;
-my_Probs2$Other.Death[my_Probs2$Other.Death == 8.150000e+08] <- 8.150000e-08
-my_Probs2 <- my_Probs2 %>%
-  dplyr::rename("CC_Death" = "Death")
+## arbitrary correction of an obvious error (for old matrices);
+#my_Probs2$Other.Death[my_Probs2$Other.Death == 8.150000e+08] <- 8.150000e-08
+#my_Probs2 <- my_Probs2 %>%
+#  dplyr::rename("CC_Death" = "Death")
 
 ################################################################################
 # Function to extract and convert numbers from factor levels
@@ -547,288 +556,288 @@ update_column <- function(col, new_entries, next_col) {
 # This function adds new rows to the transition matrix for individuals who have
 # been diagnosed with cancer. It also updates the age and cycle columns.
 ## ORIGINAL ##
-new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
-  # Convert the data to a tibble for easier manipulation
-  Tot_Trans_per_t_tbl <- as_tibble(Tot_Trans_per_t)
-  
-  # Case when state1 is a single string
-  if (length(state1) == 1) {
-    transition_column <- paste0(state1, "->", state2)  # Create the transition name
-    
-    # If the transition column exists, select it
-    if (transition_column %in% colnames(Tot_Trans_per_t_tbl)) {
-      transition_cases <- Tot_Trans_per_t_tbl %>%
-        dplyr::select(all_of(transition_column)) %>%  
-        dplyr::mutate(age = row_number() + 10,        
-                      cycle = age - 9) 
-      
-      # Modify the dataframe: Add a new row with age = 10 and
-      # transition column = 0, and delete the last row (age = 85)
-      transition_cases <- transition_cases %>%
-        # Add row at the beginning
-        dplyr::add_row(!!transition_column := 0, age = 10, cycle = 1, .before = 1) %>%  
-        dplyr::slice(-n()) %>%  
-        #slice(-nrow(.)) %>%
-        #slice_tail(n = -1) %>%
-        # Remove the last row
-        dplyr::mutate(age = 10:(10 + n() - 1),  # Adjust age to start from 10
-                       cycle = age - 9)  # Adjust cycle
-    } else {
-      # Handle missing transition columns
-      warning(paste0("Transition '", transition_column,
-                     "' not found! Using a column of zeros."))
-      transition_cases <- tibble(
-        !!transition_column := rep(0, nrow(Tot_Trans_per_t_tbl)),  
-        age = row_number() + 10,
-        cycle = age - 9
-      ) %>%
-        dplyr::add_row(!!transition_column := 0, age = 10, cycle = 1, .before = 1) %>%  
-        dplyr::slice(-n()) %>%
-        #slice(-nrow(.)) %>%
-        #slice_tail(n = -1) %>%
-        dplyr::mutate(age = 10:(10 + n() - 1), 
-                      cycle = age - 9)
-    }
-    return(transition_cases)
-    
-    # Case when state1 is a vector (length > 1)
-  } else if (length(state1) > 1) {
-    transition_columns <- paste0(state1, "->", state2)  
-    
-    # Handle missing columns and replace them with zeros
-    existing_cols <- intersect(transition_columns, colnames(Tot_Trans_per_t_tbl))
-    missing_cols <- setdiff(transition_columns, colnames(Tot_Trans_per_t_tbl))
-    
-    if (length(missing_cols) > 0) {
-      warning(paste0("Some transitions not found: ",
-                     paste(missing_cols, collapse = ", "),
-                     ". Using columns of zeros for these."))
-    }
-    
-    # Create missing columns (zeros)
-    # Create a tibble for the missing columns (zeros).
-    # The operator ' unquote-splice` ("!!!") splices or unpack (corte y pega) 
-    # a list or vector into multiple arguments (used with functions of `rlang`).
-    # in our case the !!! is used to unpack the list returned by setNames() 
-    # and pass it as individual arguments to tibble(). This way, each item in 
-    # the list becomes a separate column in the tibble, with the names provided
-    # by missing_cols.
-    missing_df <- tibble(
-      !!!setNames(lapply(missing_cols, 
-                         function(x) rep(0, nrow(Tot_Trans_per_t_tbl))), 
-                  missing_cols)
-    )
-    
-    # Combine and process
-    # The "unquote" operator unquotes a value or an expression, rather than 
-    # treating it as a literal symbol or character string.
-    # a) !! (Unquote): Injects a single value or expression into a function. 
-    # It is typically used when you want to reference or compute something based
-    # on a single variable or expression.
-    # b) !!! (Unquote-splice): Injects or "splices" multiple values or elements 
-    #from a list or vector into a function. It is used when you need to spread 
-    # a list of arguments across multiple positions or inputs.
-    transition_cases <- Tot_Trans_per_t_tbl %>%
-      dplyr::select(all_of(existing_cols)) %>%
-      dplyr::bind_cols(missing_df) %>%  
-      dplyr::rowwise() %>%
-      dplyr::mutate(!!paste0(state2, "_per_t") := sum(c_across(everything()), na.rm = TRUE)) %>%
-      dplyr::ungroup() %>%
-      dplyr::mutate(age = row_number() + 10,  
-                    cycle = age - 9) %>%
-      dplyr::add_row(!!paste0(state2, "_per_t") := 0, age = 10, cycle = 1, .before = 1) %>%
-      dplyr::slice(-n()) %>%
-      #slice(-nrow(.)) %>%
-      #slice_tail(n = -1) %>%
-      dplyr::mutate(age = 10:(10 + n() - 1), cycle = age - 9) #%>%
-    #dplyr::select(-matches("sim\\.x$")) %>%
-    #dplyr::select(-sim.1)
-    
-    return(transition_cases)
-  }
-}
-################################################################################
+#new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
+#  # Convert the data to a tibble for easier manipulation
+#  Tot_Trans_per_t_tbl <- as_tibble(Tot_Trans_per_t)
+#  
+#  # Case when state1 is a single string
+#  if (length(state1) == 1) {
+#    transition_column <- paste0(state1, "->", state2)  # Create the transition name
+#    
+#    # If the transition column exists, select it
+#    if (transition_column %in% colnames(Tot_Trans_per_t_tbl)) {
+#      transition_cases <- Tot_Trans_per_t_tbl %>%
+#        dplyr::select(all_of(transition_column)) %>%  
+#        dplyr::mutate(age = row_number() + 10,        
+#                      cycle = age - 9) 
+#      
+#      # Modify the dataframe: Add a new row with age = 10 and
+#      # transition column = 0, and delete the last row (age = 85)
+#      transition_cases <- transition_cases %>%
+#        # Add row at the beginning
+#        dplyr::add_row(!!transition_column := 0, age = 10, cycle = 1, .before = 1) %>%  
+#        dplyr::slice(-n()) %>%  
+#        #slice(-nrow(.)) %>%
+#        #slice_tail(n = -1) %>%
+#        # Remove the last row
+#        dplyr::mutate(age = 10:(10 + n() - 1),  # Adjust age to start from 10
+#                       cycle = age - 9)  # Adjust cycle
+#    } else {
+#      # Handle missing transition columns
+#      warning(paste0("Transition '", transition_column,
+#                     "' not found! Using a column of zeros."))
+#      transition_cases <- tibble(
+#        !!transition_column := rep(0, nrow(Tot_Trans_per_t_tbl)),  
+#        age = row_number() + 10,
+#        cycle = age - 9
+#      ) %>%
+#        dplyr::add_row(!!transition_column := 0, age = 10, cycle = 1, .before = 1) %>%  
+#        dplyr::slice(-n()) %>%
+#        #slice(-nrow(.)) %>%
+#        #slice_tail(n = -1) %>%
+#        dplyr::mutate(age = 10:(10 + n() - 1), 
+#                      cycle = age - 9)
+#    }
+#    return(transition_cases)
+#    
+#    # Case when state1 is a vector (length > 1)
+#  } else if (length(state1) > 1) {
+#    transition_columns <- paste0(state1, "->", state2)  
+#    
+#    # Handle missing columns and replace them with zeros
+#    existing_cols <- intersect(transition_columns, colnames(Tot_Trans_per_t_tbl))
+#    missing_cols <- setdiff(transition_columns, colnames(Tot_Trans_per_t_tbl))
+#    
+#    if (length(missing_cols) > 0) {
+#      warning(paste0("Some transitions not found: ",
+#                     paste(missing_cols, collapse = ", "),
+#                     ". Using columns of zeros for these."))
+#    }
+#    
+#    # Create missing columns (zeros)
+#    # Create a tibble for the missing columns (zeros).
+#    # The operator ' unquote-splice` ("!!!") splices or unpack (corte y pega) 
+#    # a list or vector into multiple arguments (used with functions of `rlang`).
+#    # in our case the !!! is used to unpack the list returned by setNames() 
+#    # and pass it as individual arguments to tibble(). This way, each item in 
+#    # the list becomes a separate column in the tibble, with the names provided
+#    # by missing_cols.
+#    missing_df <- tibble(
+#      !!!setNames(lapply(missing_cols, 
+#                         function(x) rep(0, nrow(Tot_Trans_per_t_tbl))), 
+#                  missing_cols)
+#    )
+#    
+#    # Combine and process
+#    # The "unquote" operator unquotes a value or an expression, rather than 
+#    # treating it as a literal symbol or character string.
+#    # a) !! (Unquote): Injects a single value or expression into a function. 
+#    # It is typically used when you want to reference or compute something based
+#    # on a single variable or expression.
+#    # b) !!! (Unquote-splice): Injects or "splices" multiple values or elements 
+#    #from a list or vector into a function. It is used when you need to spread 
+#    # a list of arguments across multiple positions or inputs.
+#    transition_cases <- Tot_Trans_per_t_tbl %>%
+#      dplyr::select(all_of(existing_cols)) %>%
+#      dplyr::bind_cols(missing_df) %>%  
+#      dplyr::rowwise() %>%
+#      dplyr::mutate(!!paste0(state2, "_per_t") := sum(c_across(everything()), na.rm = TRUE)) %>%
+#      dplyr::ungroup() %>%
+#      dplyr::mutate(age = row_number() + 10,  
+#                    cycle = age - 9) %>%
+#      dplyr::add_row(!!paste0(state2, "_per_t") := 0, age = 10, cycle = 1, .before = 1) %>%
+#      dplyr::slice(-n()) %>%
+#      #slice(-nrow(.)) %>%
+#      #slice_tail(n = -1) %>%
+#      dplyr::mutate(age = 10:(10 + n() - 1), cycle = age - 9) #%>%
+#    #dplyr::select(-matches("sim\\.x$")) %>%
+#    #dplyr::select(-sim.1)
+#    
+#    return(transition_cases)
+#  }
+#}
+#################################################################################
 
 
 
 
-################################################################################
-library(dplyr)
-library(tibble)
-# Altenative function 1:
-new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
-  Tot_Trans_per_t_tbl <- as_tibble(Tot_Trans_per_t)
-  
-  if (length(state1) == 1) {
-    transition_column <- paste0(state1, "->", state2)
-    
-    if (transition_column %in% colnames(Tot_Trans_per_t_tbl)) {
-      transition_cases <- Tot_Trans_per_t_tbl %>%
-        dplyr::select(all_of(transition_column)) %>%  
-        dplyr::mutate(age = row_number() + 10,
-                      cycle = age - 9) %>% 
-        dplyr::add_row(!!transition_column := 0, age = 10, cycle = 1, .before = 1) %>% 
-        dplyr::slice(-n()) %>%
-        dplyr::mutate(age = 10:(10 + n() - 1), 
-                      cycle = age - 9)
-    } else {
-      warning(paste0("Transition '", transition_column,
-                     "' not found! Using a column of zeros."))
-      transition_cases <- tibble(
-        !!transition_column := rep(0, nrow(Tot_Trans_per_t_tbl)),  
-        age = row_number() + 10,
-        cycle = age - 9
-      ) %>%
-        dplyr::add_row(!!transition_column := 0, age = 10, cycle = 1, .before = 1) %>% 
-        dplyr::slice(-n()) %>%
-        dplyr::mutate(age = 10:(10 + n() - 1), 
-                      cycle = age - 9)
-    }
-    return(transition_cases)
-    
-  } else if (length(state1) > 1) {
-    transition_columns <- paste0(state1, "->", state2)
-    
-    existing_cols <- intersect(transition_columns, colnames(Tot_Trans_per_t_tbl))
-    missing_cols <- setdiff(transition_columns, colnames(Tot_Trans_per_t_tbl))
-    
-    if (length(missing_cols) > 0) {
-      warning(paste0("Some transitions not found: ",
-                     paste(missing_cols, collapse = ", "),
-                     ". Using columns of zeros for these."))
-    }
-    
-    missing_df <- tibble(
-      !!!setNames(lapply(missing_cols, 
-                         function(x) rep(0, nrow(Tot_Trans_per_t_tbl))), 
-                  missing_cols)
-    )
-    
-    transition_cases <- Tot_Trans_per_t_tbl %>%
-      dplyr::select(all_of(existing_cols)) %>%
-      dplyr::bind_cols(missing_df) %>%  
-      dplyr::rowwise() %>%
-      dplyr::mutate(!!paste0(state2, "_per_t") := sum(c_across(everything()), na.rm = TRUE)) %>%
-      dplyr::ungroup() %>%
-      dplyr::mutate(age = row_number() + 10,
-                    cycle = age - 9) %>%
-      dplyr::add_row(!!paste0(state2, "_per_t") := 0, age = 10, cycle = 1, .before = 1) %>%
-      dplyr::slice(-n()) %>%
-      dplyr::mutate(age = 10:(10 + n() - 1), cycle = age - 9)
-    
-    return(transition_cases)
-  }
-}
-################################################################################
+#################################################################################
+#library(dplyr)
+#library(tibble)
+## Altenative function 1:
+#new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
+#  Tot_Trans_per_t_tbl <- as_tibble(Tot_Trans_per_t)
+#  
+#  if (length(state1) == 1) {
+#    transition_column <- paste0(state1, "->", state2)
+#    
+#    if (transition_column %in% colnames(Tot_Trans_per_t_tbl)) {
+#      transition_cases <- Tot_Trans_per_t_tbl %>%
+#        dplyr::select(all_of(transition_column)) %>%  
+#        dplyr::mutate(age = row_number() + 10,
+#                      cycle = age - 9) %>% 
+#        dplyr::add_row(!!transition_column := 0, age = 10, cycle = 1, .before = 1) %>% 
+#        dplyr::slice(-n()) %>%
+#        dplyr::mutate(age = 10:(10 + n() - 1), 
+#                      cycle = age - 9)
+#    } else {
+#      warning(paste0("Transition '", transition_column,
+#                     "' not found! Using a column of zeros."))
+#      transition_cases <- tibble(
+#        !!transition_column := rep(0, nrow(Tot_Trans_per_t_tbl)),  
+#        age = row_number() + 10,
+#        cycle = age - 9
+#      ) %>%
+#        dplyr::add_row(!!transition_column := 0, age = 10, cycle = 1, .before = 1) %>% 
+#        dplyr::slice(-n()) %>%
+#        dplyr::mutate(age = 10:(10 + n() - 1), 
+#                      cycle = age - 9)
+#    }
+#    return(transition_cases)
+#    
+#  } else if (length(state1) > 1) {
+#    transition_columns <- paste0(state1, "->", state2)
+#    
+#    existing_cols <- intersect(transition_columns, colnames(Tot_Trans_per_t_tbl))
+#    missing_cols <- setdiff(transition_columns, colnames(Tot_Trans_per_t_tbl))
+#    
+#    if (length(missing_cols) > 0) {
+#      warning(paste0("Some transitions not found: ",
+#                     paste(missing_cols, collapse = ", "),
+#                     ". Using columns of zeros for these."))
+#    }
+#    
+#    missing_df <- tibble(
+#      !!!setNames(lapply(missing_cols, 
+#                         function(x) rep(0, nrow(Tot_Trans_per_t_tbl))), 
+#                  missing_cols)
+#    )
+#    
+#    transition_cases <- Tot_Trans_per_t_tbl %>%
+#      dplyr::select(all_of(existing_cols)) %>%
+#      dplyr::bind_cols(missing_df) %>%  
+#      dplyr::rowwise() %>%
+#      dplyr::mutate(!!paste0(state2, "_per_t") := sum(c_across(everything()), na.rm = TRUE)) %>%
+#      dplyr::ungroup() %>%
+#      dplyr::mutate(age = row_number() + 10,
+#                    cycle = age - 9) %>%
+#      dplyr::add_row(!!paste0(state2, "_per_t") := 0, age = 10, cycle = 1, .before = 1) %>%
+#      dplyr::slice(-n()) %>%
+#      dplyr::mutate(age = 10:(10 + n() - 1), cycle = age - 9)
+#    
+#    return(transition_cases)
+#  }
+#}
+#################################################################################
 
 
-################################################################################
-# Altenative function 2:
-new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
-  Tot_Trans_per_t_tbl <- as_tibble(Tot_Trans_per_t)
-  
-  if (length(state1) == 1) {
-    transition_column <- paste0(state1, "->", state2)
-    
-    if (transition_column %in% colnames(Tot_Trans_per_t_tbl)) {
-      transition_cases <- Tot_Trans_per_t_tbl %>%
-        dplyr::select(all_of(transition_column)) %>%  
-        dplyr::mutate(age = row_number() + 10,
-                      cycle = age - 9)
-    } else {
-      warning(paste0("Transition '", transition_column, "' not found! Using a column of zeros."))
-      transition_cases <- tibble(
-        transition_value = rep(0, nrow(Tot_Trans_per_t_tbl)),
-        age = row_number() + 10,
-        cycle = age - 9
-      )
-    }
-    return(transition_cases)
-  } else if (length(state1) > 1) {
-    transition_columns <- paste0(state1, "->", state2)
-    
-    existing_cols <- intersect(transition_columns, colnames(Tot_Trans_per_t_tbl))
-    missing_cols <- setdiff(transition_columns, colnames(Tot_Trans_per_t_tbl))
-    
-    if (length(missing_cols) > 0) {
-      warning(paste0("Some transitions not found: ", paste(missing_cols, collapse = ", "), ". Using columns of zeros for these."))
-    }
-    
-    missing_df <- tibble(
-      transition_value = rep(0, nrow(Tot_Trans_per_t_tbl))
-    )
-    
-    transition_cases <- Tot_Trans_per_t_tbl %>%
-      dplyr::select(all_of(existing_cols)) %>%
-      dplyr::bind_cols(missing_df) %>%
-      dplyr::rowwise() %>%
-      dplyr::mutate(transition_sum = sum(c_across(everything()), na.rm = TRUE)) %>%
-      dplyr::ungroup() %>%
-      dplyr::mutate(age = row_number() + 10,
-                    cycle = age - 9)
-    
-    return(transition_cases)
-  }
-}
-################################################################################
+#################################################################################
+## Altenative function 2:
+#new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
+#  Tot_Trans_per_t_tbl <- as_tibble(Tot_Trans_per_t)
+#  
+#  if (length(state1) == 1) {
+#    transition_column <- paste0(state1, "->", state2)
+#    
+#    if (transition_column %in% colnames(Tot_Trans_per_t_tbl)) {
+#      transition_cases <- Tot_Trans_per_t_tbl %>%
+#        dplyr::select(all_of(transition_column)) %>%  
+#        dplyr::mutate(age = row_number() + 10,
+#                      cycle = age - 9)
+#    } else {
+#      warning(paste0("Transition '", transition_column, "' not found! Using a column of zeros."))
+#      transition_cases <- tibble(
+#        transition_value = rep(0, nrow(Tot_Trans_per_t_tbl)),
+#        age = row_number() + 10,
+#        cycle = age - 9
+#      )
+#    }
+#    return(transition_cases)
+#  } else if (length(state1) > 1) {
+#    transition_columns <- paste0(state1, "->", state2)
+#    
+#    existing_cols <- intersect(transition_columns, colnames(Tot_Trans_per_t_tbl))
+#    missing_cols <- setdiff(transition_columns, colnames(Tot_Trans_per_t_tbl))
+#    
+#    if (length(missing_cols) > 0) {
+#      warning(paste0("Some transitions not found: ", paste(missing_cols, collapse = ", "), ". Using columns of zeros for these."))
+#    }
+#    
+#    missing_df <- tibble(
+#      transition_value = rep(0, nrow(Tot_Trans_per_t_tbl))
+#    )
+#    
+#    transition_cases <- Tot_Trans_per_t_tbl %>%
+#      dplyr::select(all_of(existing_cols)) %>%
+#      dplyr::bind_cols(missing_df) %>%
+#      dplyr::rowwise() %>%
+#      dplyr::mutate(transition_sum = sum(c_across(everything()), na.rm = TRUE)) %>%
+#      dplyr::ungroup() %>%
+#      dplyr::mutate(age = row_number() + 10,
+#                    cycle = age - 9)
+#    
+#    return(transition_cases)
+#  }
+#}
+#################################################################################
 
 
 
-################################################################################
-# Altenative function 3:
-new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
-  Tot_Trans_per_t_tbl <- as_tibble(Tot_Trans_per_t)
-  
-  if (length(state1) == 1) {
-    transition_column <- paste0(state1, "->", state2)
-    
-    if (transition_column %in% colnames(Tot_Trans_per_t_tbl)) {
-      transition_cases <- Tot_Trans_per_t_tbl %>%
-        select(all_of(transition_column)) %>%
-        mutate(age = row_number() + 10, cycle = age - 9) %>%
-        add_row(!!rlang::sym(transition_column) := 0, age = 10, cycle = 1, .before = 1) %>%
-        slice(-n()) %>%
-        mutate(age = 10:(10 + n() - 1), cycle = age - 9)
-    } else {
-      warning(paste0("Transition '", transition_column, "' not found! Using a column of zeros."))
-      transition_cases <- tibble(
-        !!rlang::sym(transition_column) := rep(0, nrow(Tot_Trans_per_t_tbl)),
-        age = row_number() + 10, cycle = age - 9
-      ) %>%
-        add_row(!!rlang::sym(transition_column) := 0, age = 10, cycle = 1, .before = 1) %>%
-        slice(-n()) %>%
-        mutate(age = 10:(10 + n() - 1), cycle = age - 9)
-    }
-    return(transition_cases)
-  } else if (length(state1) > 1) {
-    transition_columns <- paste0(state1, "->", state2)
-    
-    existing_cols <- intersect(transition_columns, colnames(Tot_Trans_per_t_tbl))
-    missing_cols <- setdiff(transition_columns, colnames(Tot_Trans_per_t_tbl))
-    
-    if (length(missing_cols) > 0) {
-      warning(paste0("Some transitions not found: ", paste(missing_cols, collapse = ", "), ". Using columns of zeros for these."))
-    }
-    
-    missing_df <- tibble(
-      !!!setNames(lapply(missing_cols, function(x) rep(0, nrow(Tot_Trans_per_t_tbl))), missing_cols)
-    )
-    
-    transition_cases <- Tot_Trans_per_t_tbl %>%
-      select(all_of(existing_cols)) %>%
-      bind_cols(missing_df) %>%
-      rowwise() %>%
-      mutate(!!rlang::sym(paste0(state2, "_per_t")) := sum(c_across(everything()), na.rm = TRUE)) %>%
-      ungroup() %>%
-      mutate(age = row_number() + 10, cycle = age - 9) %>%
-      add_row(!!rlang::sym(paste0(state2, "_per_t")) := 0, age = 10, cycle = 1, .before = 1) %>%
-      slice(-n()) %>%
-      mutate(age = 10:(10 + n() - 1), cycle = age - 9)
-    
-    return(transition_cases)
-  }
-}
-################################################################################
+#################################################################################
+## Altenative function 3:
+#new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
+#  Tot_Trans_per_t_tbl <- as_tibble(Tot_Trans_per_t)
+#  
+#  if (length(state1) == 1) {
+#    transition_column <- paste0(state1, "->", state2)
+#    
+#    if (transition_column %in% colnames(Tot_Trans_per_t_tbl)) {
+#      transition_cases <- Tot_Trans_per_t_tbl %>%
+#        select(all_of(transition_column)) %>%
+#        mutate(age = row_number() + 10, cycle = age - 9) %>%
+#        add_row(!!rlang::sym(transition_column) := 0, age = 10, cycle = 1, .before = 1) %>%
+#        slice(-n()) %>%
+#        mutate(age = 10:(10 + n() - 1), cycle = age - 9)
+#    } else {
+#      warning(paste0("Transition '", transition_column, "' not found! Using a column of zeros."))
+#      transition_cases <- tibble(
+#        !!rlang::sym(transition_column) := rep(0, nrow(Tot_Trans_per_t_tbl)),
+#        age = row_number() + 10, cycle = age - 9
+#      ) %>%
+#        add_row(!!rlang::sym(transition_column) := 0, age = 10, cycle = 1, .before = 1) %>%
+#        slice(-n()) %>%
+#        mutate(age = 10:(10 + n() - 1), cycle = age - 9)
+#    }
+#    return(transition_cases)
+#  } else if (length(state1) > 1) {
+#    transition_columns <- paste0(state1, "->", state2)
+#    
+#    existing_cols <- intersect(transition_columns, colnames(Tot_Trans_per_t_tbl))
+#    missing_cols <- setdiff(transition_columns, colnames(Tot_Trans_per_t_tbl))
+#    
+#    if (length(missing_cols) > 0) {
+#      warning(paste0("Some transitions not found: ", paste(missing_cols, collapse = ", "), ". Using columns of zeros for these."))
+#    }
+#    
+#    missing_df <- tibble(
+#      !!!setNames(lapply(missing_cols, function(x) rep(0, nrow(Tot_Trans_per_t_tbl))), missing_cols)
+#    )
+#    
+#    transition_cases <- Tot_Trans_per_t_tbl %>%
+#      select(all_of(existing_cols)) %>%
+#      bind_cols(missing_df) %>%
+#      rowwise() %>%
+#      mutate(!!rlang::sym(paste0(state2, "_per_t")) := sum(c_across(everything()), na.rm = TRUE)) %>%
+#      ungroup() %>%
+#      mutate(age = row_number() + 10, cycle = age - 9) %>%
+#      add_row(!!rlang::sym(paste0(state2, "_per_t")) := 0, age = 10, cycle = 1, .before = 1) %>%
+#      slice(-n()) %>%
+#      mutate(age = 10:(10 + n() - 1), cycle = age - 9)
+#    
+#    return(transition_cases)
+#  }
+#}
+#################################################################################
 
 
 
@@ -895,75 +904,6 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
 
 
 
-
-#################################################################################
-## Altenative function 5:
-#new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
-#  Tot_Trans_per_t_tbl <- as_tibble(Tot_Trans_per_t)
-#  
-#  if (length(state1) == 1) {
-#    transition_column <- paste0(state1, "->", state2)
-#    
-#    if (transition_column %in% colnames(Tot_Trans_per_t_tbl)) {
-#      transition_cases <- Tot_Trans_per_t_tbl %>%
-#        select(all_of(transition_column)) %>%  
-#        mutate(age = row_number() + 10,
-#               cycle = age - 9) %>%
-#        add_row(transition_column = 0, age = 10, cycle = 1, .before = 1) %>% 
-#        slice(-n()) %>%
-#        mutate(age = 10:(10 + n() - 1), 
-#               cycle = age - 9)
-#    } else {
-#      warning(paste0("Transition '", transition_column, "' not found! Using a column of zeros."))
-#      transition_cases <- tibble(
-#        transition_value = rep(0, nrow(Tot_Trans_per_t_tbl)),  
-#        age = row_number() + 10,
-#        cycle = age - 9
-#      ) %>%
-#        add_row(transition_value = 0, age = 10, cycle = 1, .before = 1) %>% 
-#        slice(-n()) %>%
-#        mutate(age = 10:(10 + n() - 1), 
-#               cycle = age - 9)
-#    }
-#    return(transition_cases)
-#  } else if (length(state1) > 1) {
-#    transition_columns <- paste0(state1, "->", state2)
-#    
-#    existing_cols <- intersect(transition_columns, colnames(Tot_Trans_per_t_tbl))
-#    missing_cols <- setdiff(transition_columns, colnames(Tot_Trans_per_t_tbl))
-#    
-#    if (length(missing_cols) > 0) {
-#      warning(paste0("Some transitions not found: ", paste(missing_cols, collapse = ", "), ". Using columns of zeros for these."))
-#    }
-#    
-#    missing_df <- tibble(
-#      transition_value = rep(0, nrow(Tot_Trans_per_t_tbl))
-#    )
-#    
-#    transition_cases <- Tot_Trans_per_t_tbl %>%
-#      select(all_of(existing_cols)) %>%
-#      bind_cols(missing_df) %>%
-#      rowwise() %>%
-#      mutate(transition_sum = sum(c_across(everything()), na.rm = TRUE)) %>%
-#      ungroup() %>%
-#      mutate(age = row_number() + 10,
-#             cycle = age - 9) %>%
-#      add_row(transition_sum = 0, age = 10, cycle = 1, .before = 1) %>%
-#      slice(-n()) %>%
-#      mutate(age = 10:(10 + n() - 1), cycle = age - 9)
-#    
-#    return(transition_cases)
-#  }
-#}
-#################################################################################
-
-
-
-
-
-
-
-
 ################################################################################
 # Function to update the transition matrix with new cases
 my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
@@ -976,6 +916,7 @@ my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
  
 
 ################################################################################
+################################################################################
 ## THE MICROSIMULATION MAIN FUNCTION
 # This version stacks solution of simulations but produces a list with stacked elements
 # check the `MicroSim` for any improvements or issues.
@@ -984,7 +925,7 @@ MicroSim <- function(strategy="natural_history",
                      v_M_1, n_i, n_t, v_n, d_c, d_e, 
                      TR_out = TRUE, TS_out = TRUE, Trt = FALSE,  
                      Pmatrix,
-                     use_parallel = TRUE, 
+                     use_parallel = FALSE, 
                      reproducible = TRUE, 
                      master_seed = 123,
                      cost_vacc2, cost_vacc4, cost_vacc9
@@ -1473,7 +1414,7 @@ is_slurm <- function() {
 # Paramters:
 # vaccination coverage for vacc 2, 4 and 9:
 #vacc_coverage <- c(0.357, 0.0, 0.0) 
-vacc_coverage <- c(0.0, 0.0, 0.0) 
+vacc_coverage <- c(0.7, 0.0, 0.0) 
 # natural immunity associated with vacc 2, 4, and 9:
 nat_immunity_linked_to_vacc <- c(0.0, 0.0, 0.0)
 
@@ -1568,7 +1509,7 @@ sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims,
                         Pmatrix = Pmatrix,
                         master_seed = 123,
                         reproducible = TRUE, 
-                        use_parallel = TRUE,
+                        use_parallel = FALSE,
                         cost_vacc2, cost_vacc4, cost_vacc9)
 
 # For stacking outside the function, we need to comment the stacking function
@@ -2201,7 +2142,7 @@ sim_result[[1]]$new_averaged_CC_Death_per_age_interval <-
 ################################################################################
 
 ################################################################################
-## cleaning
+## Cleaning
 source("./R/Remove_columnS_from_list_Func.R")
 sim_result <- 
   remove_columns_from_list(complex_list = sim_result, 
@@ -2222,17 +2163,17 @@ cat("SLURM job ID:", slurm_job_id, "\n")
 # Use job ID in file name
 output_file <-
   #paste0("data/testing_stability/stacked_sims_20x10E5x75_20250323_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
-  paste0("data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_20250414_sim_", slurm_job_id, ".rds")
+  paste0("data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.7_SEQ_20250415_sim_", slurm_job_id, ".rds")
 saveRDS(object = sim_result, file = output_file)
 
 ################################################################################
 ################################################################################
 ################################################################################
 
-### TO LOAD PRE-RUN SIMULATIONS:
-##sim_result <- readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_20250401_TEST_sim_13319.rds")
-## IF YOU LOAD A PRE-RUN SIMULATION AND WANT TO POST-PROCESS RUN SCRIPT FROM HERE ALL
-## WAY TO THE BOTTOM AND INCLUDE THE NEEDED FOLLOWING VARIABLES:
+#### TO LOAD PRE-RUN MICRO-SIMULATIONS:
+###sim_result <- readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_20250401_TEST_sim_13319.rds")
+### IF YOU LOAD A PRE-RUN SIMULATION AND WANT TO POST-PROCESS RUN SCRIPT FROM HERE ALL
+### WAY TO THE BOTTOM AND INCLUDE THE NEEDED FOLLOWING VARIABLES:
 n_i <- 10^6
 numb_of_sims <- 20
 
@@ -2247,11 +2188,13 @@ sim_result_70 <-
   readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.7_20250413_sim_19888.rds")
 
 sim_result_80 <- 
-  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.8_20250413_sim_19884.rds")
+  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.8_SEQ_20250414_sim_19941.rds")
 
 # load  Markov vaccination computation strategies:
-load(file = "data/markov_vacc_vectors.RData")
+#load(file = "data/markov_vacc_vectors.RData")
+load(file = "data/markov_vacc_CORRECTED_vectors.RData")
 
+# Use this only to pots-process some of the previous results:
 sim_result <- sim_result_80
 vacc_coverage <- c(0.8,0,0)
 
@@ -2411,53 +2354,54 @@ long_merged_data <- merged_df %>%
 
 
 ## ----Incidences, Prevalences, and Mortalities
-load(file = "data/markov_results/markov_vacc_incidences_vectors.RData")
+#load(file = "data/markov_results/markov_vacc_incidences_vectors.RData")
+load(file = "data/markov_results/markov_vacc_CORRECTED_incidences_vectors.RData")
 # Markov:
 markov_CN1_incidences  <- c(0.00000, 204.73492, 981.96179, 1368.24200, 3006.85782, 33.48096, 1362.96678, 459.48051, 697.84223, 794.33833, 223.00222, 246.23082, 176.02167, 126.22963, 53.70939)
 #markov_CN1_incidences  <- markov_sim_vacc$Markov_CIN1_60 
 #markov_CN1_incidences  <- markov_sim_vacc$Markov_CIN1_70 
 #markov_CN1_incidences  <- markov_sim_vacc$Markov_CIN1_80 
-markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_Cin1_Incidence_0 
-#markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_Cin1_Incidence_60 
-#markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_Cin1_Incidence_70
-#markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_Cin1_Incidence_80
+#markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_0 
+#markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_60 
+#markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_70
+markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_80
 
 markov_CN2_incidences  <- c(0.000000, 6.165629, 54.767952, 140.309815, 216.568392, 1476.306267, 1579.728160, 1298.914564, 466.596151, 637.661611, 442.298632, 304.784447, 250.953880, 165.628020, 116.925192)
 #markov_CN2_incidences  <- markov_sim_vacc$Markov_CIN2_60
 #markov_CN2_incidences  <- markov_sim_vacc$Markov_CIN2_70
 #markov_CN2_incidences  <- markov_sim_vacc$Markov_CIN2_80
-markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_Cin2_Incidence_0
-#markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_Cin2_Incidence_60
-#markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_Cin2_Incidence_70
-#markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_Cin2_Incidence_80
+#markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_0
+#markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_60
+#markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_70
+markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_80
   
 markov_CN3_incidences  <- c(0.000000, 2.090325, 9.597415, 44.467676, 148.972191, 0.000000, 3.550684, 91.881726, 12.505042, 68.377446, 25.802481, 7.952667, 1.174088, 1.177840, 2.638642)
 #markov_CN3_incidences  <- markov_sim_vacc$Markov_CIN3_60
 #markov_CN3_incidences  <- markov_sim_vacc$Markov_CIN3_70
 #markov_CN3_incidences  <- markov_sim_vacc$Markov_CIN3_80
-markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_Cin3_Incidence_0
-#markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_Cin3_Incidence_60
-#markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_Cin3_Incidence_70
-#markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_Cin3_Incidence_80
+#markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_0
+#markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_60
+#markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_70
+markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_80
 
 markov_CC_incidences   <- c(0.000000, 0.000000, 0.000000, 5.520938, 8.360544, 13.282380, 22.906871, 20.825560, 15.867891, 32.483846, 8.962389, 17.681771, 11.737615, 17.354646, 14.582775)
 #markov_CC_incidences   <- markov_sim_vacc$Markov_CC_60
 #markov_CC_incidences   <- markov_sim_vacc$Markov_CC_70
 #markov_CC_incidences   <- markov_sim_vacc$Markov_CC_80
-markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_0
+#markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_0
 #markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_60
 #markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_70
-#markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_80
+markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_80
 
   
 markov_HPV_prevalences <- c(0.000000000, 0.343480414, 0.377634762, 0.087223460, 0.307341403, 0.030196332, 0.050562845, 0.050151668, 0.082952596, 0.046644059, 0.018532077, 0.034193076, 0.016407832, 0.015039027, 0.003217326)
 #markov_HPV_prevalences <- markov_sim_vacc$Markov_VPH_60
 #markov_HPV_prevalences <- markov_sim_vacc$Markov_VPH_70
 #markov_HPV_prevalences <- markov_sim_vacc$Markov_VPH_80
-markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_0
+#markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_0
 #markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_60
 #markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_70
-#markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_80
+markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_80
 
 markov_CC_mortality <- c(0.000000e+00, 0.000000e+00, 0.000000e+00, 2.977975e-06, 
                          1.574920e-05, 2.715056e-05, 5.489929e-05, 7.284815e-05,
@@ -2791,11 +2735,12 @@ combined_plot <- (plot_CN1_incidences | plot_CN2_incidences | plot_CN3_incidence
   #(plot_CC_incidences | plot_HPV_prevalences | plot_CC_mortality)
   (plot_CC_incidences | plot_HPV_prevalences | plot_mean_Diagnosed_FIGO)# plot_CC_mortality)
 
+combined_plot2 <- (plot_mean_new_CIN1 | plot_mean_new_CIN2 | plot_mean_new_CIN3) |
+
 # View it
 print(combined_plot)
 
 #ggsave("figures/combined_plots_incidence_vacc_80.pdf", combined_plot, width = 15, height = 10, dpi = 300)
-
 
 
 # DEBUGGING
