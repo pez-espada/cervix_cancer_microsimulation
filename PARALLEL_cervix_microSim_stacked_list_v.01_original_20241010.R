@@ -1414,7 +1414,7 @@ is_slurm <- function() {
 # Paramters:
 # vaccination coverage for vacc 2, 4 and 9:
 #vacc_coverage <- c(0.357, 0.0, 0.0) 
-vacc_coverage <- c(0.7, 0.0, 0.0) 
+vacc_coverage <- c(0.0, 0.0, 0.0) 
 # natural immunity associated with vacc 2, 4, and 9:
 nat_immunity_linked_to_vacc <- c(0.0, 0.0, 0.0)
 
@@ -2163,7 +2163,7 @@ cat("SLURM job ID:", slurm_job_id, "\n")
 # Use job ID in file name
 output_file <-
   #paste0("data/testing_stability/stacked_sims_20x10E5x75_20250323_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
-  paste0("data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.7_SEQ_20250415_sim_", slurm_job_id, ".rds")
+  paste0("data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_SEQ_20250416_sim_", slurm_job_id, ".rds")
 saveRDS(object = sim_result, file = output_file)
 
 ################################################################################
@@ -2176,25 +2176,40 @@ saveRDS(object = sim_result, file = output_file)
 ### WAY TO THE BOTTOM AND INCLUDE THE NEEDED FOLLOWING VARIABLES:
 n_i <- 10^6
 numb_of_sims <- 20
+n_t = 75
 
-# Load microsim results with vacc stratgies:
+# Load microsim results with vacc strategies (sequentially runned):
 sim_result_0 <- 
-  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_20250414_sim_19899.rds")
+  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_SEQ_20250416_sim_20015.rds")
 
 sim_result_60 <- 
-  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.6_20250413_sim_19885.rds")
+  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.7_SEQ_20250415_sim_19962.rds")
 
 sim_result_70 <- 
-  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.7_20250413_sim_19888.rds")
+  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.7_SEQ_20250415_sim_19962.rds")
 
 sim_result_80 <- 
   readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.8_SEQ_20250414_sim_19941.rds")
+
+## Load microsim results with vacc strategies (parallel runned):
+#sim_result_0 <- 
+#  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_PARA_20250416_sim_20033.rds")
+#
+#sim_result_60 <- 
+#  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.6_PARA_20250416_sim_20032.rds")
+#
+#sim_result_70 <- 
+#  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.7_PARA_20250416_sim_20031.rds")
+#
+#sim_result_80 <- 
+#  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.8_PARA_20250416_sim_20030.rds")
+
 
 # load  Markov vaccination computation strategies:
 #load(file = "data/markov_vacc_vectors.RData")
 load(file = "data/markov_vacc_CORRECTED_vectors.RData")
 
-# Use this only to pots-process some of the previous results:
+## Use this only to pots-process some of the previous results:
 sim_result <- sim_result_80
 vacc_coverage <- c(0.8,0,0)
 
@@ -2248,6 +2263,10 @@ cat("I have written out the results\n")
 #table_micro  # print the table 
 
 
+
+################################################################################
+################################################################################
+### PLOTTING ROUTINES 
 ## ----Plot curves
 ## This R chunk is a plot routine (not part of the main program):
 library(RColorBrewer)
@@ -2277,16 +2296,6 @@ long_micro_sim_df <- averaged_micro_sim_df %>%
                         #Survival, CC_Death, Other.Death), 
                names_to = "Stage", 
                values_to = "Average")
-
-## Plot the data using ggplot2
-#ggplot(long_micro_sim_df, aes(x = age, y = Average, color = Stage)) +
-#  geom_line() +
-#  labs(title = "Averaged CIN and FIGO Stages by Age Across All Simulations",
-#       x = "Age",
-#       y = "Average Count",
-#       color = "Stage") +
-#  theme_minimal()
-
 
 ## ----Loading Markov result
 if (!require("readxl")) install.packages("readxl")
@@ -2353,11 +2362,14 @@ long_merged_data <- merged_df %>%
 ################################################################################
 
 
+################################################################################  
 ## ----Incidences, Prevalences, and Mortalities
+
+# MArkov results (corrected):
 #load(file = "data/markov_results/markov_vacc_incidences_vectors.RData")
 load(file = "data/markov_results/markov_vacc_CORRECTED_incidences_vectors.RData")
 # Markov:
-markov_CN1_incidences  <- c(0.00000, 204.73492, 981.96179, 1368.24200, 3006.85782, 33.48096, 1362.96678, 459.48051, 697.84223, 794.33833, 223.00222, 246.23082, 176.02167, 126.22963, 53.70939)
+#markov_CN1_incidences  <- c(0.00000, 204.73492, 981.96179, 1368.24200, 3006.85782, 33.48096, 1362.96678, 459.48051, 697.84223, 794.33833, 223.00222, 246.23082, 176.02167, 126.22963, 53.70939)
 #markov_CN1_incidences  <- markov_sim_vacc$Markov_CIN1_60 
 #markov_CN1_incidences  <- markov_sim_vacc$Markov_CIN1_70 
 #markov_CN1_incidences  <- markov_sim_vacc$Markov_CIN1_80 
@@ -2366,16 +2378,16 @@ markov_CN1_incidences  <- c(0.00000, 204.73492, 981.96179, 1368.24200, 3006.8578
 #markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_70
 markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_80
 
-markov_CN2_incidences  <- c(0.000000, 6.165629, 54.767952, 140.309815, 216.568392, 1476.306267, 1579.728160, 1298.914564, 466.596151, 637.661611, 442.298632, 304.784447, 250.953880, 165.628020, 116.925192)
+#markov_CN2_incidences  <- c(0.000000, 6.165629, 54.767952, 140.309815, 216.568392, 1476.306267, 1579.728160, 1298.914564, 466.596151, 637.661611, 442.298632, 304.784447, 250.953880, 165.628020, 116.925192)
 #markov_CN2_incidences  <- markov_sim_vacc$Markov_CIN2_60
 #markov_CN2_incidences  <- markov_sim_vacc$Markov_CIN2_70
 #markov_CN2_incidences  <- markov_sim_vacc$Markov_CIN2_80
-#markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_0
+##markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_0
 #markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_60
 #markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_70
 markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_80
   
-markov_CN3_incidences  <- c(0.000000, 2.090325, 9.597415, 44.467676, 148.972191, 0.000000, 3.550684, 91.881726, 12.505042, 68.377446, 25.802481, 7.952667, 1.174088, 1.177840, 2.638642)
+#markov_CN3_incidences  <- c(0.000000, 2.090325, 9.597415, 44.467676, 148.972191, 0.000000, 3.550684, 91.881726, 12.505042, 68.377446, 25.802481, 7.952667, 1.174088, 1.177840, 2.638642)
 #markov_CN3_incidences  <- markov_sim_vacc$Markov_CIN3_60
 #markov_CN3_incidences  <- markov_sim_vacc$Markov_CIN3_70
 #markov_CN3_incidences  <- markov_sim_vacc$Markov_CIN3_80
@@ -2384,7 +2396,7 @@ markov_CN3_incidences  <- c(0.000000, 2.090325, 9.597415, 44.467676, 148.972191,
 #markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_70
 markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_80
 
-markov_CC_incidences   <- c(0.000000, 0.000000, 0.000000, 5.520938, 8.360544, 13.282380, 22.906871, 20.825560, 15.867891, 32.483846, 8.962389, 17.681771, 11.737615, 17.354646, 14.582775)
+#markov_CC_incidences   <- c(0.000000, 0.000000, 0.000000, 5.520938, 8.360544, 13.282380, 22.906871, 20.825560, 15.867891, 32.483846, 8.962389, 17.681771, 11.737615, 17.354646, 14.582775)
 #markov_CC_incidences   <- markov_sim_vacc$Markov_CC_60
 #markov_CC_incidences   <- markov_sim_vacc$Markov_CC_70
 #markov_CC_incidences   <- markov_sim_vacc$Markov_CC_80
@@ -2393,8 +2405,7 @@ markov_CC_incidences   <- c(0.000000, 0.000000, 0.000000, 5.520938, 8.360544, 13
 #markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_70
 markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_80
 
-  
-markov_HPV_prevalences <- c(0.000000000, 0.343480414, 0.377634762, 0.087223460, 0.307341403, 0.030196332, 0.050562845, 0.050151668, 0.082952596, 0.046644059, 0.018532077, 0.034193076, 0.016407832, 0.015039027, 0.003217326)
+#markov_HPV_prevalences <- c(0.000000000, 0.343480414, 0.377634762, 0.087223460, 0.307341403, 0.030196332, 0.050562845, 0.050151668, 0.082952596, 0.046644059, 0.018532077, 0.034193076, 0.016407832, 0.015039027, 0.003217326)
 #markov_HPV_prevalences <- markov_sim_vacc$Markov_VPH_60
 #markov_HPV_prevalences <- markov_sim_vacc$Markov_VPH_70
 #markov_HPV_prevalences <- markov_sim_vacc$Markov_VPH_80
@@ -2403,13 +2414,25 @@ markov_HPV_prevalences <- c(0.000000000, 0.343480414, 0.377634762, 0.087223460, 
 #markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_70
 markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_80
 
-markov_CC_mortality <- c(0.000000e+00, 0.000000e+00, 0.000000e+00, 2.977975e-06, 
-                         1.574920e-05, 2.715056e-05, 5.489929e-05, 7.284815e-05,
-                         1.057494e-04, 5.076268e-05, 7.517773e-05, 4.960943e-05,
-                         4.802468e-05, 4.210457e-05, 4.837655e-05) * 10^5
+# markov_CC_mortality <- c(0.000000e+00, 0.000000e+00, 0.000000e+00, 2.977975e-06, 
+#                          1.574920e-05, 2.715056e-05, 5.489929e-05, 7.284815e-05,
+#                          1.057494e-04, 5.076268e-05, 7.517773e-05, 4.960943e-05,
+#                          4.802468e-05, 4.210457e-05, 4.837655e-05) * 10^5
+#markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_0
+#markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_60
+#markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_70
+markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_80
 
+
+markov_new_CIN1 <- markov_sim_vacc_incidences$`Markov_n CIN1_80`
+markov_new_CIN2 <- markov_sim_vacc_incidences$`Markov_n CIN2_80`
+markov_new_CIN3 <- markov_sim_vacc_incidences$`Markov_n CIN3_80`
+markov_new_Cancer <- markov_sim_vacc_incidences$`Markov_n CC_80`
+################################################################################  
+
+  
+################################################################################  
 ## MicroSim:
-
 microSim_CN1_incidences          <- sim_result[[1]]$mean_incidence_CIN1_per_age_interval
 microSim_CN2_incidences          <- sim_result[[1]]$mean_incidence_CIN2_per_age_interval
 microSim_CN3_incidences          <- sim_result[[1]]$mean_incidence_CIN3_per_age_interval
@@ -2417,6 +2440,11 @@ microSim_CC_incidences           <- sim_result[[1]]$mean_CC_incidence
 microSim_HPV_prevalences         <- sim_result[[1]]$mean_HPV_prevalence_per_age_interval
 microSim_CC_mortality            <- sim_result[[1]]$CC_mean_mortality
 microSim_CC_by_diff_mortality    <- sim_result[[1]]$CC_by_diff_mean_mortality
+microSim_new_CIN1                <- sim_result[[1]]$new_averaged_CIN1_per_age_interval
+microSim_new_CIN2                <- sim_result[[1]]$new_averaged_CIN2_per_age_interval
+microSim_new_CIN3                <- sim_result[[1]]$new_averaged_CIN3_per_age_interval
+microSim_new_Cancer              <- sim_result[[1]]$new_averaged_Cancer_per_age_interval
+################################################################################  
 
 
 ## ----Ploting incidences and prevalences
@@ -2460,7 +2488,7 @@ markov_data[] <- lapply(markov_data, function(x) {
 # For the MicroSim data, ensure columns are numeric if needed
 # You might need to extract these from the list manually and convert them
 
-# Example conversion if you have microSim data as tibbles
+# Conversion if you have microSim data as tibbles
 microSim_data <- data.frame(
   age = age_groups,
   
@@ -2494,6 +2522,7 @@ microSim_long <- microSim_data %>%
 # Combine data
 combined_data <- bind_rows(markov_long, microSim_long)
 
+################################################################################
 plot_comparison <- function(data, measure_name) {
   ggplot(data %>% dplyr::filter(grepl(measure_name, measure)), 
          aes(x = age, y = value, fill = model)) +
@@ -2517,11 +2546,11 @@ plot_comparison <- function(data, measure_name) {
       plot.margin = margin(15, 5, 5, 5)                   # Add extra margin
     )
 }
-
+################################################################################
 
 ################################################################################
 ## Plotting FIGO prevalences
-figo_data_prevalence <- sim_result[["No Intervention"]]$mean_FIGO_prevalence
+figo_data_prevalence <- sim_result[[1]]$mean_FIGO_prevalence
 
 # Reshape the data into a long format
 data_long <- tidyr::pivot_longer(
@@ -2551,7 +2580,7 @@ plot_FIGO_prevalence <-
 
 ################################################################################
 ## Plotting mean FIGOs:
-mean_FIGO <- sim_result[["No Intervention"]]$mean_FIGO
+mean_FIGO <- sim_result[[1]]$mean_FIGO
 
 # Reshape the data into a long format
 data_long <- tidyr::pivot_longer(
@@ -2584,7 +2613,7 @@ plot_mean_FIGO <-
 
 ################################################################################
 ## Plotting mean Diagnosed:
-mean_Diagnosed <- sim_result[["No Intervention"]]$mean_Diagnosed
+mean_Diagnosed <- sim_result[[1]]$mean_Diagnosed
 
 # Reshape the data into a long format
 data_long <- tidyr::pivot_longer(
@@ -2613,16 +2642,7 @@ plot_mean_Diagnosed_FIGO <-
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ################################################################################
 plot_mean_new_CIN1 <-
-  ggplot(new_averaged_CIN1_per_age_interval, aes(x = age_interval, y = mean_new_cases)) +
-  geom_col(fill = "steelblue") +
-  theme_minimal() +
-  labs(title = "Average New CIN1 Cases by Age Group",
-       x = "Age Group", y = "Mean New Cases") + 
-  theme_minimal(base_size = 14) +  
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-plot_mean_new_CIN1 <-
-  ggplot(new_averaged_CIN1_per_age_interval, aes(x = age_interval, y = mean_new_cases)) +
+  ggplot(microSim_new_CIN1, aes(x = age_interval, y = mean_new_cases)) +
   geom_col(fill = "steelblue") +
   theme_minimal() +
   labs(title = "Average New CIN1 Cases by Age Group",
@@ -2631,7 +2651,7 @@ plot_mean_new_CIN1 <-
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 plot_mean_new_CIN2 <-
-  ggplot(new_averaged_CIN2_per_age_interval, aes(x = age_interval, y = mean_new_cases)) +
+  ggplot(microSim_new_CIN2, aes(x = age_interval, y = mean_new_cases)) +
   geom_col(fill = "steelblue") +
   theme_minimal() +
   labs(title = "Average New CIN2 Cases by Age Group",
@@ -2639,8 +2659,9 @@ plot_mean_new_CIN2 <-
   theme_minimal(base_size = 14) +  
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+
 plot_mean_new_CIN3 <-
-  ggplot(new_averaged_CIN3_per_age_interval, aes(x = age_interval, y = mean_new_cases)) +
+  ggplot(microSim_new_CIN3, aes(x = age_interval, y = mean_new_cases)) +
   geom_col(fill = "steelblue") +
   theme_minimal() +
   labs(title = "Average New CIN3 Cases by Age Group",
@@ -2649,7 +2670,7 @@ plot_mean_new_CIN3 <-
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 plot_mean_new_Cancer <-
-  ggplot(new_averaged_Cancer_per_age_interval, aes(x = age_interval, y = mean_new_cases)) +
+  ggplot(microSim_new_Cancer, aes(x = age_interval, y = mean_new_cases)) +
   geom_col(fill = "steelblue") +
   theme_minimal() +
   labs(title = "Average New Cancer Cases by Age Group",
@@ -2658,13 +2679,236 @@ plot_mean_new_Cancer <-
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 plot_mean_new_CC <-
-  ggplot(new_averaged_CC_Death_per_age_interval, aes(x = age_interval, y = mean_new_cases)) +
+  ggplot(sim_result[[1]]$new_averaged_CC_Death_per_age_interval, aes(x = age_interval, y = mean_new_cases)) +
   geom_col(fill = "steelblue") +
   theme_minimal() +
   labs(title = "Average New Cancer Death Cases by Age Group",
        x = "Age Group", y = "Mean New Cases") + 
   theme_minimal(base_size = 14) +  
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+################################################################################
+# create comparison for new individuals in diverse epi clases. 
+# # These are raw numbers, not normalized numbers such as incidencem and prevalences
+compare_models_plot <- function(markov_vector, microsim_tbl, 
+                                outcome_label = "Outcome", 
+                                microsim_col = "mean_new_cases",
+                                #N = "1e+06", cycles = 75, sims = 20, vacc = 0.8) {
+                                N = n_i, cycles = n_t,
+                                sims = numb_of_sims, 
+                                vacc = vacc_coverage[1]) {
+  # Clean age group labels from Markov vector
+  age_labels <- sub("^n [^ ]+ ", "", names(markov_vector))
+  
+  # Build Markov dataframe
+  markov_df <- tibble(
+    age_interval = factor(age_labels, levels = unique(age_labels)),
+    value = as.numeric(markov_vector),
+    model = "Markov"
+  )
+  
+  # Prepare MicroSim dataframe
+  micro_df <- microsim_tbl %>%
+    rename(value = all_of(microsim_col)) %>%
+    mutate(model = "MicroSim",
+           age_interval = factor(age_interval, levels = levels(markov_df$age_interval)))
+  
+  # Combine both
+  combined_df <- bind_rows(markov_df, micro_df)
+  
+  # Plot
+  ggplot(combined_df, aes(x = age_interval, y = value, fill = model)) +
+    geom_bar(stat = "identity", position = position_dodge(width = 0.7)) +
+    labs(
+      title = paste("New", outcome_label, "- Comparison"),
+      subtitle = paste0("N = ", N, 
+                        " ; cycles= ", cycles, 
+                        " ; Para. Avgd. sims = ", sims, 
+                        "\nVacc.= ", vacc),
+      x = "Age Group",
+      y = outcome_label
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold"),
+      plot.subtitle = element_text(hjust = 0.5),
+      axis.text.x = element_text(angle = 45, hjust = 1)
+    ) +
+    scale_fill_manual(values = c("Markov" = "salmon", "MicroSim" = "turquoise3"))
+}
+################################################################################
+
+plot_comparison_new_CIN1 <- compare_models_plot(
+  markov_vector = markov_new_CIN1,
+  microsim_tbl = microSim_new_CIN1,
+  outcome_label = "CIN1"
+)
+
+plot_comparison_new_CIN2 <- compare_models_plot(
+  markov_vector = markov_new_CIN2,
+  microsim_tbl = microSim_new_CIN2,
+  outcome_label = "CIN2"
+)
+
+plot_comparison_new_CIN3 <- compare_models_plot(
+  markov_vector = markov_new_CIN3,
+  microsim_tbl = microSim_new_CIN3,
+  outcome_label = "CIN3"
+)
+
+plot_comparison_new_Cancer <- compare_models_plot(
+  markov_vector = markov_new_Cancer,
+  microsim_tbl = microSim_new_Cancer,
+  outcome_label = "Cancer"
+)
+
+
+
+################################################################################
+difference_plot <- function(markov_vector, microsim_tbl, 
+                            outcome_label = "Outcome", 
+                            microsim_col = "mean_new_cases",
+                            type = c("relative", "absolute"),
+                            N = n_i, cycles = n_t,
+                            sims = numb_of_sims, 
+                            vacc = vacc_coverage[1]) {
+  
+  type <- match.arg(type)
+  
+  # Extract age group labels
+  age_labels <- sub("^n [^ ]+ ", "", names(markov_vector))
+  
+  # Markov data frame
+  markov_df <- tibble(
+    age_interval = factor(age_labels, levels = unique(age_labels)),
+    markov_value = as.numeric(markov_vector)
+  )
+  
+  # MicroSim data frame
+  microsim_df <- microsim_tbl %>%
+    rename(microsim_value = all_of(microsim_col)) %>%
+    mutate(age_interval = factor(age_interval, levels = levels(markov_df$age_interval)))
+  
+  # Join and compute both differences
+  diff_df <- left_join(markov_df, microsim_df, by = "age_interval") %>%
+    mutate(
+      absolute_difference = markov_value - microsim_value,
+      relative_difference = (markov_value - microsim_value) / markov_value
+    )
+  
+  # Choose y-axis and label
+  if (type == "relative") {
+    y_col <- diff_df$relative_difference
+    y_label <- "Relative Difference (%)"
+    y_format <- scales::percent_format(accuracy = 1)
+  } else {
+    y_col <- diff_df$absolute_difference
+    y_label <- "Absolute Difference (Markov - MicroSim)"
+    y_format <- scales::comma_format()
+  }
+  
+  # Plot
+  ggplot(diff_df, aes(x = age_interval, y = y_col, 
+                      fill = factor(ifelse(y_col > 0, "Markov > MicroSim", "MicroSim > Markov"))
+)) +
+    geom_col() +
+    scale_y_continuous(labels = y_format) +
+    scale_fill_manual(
+      #values = c("TRUE" = "salmon", "FALSE" = "turquoise3"),
+      #labels = c("Markov > MicroSim", "MicroSim > Markov")
+      values = c("Markov > MicroSim" = "salmon", "MicroSim > Markov" = "turquoise3"),
+      name = "Comparison"
+    ) +
+    labs(
+      title = paste(ifelse(type == "relative", "Relative", "Absolute"), 
+                    "Difference in", outcome_label),
+      subtitle = paste0(
+        ifelse(type == "relative", "(Markov - MicroSim) / Markov", "Markov - MicroSim"), 
+        "\nN = ", N, 
+        " ; cycles = ", cycles, 
+        " ; Para. Avgd. sims = ", sims, 
+        "\nVacc. = ", vacc
+      ),
+      x = "Age Group",
+      y = y_label,
+      fill = "Comparison"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold"),
+      plot.subtitle = element_text(hjust = 0.5),
+      axis.text.x = element_text(angle = 45, hjust = 1)
+    )
+  
+  
+}
+################################################################################
+
+# Relative difference plot
+plot_rel_diff_CIN1 <- difference_plot(
+  markov_vector = markov_new_CIN1,
+  microsim_tbl = microSim_new_CIN1,
+  outcome_label = "CIN1",
+  type = "relative"
+)
+
+# Absolute difference plot
+plot_abs_diff_CIN1 <- difference_plot(
+  markov_vector = markov_new_CIN1,
+  microsim_tbl = microSim_new_CIN1,
+  outcome_label = "CIN1",
+  type = "absolute"
+)
+
+# Relative difference plot
+plot_rel_diff_CIN2 <- difference_plot(
+  markov_vector = markov_new_CIN2,
+  microsim_tbl = microSim_new_CIN2,
+  outcome_label = "CIN2",
+  type = "relative"
+)
+
+# Absolute difference plot
+plot_abs_diff_CIN2 <- difference_plot(
+  markov_vector = markov_new_CIN2,
+  microsim_tbl = microSim_new_CIN2,
+  outcome_label = "CIN2",
+  type = "absolute"
+)
+
+# Relative difference plot
+plot_rel_diff_CIN3 <- difference_plot(
+  markov_vector = markov_new_CIN3,
+  microsim_tbl = microSim_new_CIN3,
+  outcome_label = "CIN3",
+  type = "relative"
+)
+
+# Absolute difference plot
+plot_abs_diff_CIN3 <- difference_plot(
+  markov_vector = markov_new_CIN3,
+  microsim_tbl = microSim_new_CIN3,
+  outcome_label = "CIN3",
+  type = "absolute"
+)
+
+# Relative difference plot
+plot_rel_diff_Cancer <- difference_plot(
+  markov_vector = markov_new_Cancer,
+  microsim_tbl = microSim_new_Cancer,
+  outcome_label = "Cancer",
+  type = "relative"
+)
+
+# Absolute difference plot
+plot_abs_diff_Cancer <- difference_plot(
+  markov_vector = markov_new_Cancer,
+  microsim_tbl = microSim_new_Cancer,
+  outcome_label = "Cancer",
+  type = "absolute"
+)
+
+
 
 # Create plots for each measure
 plot_CN1_incidences <- plot_comparison(combined_data, "CN1_incidences")
@@ -2694,16 +2938,39 @@ print(plot_mean_new_Cancer)
 print(plot_mean_new_CC)
 
 
+# Combining plots in a single image:
+library("patchwork")
+combined_plot <- (plot_CN1_incidences | plot_CN2_incidences | plot_CN3_incidences) /
+  #(plot_CC_incidences | plot_HPV_prevalences | plot_CC_mortality)
+  (plot_CC_incidences | plot_HPV_prevalences | plot_mean_Diagnosed_FIGO)# plot_CC_mortality)
+
+#combined_plot2 <- (plot_mean_new_CIN1 | plot_mean_new_CIN2 | plot_mean_new_CIN3) |
+combined_plot3 <- (plot_comparison_new_CIN1 | plot_comparison_new_CIN2) / (plot_comparison_new_CIN3 | plot_comparison_new_Cancer) 
+# View it
+print(combined_plot)
+print(combined_plot3)
+
+#ggsave("figures/combined_plots_incidence_vacc_80.pdf", combined_plot, width = 15, height = 10, dpi = 300)
+
+################################################################################
+### Check visually for patterns in the difference of microSims and Markov sims:
+combined_plot_rel_diff_new_cases <- (plot_rel_diff_CIN1 | plot_rel_diff_CIN2) /
+                  (plot_rel_diff_CIN3 | plot_rel_diff_Cancer)  
+
+combined_plot_abs_diff_new_cases <- (plot_abs_diff_CIN1 | plot_abs_diff_CIN2) /
+                  (plot_abs_diff_CIN3 | plot_abs_diff_Cancer)  
+
+print(combined_plot_rel_diff_new_cases)
+print(combined_plot_abs_diff_new_cases)
+################################################################################
+
+
+################################################################################
 if (numb_of_sims >=60) {
-  ################################################################################
+  ##############################################################################
   # For number of simulations of 60 we can analize the cost results to check
   # whether there is a numerical artifact or logic code problem producing
-  # a tendency of decreas tc_hat_undisc along simulations:
-  #average_cost <-
-  #  other_mean_mortality_result[["No Intervention"]]$tc_hat_undisc$`sim[[i]][[name_level_of_sim]]`
-  #average_cost <-
-  #  sim_result[["No Intervention"]]$tc_hat_undisc$`sim[[i]][[name_level_of_sim]]`
-  
+  # a tendency of decrease tc_hat_undisc along simulations:
   average_cost <-
     sim_result[["No Intervention"]]$tc_hat_undisc$tc_hat_undisc
   
@@ -2725,23 +2992,10 @@ if (numb_of_sims >=60) {
   lines(moving_avg, col = "red")
 }
 
-df <- sim_result[["No Intervention"]]$TR %>% select(FIGO.I, FIGO.II, FIGO.III, FIGO.IV) 
+df <- sim_result[[1]]$TR %>% select(FIGO.I, FIGO.II, FIGO.III, FIGO.IV) 
 # select(FIGO.I, FIGO.II, FIGO.III, FIGO.IV) and summarize by columns
 df <- df %>% summarise(across(everything(), sum, na.rm = TRUE))
-
-# Combining plots in a single image:
-library("patchwork")
-combined_plot <- (plot_CN1_incidences | plot_CN2_incidences | plot_CN3_incidences) /
-  #(plot_CC_incidences | plot_HPV_prevalences | plot_CC_mortality)
-  (plot_CC_incidences | plot_HPV_prevalences | plot_mean_Diagnosed_FIGO)# plot_CC_mortality)
-
-combined_plot2 <- (plot_mean_new_CIN1 | plot_mean_new_CIN2 | plot_mean_new_CIN3) |
-
-# View it
-print(combined_plot)
-
-#ggsave("figures/combined_plots_incidence_vacc_80.pdf", combined_plot, width = 15, height = 10, dpi = 300)
-
+################################################################################
 
 # DEBUGGING
 cat("\n")
