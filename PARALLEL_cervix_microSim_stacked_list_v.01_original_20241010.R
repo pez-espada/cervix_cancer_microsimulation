@@ -35,12 +35,25 @@ ensure_library <- function(...) {
 my_Probs <- readRDS(file = "./data/probs.rds") # natural history transition matrix
 my_Probs2 <- readRDS(file = "./data/probs2.rds")  # vaccination transition matrix
 
-# CORRECTED TRANSITIONS (since 2025/04/14):
-library(readxl)
-my_Probs <- read_excel("data/corrected_transitions_20250414/Probs_20250414.xls")
-my_Probs <- my_Probs %>% dplyr::rename(Age.group = `Age group`)
-my_Probs2 <- read_excel("data/corrected_transitions_20250414/Probs2_20250414.xlsx")
-my_Probs2<- my_Probs2 %>% dplyr::rename(Age.group = `Age group`)
+## CORRECTED TRANSITIONS (since 2025/04/14):
+#library(readxl)
+#my_Probs <- read_excel("data/corrected_transitions_20250414/Probs_20250414.xls")
+#my_Probs <- my_Probs %>% dplyr::rename(Age.group = `Age group`)
+#my_Probs2 <- read_excel("data/corrected_transitions_20250414/Probs2_20250414.xlsx")
+#my_Probs2<- my_Probs2 %>% dplyr::rename(Age.group = `Age group`)
+
+# WORKI IN PROGRESS:
+## Obtaining 'my_Probs2' from 'my_Probs' programatically (Sandra's code):
+#infection_reduction <- 0.7 # dut to vaccination
+#my_Probs2 <- my_Probs
+#my_Probs2$state <- names(my_Probs2[2:length(my_Probs2)])
+#my_Probs2[my_Probs2$state == "Well", "HR.HPV.infection"  ] <- 
+#  my_Probs2[my_Probs2$state=="Well", "HR.HPV.infection"  ]*(1 - infection_reduction)
+#my_Probs2[my_Probs2$state == "Well", "Well" ] <- 
+#  1-(my_Probs2[my_Probs2$state == "H", "HR.HPV.infection"] + my_Probs2[my_Probs2$state == "Well", "Other.Death"])
+#probs2$state<-NULL
+
+
 
 # vaccination 2 associated immunity transition matrix
 my_Probs2_nat_immunity <- readRDS(file = "./data/probs3.rds") 
@@ -1509,7 +1522,7 @@ sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims,
                         Pmatrix = Pmatrix,
                         master_seed = 123,
                         reproducible = TRUE, 
-                        use_parallel = FALSE,
+                        use_parallel = TRUE,
                         cost_vacc2, cost_vacc4, cost_vacc9)
 
 # For stacking outside the function, we need to comment the stacking function
@@ -2163,7 +2176,7 @@ cat("SLURM job ID:", slurm_job_id, "\n")
 # Use job ID in file name
 output_file <-
   #paste0("data/testing_stability/stacked_sims_20x10E5x75_20250323_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
-  paste0("data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_SEQ_20250416_sim_", slurm_job_id, ".rds")
+  paste0("data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_OLD_TRANSITIONS_PARA_20250417_sim_", slurm_job_id, ".rds")
 saveRDS(object = sim_result, file = output_file)
 
 ################################################################################
@@ -2204,14 +2217,23 @@ sim_result_80 <-
 #sim_result_80 <- 
 #  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.8_PARA_20250416_sim_20030.rds")
 
+# Load old natural history (no vaccination strategy implmented so it should match vacc_0.0 strategy):
+sim_natural_history <- 
+  readRDS(file = "data/last_results_20250324/stacked_sims_PARA_20x10E6x75_20250417_NATURAL_HISTORY_sim_20042.rds")
+# Load result for vacc = 0 and using the old transitiosn for debuging purposes:
+sim_result_0_old_trans <- 
+  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_OLD_TRANSITIONS_PARA_20250417_sim_20045.rds")
+
 
 # load  Markov vaccination computation strategies:
 #load(file = "data/markov_vacc_vectors.RData")
 load(file = "data/markov_vacc_CORRECTED_vectors.RData")
 
 ## Use this only to pots-process some of the previous results:
-sim_result <- sim_result_80
-vacc_coverage <- c(0.8,0,0)
+#sim_result <- sim_result_80
+#sim_result <- sim_natural_history
+sim_result <- sim_result_0_old_trans
+vacc_coverage <- c(0.0,0,0)
 
 
 cat("I have written out the results\n")
@@ -2266,7 +2288,9 @@ cat("I have written out the results\n")
 
 ################################################################################
 ################################################################################
-### PLOTTING ROUTINES 
+###                      PLOTTING ROUTINES                                    ##
+################################################################################
+################################################################################
 ## ----Plot curves
 ## This R chunk is a plot routine (not part of the main program):
 library(RColorBrewer)
@@ -2373,61 +2397,61 @@ load(file = "data/markov_results/markov_vacc_CORRECTED_incidences_vectors.RData"
 #markov_CN1_incidences  <- markov_sim_vacc$Markov_CIN1_60 
 #markov_CN1_incidences  <- markov_sim_vacc$Markov_CIN1_70 
 #markov_CN1_incidences  <- markov_sim_vacc$Markov_CIN1_80 
-#markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_0 
+markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_0 
 #markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_60 
 #markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_70
-markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_80
+#markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_80
 
 #markov_CN2_incidences  <- c(0.000000, 6.165629, 54.767952, 140.309815, 216.568392, 1476.306267, 1579.728160, 1298.914564, 466.596151, 637.661611, 442.298632, 304.784447, 250.953880, 165.628020, 116.925192)
 #markov_CN2_incidences  <- markov_sim_vacc$Markov_CIN2_60
 #markov_CN2_incidences  <- markov_sim_vacc$Markov_CIN2_70
 #markov_CN2_incidences  <- markov_sim_vacc$Markov_CIN2_80
-##markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_0
+markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_0
 #markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_60
 #markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_70
-markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_80
+#markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_80
   
 #markov_CN3_incidences  <- c(0.000000, 2.090325, 9.597415, 44.467676, 148.972191, 0.000000, 3.550684, 91.881726, 12.505042, 68.377446, 25.802481, 7.952667, 1.174088, 1.177840, 2.638642)
 #markov_CN3_incidences  <- markov_sim_vacc$Markov_CIN3_60
 #markov_CN3_incidences  <- markov_sim_vacc$Markov_CIN3_70
 #markov_CN3_incidences  <- markov_sim_vacc$Markov_CIN3_80
-#markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_0
+markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_0
 #markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_60
 #markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_70
-markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_80
+#markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_80
 
 #markov_CC_incidences   <- c(0.000000, 0.000000, 0.000000, 5.520938, 8.360544, 13.282380, 22.906871, 20.825560, 15.867891, 32.483846, 8.962389, 17.681771, 11.737615, 17.354646, 14.582775)
 #markov_CC_incidences   <- markov_sim_vacc$Markov_CC_60
 #markov_CC_incidences   <- markov_sim_vacc$Markov_CC_70
 #markov_CC_incidences   <- markov_sim_vacc$Markov_CC_80
-#markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_0
+markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_0
 #markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_60
 #markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_70
-markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_80
+#markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_80
 
 #markov_HPV_prevalences <- c(0.000000000, 0.343480414, 0.377634762, 0.087223460, 0.307341403, 0.030196332, 0.050562845, 0.050151668, 0.082952596, 0.046644059, 0.018532077, 0.034193076, 0.016407832, 0.015039027, 0.003217326)
 #markov_HPV_prevalences <- markov_sim_vacc$Markov_VPH_60
 #markov_HPV_prevalences <- markov_sim_vacc$Markov_VPH_70
 #markov_HPV_prevalences <- markov_sim_vacc$Markov_VPH_80
-#markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_0
+markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_0
 #markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_60
 #markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_70
-markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_80
+#markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_80
 
 # markov_CC_mortality <- c(0.000000e+00, 0.000000e+00, 0.000000e+00, 2.977975e-06, 
 #                          1.574920e-05, 2.715056e-05, 5.489929e-05, 7.284815e-05,
 #                          1.057494e-04, 5.076268e-05, 7.517773e-05, 4.960943e-05,
 #                          4.802468e-05, 4.210457e-05, 4.837655e-05) * 10^5
-#markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_0
+markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_0
 #markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_60
 #markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_70
-markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_80
+#markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_80
 
 
-markov_new_CIN1 <- markov_sim_vacc_incidences$`Markov_n CIN1_80`
-markov_new_CIN2 <- markov_sim_vacc_incidences$`Markov_n CIN2_80`
-markov_new_CIN3 <- markov_sim_vacc_incidences$`Markov_n CIN3_80`
-markov_new_Cancer <- markov_sim_vacc_incidences$`Markov_n CC_80`
+markov_new_CIN1 <- markov_sim_vacc_incidences$`Markov_n CIN1_0`
+markov_new_CIN2 <- markov_sim_vacc_incidences$`Markov_n CIN2_0`
+markov_new_CIN3 <- markov_sim_vacc_incidences$`Markov_n CIN3_0`
+markov_new_Cancer <- markov_sim_vacc_incidences$`Markov_n CC_0`
 ################################################################################  
 
   
