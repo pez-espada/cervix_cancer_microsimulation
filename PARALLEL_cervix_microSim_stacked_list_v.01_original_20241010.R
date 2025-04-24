@@ -31,18 +31,18 @@ ensure_library <- function(...) {
   })
 }
 ################################################################################
-
+# OLD TRANSITIONS:
 my_Probs <- readRDS(file = "./data/probs.rds") # natural history transition matrix
-my_Probs2 <- readRDS(file = "./data/probs2.rds")  # vaccination transition matrix
+my_Probs2 <- readRDS(file = "./data/probs2.rds") # vaccination transition matrix
 
-## CORRECTED TRANSITIONS (since 2025/04/14):
-#library(readxl)
-#my_Probs <- read_excel("data/corrected_transitions_20250414/Probs_20250414.xls")
-#my_Probs <- my_Probs %>% dplyr::rename(Age.group = `Age group`)
-#my_Probs2 <- read_excel("data/corrected_transitions_20250414/Probs2_20250414.xlsx")
-#my_Probs2<- my_Probs2 %>% dplyr::rename(Age.group = `Age group`)
+# CORRECTED TRANSITIONS (since 2025/04/14):
+library(readxl)
+my_Probs <- read_excel("data/corrected_transitions_20250414/Probs_20250414.xls")
+my_Probs <- my_Probs %>% dplyr::rename(Age.group = `Age group`)
+my_Probs2 <- read_excel("data/corrected_transitions_20250414/Probs2_20250414.xlsx")
+my_Probs2<- my_Probs2 %>% dplyr::rename(Age.group = `Age group`)
 
-# WORKI IN PROGRESS:
+# WORK IN PROGRESS:
 ## Obtaining 'my_Probs2' from 'my_Probs' programatically (Sandra's code):
 #infection_reduction <- 0.7 # dut to vaccination
 #my_Probs2 <- my_Probs
@@ -52,7 +52,6 @@ my_Probs2 <- readRDS(file = "./data/probs2.rds")  # vaccination transition matri
 #my_Probs2[my_Probs2$state == "Well", "Well" ] <- 
 #  1-(my_Probs2[my_Probs2$state == "H", "HR.HPV.infection"] + my_Probs2[my_Probs2$state == "Well", "Other.Death"])
 #probs2$state<-NULL
-
 
 
 # vaccination 2 associated immunity transition matrix
@@ -173,8 +172,8 @@ return(transition_prob)
 }
 ################################################################################
 
-#################################################################################
-### ---- Probability Function ----                                             ##
+################################################################################
+### ---- Probability Function ----                                            ##
 ### The Probs function that updates the transition probabilities of every cycle:
 #Probs <- function(M_it, my_Probs) {
 #  n_s <- length(v_n)
@@ -203,7 +202,7 @@ return(transition_prob)
 #         return(t(m_P_it)), 
 #         stop("Probabilities do not sum to 1"))
 #}
-#################################################################################
+################################################################################
 
 
 # New Probs fnct:
@@ -309,7 +308,6 @@ Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2,
     #Test_Prob <-   Probs(M_it = M_it_2, my_Probs = prob_mat)
     
     current_row <- current_row + dim(state_subset)[1]
-    
     #############################################################################
   } # for vacc_status
   
@@ -341,7 +339,6 @@ samplev <- function (probs, m) {
     matrix(lev[1], ncol = m, nrow = n) # create array n_s x m (m=1) 
   # consisting in of health-state stored in
   # `lev[1]`, "H" in our case.
-  
   
   ## Handle NA in probs
   #if (any(is.na(probs))) {
@@ -446,40 +443,13 @@ tryCatch(
     message("A warning occured:\n", w)
   }
 )
-# If the TryCatch gives proble, just overrate it:
+# If the TryCatch gives problems, just overrate it:
 #for (i in 1:length(utilityCoefs)) {
 #  u_it[M_it == v_n[i]] <- utilityCoefs[i]   # update the utility if healthy
 #}
 return(u_it)
 }
 ################################################################################
-
-#################################################################################
-### ----Time period related functions
-############ WORK IN PROGRESS #########################
-#age_factor <- function(my_period) {
-## it receives a string with the period of the cycle, and it can be:
-##  - "1mth"
-##  - "3mth"
-##  - "4mth"
-##  - "6mth"
-##  - "1yr" # i.e. 12 months
-## and it gives back an age factor for scaling cycle period.
-#if (my_period == "1yr") {
-#  my_factor <- 1
-#} else if (my_period == "6mth") {
-#  my_factor <- 2
-#} else if (my_period == "4mth") {
-#  my_factor <- 3
-#} else if (my_period == "3mth") {
-#  my_factor <- 4
-#} else if (my_period == "1mth") {
-#  my_factor <- 12
-#} else {print("Cycle period can only be: '1yr', '6mth','4mth', '3mth' and '12mth'")}
-#return(my_factor)
-#}
-########## WORK IN PROGRESS #################
-#################################################################################
 
 
 ensure_library("dplyr", "tidyverse", "purrr")
@@ -672,8 +642,6 @@ update_column <- function(col, new_entries, next_col) {
 #################################################################################
 
 
-
-
 #################################################################################
 #library(dplyr)
 #library(tibble)
@@ -795,7 +763,6 @@ update_column <- function(col, new_entries, next_col) {
 #################################################################################
 
 
-
 #################################################################################
 ## Altenative function 3:
 #new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
@@ -895,10 +862,24 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
       warning(paste0("Some transitions not found: ", paste(missing_cols, collapse = ", "), ". Using columns of zeros for these."))
     }
     
+    # The operator ' unquote-splice` ("!!!") splices or unpack (corte y pega) 
+    # a list or vector into multiple arguments (used with functions of `rlang`).
+    # in our case the !!! is used to unpack the list returned by setNames() 
+    # and pass it as individual arguments to tibble(). This way, each item in 
+    # the list becomes a separate column in the tibble, with the names provided
+    # by missing_cols.
     missing_df <- tibble(
       !!!setNames(lapply(missing_cols, function(x) rep(0, nrow(Tot_Trans_per_t_tbl))), missing_cols)
     )
-    
+    # Combine and process
+    # The "unquote" operator unquotes a value or an expression, rather than 
+    # treating it as a literal symbol or character string.
+    # a) !! (Unquote): Injects a single value or expression into a function. 
+    # It is typically used when you want to reference or compute something based
+    # on a single variable or expression.
+    # b) !!! (Unquote-splice): Injects or "splices" multiple values or elements 
+    #from a list or vector into a function. It is used when you need to spread 
+    # a list of arguments across multiple positions or inputs.
     transition_cases <- Tot_Trans_per_t_tbl %>%
       select(all_of(existing_cols)) %>%
       bind_cols(missing_df) %>%
@@ -933,7 +914,7 @@ my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
 ## THE MICROSIMULATION MAIN FUNCTION
 # This version stacks solution of simulations but produces a list with stacked elements
 # check the `MicroSim` for any improvements or issues.
-MicroSim <- function(strategy="natural_history", 
+MicroSim <- function(strategy=strategy, 
                      numb_of_sims = 20,
                      v_M_1, n_i, n_t, v_n, d_c, d_e, 
                      TR_out = TRUE, TS_out = TRUE, Trt = FALSE,  
@@ -1513,7 +1494,7 @@ p = Sys.time()
 numb_of_sims = 20
 #numb_of_sims = 3
 
-strategy <- "natural_history"
+#strategy <- "natural_history"
 strategy <- "vacc_2_test"
 sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
@@ -1540,7 +1521,7 @@ sim_no_trt <- stacked_results
 comp.time = Sys.time() - p
 comp.time %>% print()
 
-# adding runtime execution time and some other parameters:
+# Adding runtime execution time and some other parameters:
 runtime <- comp.time %>% as_tibble() %>% `colnames<-`("runtime")
 sim_no_trt[[1]]$runtime <- runtime
 sim_no_trt[[1]]$strategy <- strategy
@@ -1682,7 +1663,6 @@ mean_incidence_func <- function(sim_stalked_result, state, my_Probs) {
   return(sim_stalked_result)
 }
 ################################################################################
-
 
 # Computing incidences:
 incidence_states_to_compute <- c("CIN1", "CIN2", "CIN3") 
@@ -1902,14 +1882,12 @@ other_mean_mortality_func <- function(sim_stalked_result, my_Probs) {
 }
 ################################################################################
 
-
 # Initialize the result with the original structure
 other_mean_mortality_result <- mean_CC_mortality_by_diff_result
 # Concatenate the prevalence to the sim result 
 other_mean_mortality_result <-
   other_mean_mortality_func(sim_stalked_result = 
                               other_mean_mortality_result, my_Probs = my_Probs)  
-
 
 
 ################################################################################
@@ -2017,8 +1995,6 @@ sim_result <-
                    sim_result, my_Probs = my_Probs)  
 ################################################################################
 
-
-
 ################################################################################
 # Mean diagnosed of Cancer averaged by age intervals (FIGO.I-.IV) and by sims
 mean_Diagnosed_Func  <- function (sim_stacked_result, my_Probs) {
@@ -2079,7 +2055,6 @@ mean_Diagnosed_Func  <- function (sim_stacked_result, my_Probs) {
 sim_result <-
   mean_Diagnosed_Func(sim_stacked_result = sim_result, my_Probs = my_Probs)  
 ################################################################################
-
 
 ################################################################################
 ################################################################################
@@ -2172,12 +2147,13 @@ if (is.na(slurm_job_id)) {
 }
 cat("SLURM job ID:", slurm_job_id, "\n")
 
-# Save simulation result:
-# Use job ID in file name
-output_file <-
-  #paste0("data/testing_stability/stacked_sims_20x10E5x75_20250323_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
-  paste0("data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_OLD_TRANSITIONS_PARA_20250417_sim_", slurm_job_id, ".rds")
-saveRDS(object = sim_result, file = output_file)
+## Save simulation result:
+## Use job ID in file name
+#output_file <-
+#  #paste0("data/testing_stability/stacked_sims_20x10E5x75_20250323_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
+#  #paste0("data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_OLD_TRANSITIONS_PARA_20250417_sim_", slurm_job_id, ".rds")
+#  paste0("data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_NEW_TRANSITIONS_PARA_20250424_sim_", slurm_job_id, ".rds")
+#saveRDS(object = sim_result, file = output_file)
 
 ################################################################################
 ################################################################################
@@ -2207,6 +2183,8 @@ sim_result_80 <-
 ## Load microsim results with vacc strategies (parallel runned):
 #sim_result_0 <- 
 #  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_PARA_20250416_sim_20033.rds")
+sim_result_0 <- 
+  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_NEW_TRANSITIONS_PARA_20250424_sim_20379.rds")
 #
 #sim_result_60 <- 
 #  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.6_PARA_20250416_sim_20032.rds")
@@ -2218,22 +2196,28 @@ sim_result_80 <-
 #  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.8_PARA_20250416_sim_20030.rds")
 
 # Load old natural history (no vaccination strategy implmented so it should match vacc_0.0 strategy):
-sim_natural_history <- 
-  readRDS(file = "data/last_results_20250324/stacked_sims_PARA_20x10E6x75_20250417_NATURAL_HISTORY_sim_20042.rds")
+#sim_natural_history <- 
+#  readRDS(file = "data/last_results_20250324/stacked_sims_PARA_20x10E6x75_20250417_NATURAL_HISTORY_sim_20042.rds")
+
+# Old transitions:
+#sim_natural_history <- 
+#  readRDS(file = "data/last_results_20250324/stacked_sims_PARA_20x10E6x75_20250424_NATURAL_HISTORY_REPROD_sim_20324.rds")
+#sim_natural_history <- 
+#  readRDS(file = "data/natural_history/stacked_sims_20x10E6x75_20250211_madeinPADO_PARA_NATURAL_HISTORY7071.rds")
+
 # Load result for vacc = 0 and using the old transitiosn for debuging purposes:
 sim_result_0_old_trans <- 
-  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_OLD_TRANSITIONS_PARA_20250417_sim_20045.rds")
-
+  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_OLD_TRANSITIONS_PARA_20250424_sim_20330.rds")
 
 # load  Markov vaccination computation strategies:
 #load(file = "data/markov_vacc_vectors.RData")
 load(file = "data/markov_vacc_CORRECTED_vectors.RData")
 
 ## Use this only to pots-process some of the previous results:
-#sim_result <- sim_result_80
+sim_result <- sim_result_0
 #sim_result <- sim_natural_history
-sim_result <- sim_result_0_old_trans
-vacc_coverage <- c(0.0,0,0)
+#sim_result <- sim_result_0_old_trans
+vacc_coverage <- c(0.0,0,0) # for correct plot titles 
 
 
 cat("I have written out the results\n")
@@ -2456,7 +2440,7 @@ markov_new_Cancer <- markov_sim_vacc_incidences$`Markov_n CC_0`
 
   
 ################################################################################  
-## MicroSim:
+## Adding MicroSim results:
 microSim_CN1_incidences          <- sim_result[[1]]$mean_incidence_CIN1_per_age_interval
 microSim_CN2_incidences          <- sim_result[[1]]$mean_incidence_CIN2_per_age_interval
 microSim_CN3_incidences          <- sim_result[[1]]$mean_incidence_CIN3_per_age_interval
@@ -2469,6 +2453,41 @@ microSim_new_CIN2                <- sim_result[[1]]$new_averaged_CIN2_per_age_in
 microSim_new_CIN3                <- sim_result[[1]]$new_averaged_CIN3_per_age_interval
 microSim_new_Cancer              <- sim_result[[1]]$new_averaged_Cancer_per_age_interval
 ################################################################################  
+
+################################################################################  
+## Adding corresponding (to vacc strategy) Markov age-averaged new_cases to sim_result
+library(tibble)
+library(stringr)
+library(purrr)
+
+# Define your state suffixes
+states <- c("CIN1", "CIN2", "CIN3", "Cancer")
+
+# Ensure sim_result exists and has an entry at [[1]]
+if (!exists("sim_result")) sim_result <- list()
+if (is.null(sim_result[[1]])) sim_result[[1]] <- list()
+
+# Helper function to convert vector to tibble
+convert_markov_vector <- function(vec) {
+  tibble(
+    age_interval = names(vec) %>%
+      str_extract("[0-9]{2}-[0-9]{2}") %>%
+      factor(levels = unique(.)),
+    mean_new_cases = as.numeric(vec)
+  )
+}
+
+# Convert and assign each result into sim_result[[1]]
+purrr::walk(states, function(state) {
+  obj_name <- paste0("markov_new_", state)
+  new_name <- paste0("new_averaged_", state, "_Markov_per_age_interval")
+  vec <- get(obj_name, envir = .GlobalEnv)
+  sim_result[[1]][[new_name]] <<- convert_markov_vector(vec)
+})
+################################################################################  
+
+
+
 
 
 ## ----Ploting incidences and prevalences
@@ -2665,6 +2684,7 @@ plot_mean_Diagnosed_FIGO <-
   theme_minimal(base_size = 14) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ################################################################################
+## Plot new individuals in epi classes averaged by age interval:
 plot_mean_new_CIN1 <-
   ggplot(microSim_new_CIN1, aes(x = age_interval, y = mean_new_cases)) +
   geom_col(fill = "steelblue") +
@@ -2867,70 +2887,71 @@ difference_plot <- function(markov_vector, microsim_tbl,
   
 }
 ################################################################################
+## Relative and absolute differences in new averaged cases
 
-# Relative difference plot
-plot_rel_diff_CIN1 <- difference_plot(
-  markov_vector = markov_new_CIN1,
-  microsim_tbl = microSim_new_CIN1,
-  outcome_label = "CIN1",
-  type = "relative"
-)
-
-# Absolute difference plot
-plot_abs_diff_CIN1 <- difference_plot(
-  markov_vector = markov_new_CIN1,
-  microsim_tbl = microSim_new_CIN1,
-  outcome_label = "CIN1",
-  type = "absolute"
-)
-
-# Relative difference plot
-plot_rel_diff_CIN2 <- difference_plot(
-  markov_vector = markov_new_CIN2,
-  microsim_tbl = microSim_new_CIN2,
-  outcome_label = "CIN2",
-  type = "relative"
-)
-
-# Absolute difference plot
-plot_abs_diff_CIN2 <- difference_plot(
-  markov_vector = markov_new_CIN2,
-  microsim_tbl = microSim_new_CIN2,
-  outcome_label = "CIN2",
-  type = "absolute"
-)
-
-# Relative difference plot
-plot_rel_diff_CIN3 <- difference_plot(
-  markov_vector = markov_new_CIN3,
-  microsim_tbl = microSim_new_CIN3,
-  outcome_label = "CIN3",
-  type = "relative"
-)
-
-# Absolute difference plot
-plot_abs_diff_CIN3 <- difference_plot(
-  markov_vector = markov_new_CIN3,
-  microsim_tbl = microSim_new_CIN3,
-  outcome_label = "CIN3",
-  type = "absolute"
-)
-
-# Relative difference plot
-plot_rel_diff_Cancer <- difference_plot(
-  markov_vector = markov_new_Cancer,
-  microsim_tbl = microSim_new_Cancer,
-  outcome_label = "Cancer",
-  type = "relative"
-)
-
-# Absolute difference plot
-plot_abs_diff_Cancer <- difference_plot(
-  markov_vector = markov_new_Cancer,
-  microsim_tbl = microSim_new_Cancer,
-  outcome_label = "Cancer",
-  type = "absolute"
-)
+## Relative difference plot
+#plot_rel_diff_CIN1 <- difference_plot(
+#  markov_vector = markov_new_CIN1,
+#  microsim_tbl = microSim_new_CIN1,
+#  outcome_label = "CIN1",
+#  type = "relative"
+#)
+#
+## Absolute difference plot
+#plot_abs_diff_CIN1 <- difference_plot(
+#  markov_vector = markov_new_CIN1,
+#  microsim_tbl = microSim_new_CIN1,
+#  outcome_label = "CIN1",
+#  type = "absolute"
+#)
+#
+## Relative difference plot
+#plot_rel_diff_CIN2 <- difference_plot(
+#  markov_vector = markov_new_CIN2,
+#  microsim_tbl = microSim_new_CIN2,
+#  outcome_label = "CIN2",
+#  type = "relative"
+#)
+#
+## Absolute difference plot
+#plot_abs_diff_CIN2 <- difference_plot(
+#  markov_vector = markov_new_CIN2,
+#  microsim_tbl = microSim_new_CIN2,
+#  outcome_label = "CIN2",
+#  type = "absolute"
+#)
+#
+## Relative difference plot
+#plot_rel_diff_CIN3 <- difference_plot(
+#  markov_vector = markov_new_CIN3,
+#  microsim_tbl = microSim_new_CIN3,
+#  outcome_label = "CIN3",
+#  type = "relative"
+#)
+#
+## Absolute difference plot
+#plot_abs_diff_CIN3 <- difference_plot(
+#  markov_vector = markov_new_CIN3,
+#  microsim_tbl = microSim_new_CIN3,
+#  outcome_label = "CIN3",
+#  type = "absolute"
+#)
+#
+## Relative difference plot
+#plot_rel_diff_Cancer <- difference_plot(
+#  markov_vector = markov_new_Cancer,
+#  microsim_tbl = microSim_new_Cancer,
+#  outcome_label = "Cancer",
+#  type = "relative"
+#)
+#
+## Absolute difference plot
+#plot_abs_diff_Cancer <- difference_plot(
+#  markov_vector = markov_new_Cancer,
+#  microsim_tbl = microSim_new_Cancer,
+#  outcome_label = "Cancer",
+#  type = "absolute"
+#)
 
 
 
@@ -2962,30 +2983,31 @@ print(plot_mean_new_Cancer)
 print(plot_mean_new_CC)
 
 
-# Combining plots in a single image:
+## Combining plots in a single image:
 library("patchwork")
 combined_plot <- (plot_CN1_incidences | plot_CN2_incidences | plot_CN3_incidences) /
   #(plot_CC_incidences | plot_HPV_prevalences | plot_CC_mortality)
   (plot_CC_incidences | plot_HPV_prevalences | plot_mean_Diagnosed_FIGO)# plot_CC_mortality)
 
-#combined_plot2 <- (plot_mean_new_CIN1 | plot_mean_new_CIN2 | plot_mean_new_CIN3) |
-combined_plot3 <- (plot_comparison_new_CIN1 | plot_comparison_new_CIN2) / (plot_comparison_new_CIN3 | plot_comparison_new_Cancer) 
+##combined_plot2 <- (plot_mean_new_CIN1 | plot_mean_new_CIN2 | plot_mean_new_CIN3) |
+combined_plot3 <- (plot_comparison_new_CIN1 | plot_comparison_new_CIN2) /
+  (plot_comparison_new_CIN3 | plot_comparison_new_Cancer) 
 # View it
 print(combined_plot)
 print(combined_plot3)
 
 #ggsave("figures/combined_plots_incidence_vacc_80.pdf", combined_plot, width = 15, height = 10, dpi = 300)
 
-################################################################################
-### Check visually for patterns in the difference of microSims and Markov sims:
-combined_plot_rel_diff_new_cases <- (plot_rel_diff_CIN1 | plot_rel_diff_CIN2) /
-                  (plot_rel_diff_CIN3 | plot_rel_diff_Cancer)  
-
-combined_plot_abs_diff_new_cases <- (plot_abs_diff_CIN1 | plot_abs_diff_CIN2) /
-                  (plot_abs_diff_CIN3 | plot_abs_diff_Cancer)  
-
-print(combined_plot_rel_diff_new_cases)
-print(combined_plot_abs_diff_new_cases)
+#################################################################################
+#### Check visually for patterns in the difference of microSims and Markov sims:
+#combined_plot_rel_diff_new_cases <- (plot_rel_diff_CIN1 | plot_rel_diff_CIN2) /
+#                  (plot_rel_diff_CIN3 | plot_rel_diff_Cancer)  
+#
+#combined_plot_abs_diff_new_cases <- (plot_abs_diff_CIN1 | plot_abs_diff_CIN2) /
+#                  (plot_abs_diff_CIN3 | plot_abs_diff_Cancer)  
+#
+#print(combined_plot_rel_diff_new_cases)
+#print(combined_plot_abs_diff_new_cases)
 ################################################################################
 
 
