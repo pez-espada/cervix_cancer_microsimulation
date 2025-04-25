@@ -132,7 +132,6 @@ v_n <- colnames(my_Probs)
 v_n <- v_n[-c(1,14,15)]
 n_s   <- length(v_n)                # the number of health states
 v_M_1 <- rep("H", n_i)              # everyone begins in the healthy state 
-#v_M_1 <- rep("Well", n_i)           # everyone begins in the healthy state 
 d_c   <- d_e <- 0.03                # equal discounting of costs and QALYs by 3%
 v_Trt <-
 c("No Treatment", "Treatment")    # store the strategy names
@@ -1408,7 +1407,9 @@ is_slurm <- function() {
 # Paramters:
 # vaccination coverage for vacc 2, 4 and 9:
 #vacc_coverage <- c(0.357, 0.0, 0.0) 
-vacc_coverage <- c(0.0, 0.0, 0.0) 
+
+vacc_coverage <- c(0.8, 0.0, 0.0) 
+
 # natural immunity associated with vacc 2, 4, and 9:
 nat_immunity_linked_to_vacc <- c(0.0, 0.0, 0.0)
 
@@ -2072,7 +2073,7 @@ mean_new_cases_func <- function(sim_result, new_cases_name, my_Probs) {
   labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
   
   # Get the new cases data.frame by name
-  #df <- sim_result[["No Intervention"]][[new_cases_name]] %>%
+  #df <- sim_result[[1]][[new_cases_name]] %>%
   df <- sim_result[[1]][[new_cases_name]] %>% dplyr::select(-row_names) %>%
     dplyr::rename(new_cases = 2) %>%  # assumes second column is the one with cases
     dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>%
@@ -2138,6 +2139,191 @@ sim_result <-
 ################################################################################
 ################################################################################
 
+################################################################################  
+## ----Incidences, Prevalences, and Mortalities
+# MArkov results (corrected):
+#load(file = "data/markov_results/markov_vacc_incidences_vectors.RData")
+# Loading the CORRECTED-TRANSITIONs results, the 'markov_sim_vacc_incidences' object:
+load(file = "data/markov_results/markov_vacc_CORRECTED_incidences_vectors.RData")
+# Markov:
+#markov_CN1_incidences  <- c(0.00000, 204.73492, 981.96179, 1368.24200, 3006.85782, 33.48096, 1362.96678, 459.48051, 697.84223, 794.33833, 223.00222, 246.23082, 176.02167, 126.22963, 53.70939)
+#markov_CN1_incidences  <- markov_sim_vacc$Markov_CIN1_60 
+#markov_CN1_incidences  <- markov_sim_vacc$Markov_CIN1_70 
+#markov_CN1_incidences  <- markov_sim_vacc$Markov_CIN1_80 
+#markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_0 
+#markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_60 
+#markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_70
+markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_80
+
+#markov_CN2_incidences  <- c(0.000000, 6.165629, 54.767952, 140.309815, 216.568392, 1476.306267, 1579.728160, 1298.914564, 466.596151, 637.661611, 442.298632, 304.784447, 250.953880, 165.628020, 116.925192)
+#markov_CN2_incidences  <- markov_sim_vacc$Markov_CIN2_60
+#markov_CN2_incidences  <- markov_sim_vacc$Markov_CIN2_70
+#markov_CN2_incidences  <- markov_sim_vacc$Markov_CIN2_80
+#markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_0
+#markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_60
+#markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_70
+markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_80
+  
+#markov_CN3_incidences  <- c(0.000000, 2.090325, 9.597415, 44.467676, 148.972191, 0.000000, 3.550684, 91.881726, 12.505042, 68.377446, 25.802481, 7.952667, 1.174088, 1.177840, 2.638642)
+#markov_CN3_incidences  <- markov_sim_vacc$Markov_CIN3_60
+#markov_CN3_incidences  <- markov_sim_vacc$Markov_CIN3_70
+#markov_CN3_incidences  <- markov_sim_vacc$Markov_CIN3_80
+#markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_0
+#markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_60
+#markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_70
+markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_80
+
+#markov_CC_incidences   <- c(0.000000, 0.000000, 0.000000, 5.520938, 8.360544, 13.282380, 22.906871, 20.825560, 15.867891, 32.483846, 8.962389, 17.681771, 11.737615, 17.354646, 14.582775)
+#markov_CC_incidences   <- markov_sim_vacc$Markov_CC_60
+#markov_CC_incidences   <- markov_sim_vacc$Markov_CC_70
+#markov_CC_incidences   <- markov_sim_vacc$Markov_CC_80
+#markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_0
+#markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_60
+#markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_70
+markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_80
+
+#markov_HPV_prevalences <- c(0.000000000, 0.343480414, 0.377634762, 0.087223460, 0.307341403, 0.030196332, 0.050562845, 0.050151668, 0.082952596, 0.046644059, 0.018532077, 0.034193076, 0.016407832, 0.015039027, 0.003217326)
+#markov_HPV_prevalences <- markov_sim_vacc$Markov_VPH_60
+#markov_HPV_prevalences <- markov_sim_vacc$Markov_VPH_70
+#markov_HPV_prevalences <- markov_sim_vacc$Markov_VPH_80
+#markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_0
+#markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_60
+#markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_70
+markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_80
+
+# markov_CC_mortality <- c(0.000000e+00, 0.000000e+00, 0.000000e+00, 2.977975e-06, 
+#                          1.574920e-05, 2.715056e-05, 5.489929e-05, 7.284815e-05,
+#                          1.057494e-04, 5.076268e-05, 7.517773e-05, 4.960943e-05,
+#                          4.802468e-05, 4.210457e-05, 4.837655e-05) * 10^5
+#markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_0
+#markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_60
+#markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_70
+markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_80
+
+
+# NOTE: change for corresponding vacc strategy 0, 60, 70, or 80:
+markov_new_CIN1 <- markov_sim_vacc_incidences$`Markov_n CIN1_80`
+markov_new_CIN2 <- markov_sim_vacc_incidences$`Markov_n CIN2_80`
+markov_new_CIN3 <- markov_sim_vacc_incidences$`Markov_n CIN3_80`
+markov_new_Cancer <- markov_sim_vacc_incidences$`Markov_n CC_80`
+################################################################################  
+
+################################################################################  
+## Adding corresponding (to vacc strategy) Markov QUALYs and Costs to sim_result
+master_markov_vacc_results_CORRECTED <- 
+  get(load(file = "data/corrected_transitions_20250414/Markov_results_only_vaccination_Strategies_only_vac_20250414.rda"))
+# Select vaccination-associated QALYs, Costs (discounted and undiscounted):
+rm(df)
+
+# SELECT VACCINATION LEVEL:
+markov_vacc_lvl <- 80 # it can be 0, 60, 70 or 80
+
+if(markov_vacc_lvl == 0) {
+  Mark_vacc_lvl <- "Vaccination coverage: 0%"
+} else if (markov_vacc_lvl == 60) {
+  Mark_vacc_lvl <- "Vaccination coverage: 60%"
+} else if (markov_vacc_lvl == 70) {
+  Mark_vacc_lvl <- "Vaccination coverage: 70%"
+} else if (markov_vacc_lvl == 80) {
+  Mark_vacc_lvl <- "Vaccination coverage: 80%"
+} else {
+  cat("Not valid Markov vacc level")
+}
+
+sim_result[[1]]$markov_qaly_undis <- master_markov_vacc_results_CORRECTED %>% 
+  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
+  dplyr::select(`Per person QALYs und`) %>% 
+  as.numeric()
+
+sim_result[[1]]$markov_qaly_undis_Tot <- master_markov_vacc_results_CORRECTED %>% 
+  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
+  dplyr::select(`Total QALYs und`) %>% 
+  as.numeric()
+
+sim_result[[1]]$markov_qaly_disc <- master_markov_vacc_results_CORRECTED %>% 
+  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
+  dplyr::select(`Per person QALYs disc`) %>% 
+  as.numeric()
+
+sim_result[[1]]$markov_qaly_disc_Tot <- master_markov_vacc_results_CORRECTED %>% 
+  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
+  dplyr::select(`Total QALYs disc`) %>% 
+  as.numeric()
+
+## -- ##
+
+sim_result[[1]]$markov_cost_undis <- master_markov_vacc_results_CORRECTED %>% 
+  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
+  dplyr::select(`Per person D cost und`) %>% 
+  as.numeric()
+
+sim_result[[1]]$markov_cost_undis_Tot <- master_markov_vacc_results_CORRECTED %>% 
+  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
+  dplyr::select(`Total D cost und`) %>% 
+  as.numeric()
+
+sim_result[[1]]$markov_cost_disc <- master_markov_vacc_results_CORRECTED %>% 
+  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
+  dplyr::select(`Per person D cost disc`) %>% 
+  as.numeric()
+
+sim_result[[1]]$markov_cost_disc_Tot <- master_markov_vacc_results_CORRECTED %>% 
+  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
+  dplyr::select(`Total D cost disc`) %>% 
+  as.numeric()
+################################################################################  
+  
+################################################################################  
+## Adding corresponding (to vacc strategy) Markov age-averaged new_cases to sim_result
+library(tibble)
+library(stringr)
+library(purrr)
+
+# Define your state suffixes
+states <- c("CIN1", "CIN2", "CIN3", "Cancer")
+
+# Ensure sim_result exists and has an entry at [[1]]
+if (!exists("sim_result")) sim_result <- list()
+if (is.null(sim_result[[1]])) sim_result[[1]] <- list()
+
+# Helper function to convert vector to tibble
+convert_markov_vector <- function(vec) {
+  tibble(
+    age_interval = names(vec) %>%
+      str_extract("[0-9]{2}-[0-9]{2}") %>%
+      factor(levels = unique(.)),
+    mean_new_cases = as.numeric(vec)
+  )
+}
+
+# Convert and assign each result into sim_result[[1]]
+purrr::walk(states, function(state) {
+  obj_name <- paste0("markov_new_", state)
+  new_name <- paste0("new_averaged_", state, "_Markov_per_age_interval")
+  vec <- get(obj_name, envir = .GlobalEnv)
+  sim_result[[1]][[new_name]] <<- convert_markov_vector(vec)
+})
+################################################################################ 
+
+
+################################################################################  
+## Adding MicroSim results:
+microSim_CN1_incidences          <- sim_result[[1]]$mean_incidence_CIN1_per_age_interval
+microSim_CN2_incidences          <- sim_result[[1]]$mean_incidence_CIN2_per_age_interval
+microSim_CN3_incidences          <- sim_result[[1]]$mean_incidence_CIN3_per_age_interval
+microSim_CC_incidences           <- sim_result[[1]]$mean_CC_incidence
+microSim_HPV_prevalences         <- sim_result[[1]]$mean_HPV_prevalence_per_age_interval
+microSim_CC_mortality            <- sim_result[[1]]$CC_mean_mortality
+microSim_CC_by_diff_mortality    <- sim_result[[1]]$CC_by_diff_mean_mortality
+microSim_new_CIN1                <- sim_result[[1]]$new_averaged_CIN1_per_age_interval
+microSim_new_CIN2                <- sim_result[[1]]$new_averaged_CIN2_per_age_interval
+microSim_new_CIN3                <- sim_result[[1]]$new_averaged_CIN3_per_age_interval
+microSim_new_Cancer              <- sim_result[[1]]$new_averaged_Cancer_per_age_interval
+################################################################################  
+################################################################################  
+
+
+
 cat("Hey, I'm done, and about to write out the results\n")
 
 # Get SLURM job ID from the environment variable
@@ -2147,13 +2333,13 @@ if (is.na(slurm_job_id)) {
 }
 cat("SLURM job ID:", slurm_job_id, "\n")
 
-## Save simulation result:
-## Use job ID in file name
-#output_file <-
-#  #paste0("data/testing_stability/stacked_sims_20x10E5x75_20250323_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
-#  #paste0("data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_OLD_TRANSITIONS_PARA_20250417_sim_", slurm_job_id, ".rds")
-#  paste0("data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_NEW_TRANSITIONS_PARA_20250424_sim_", slurm_job_id, ".rds")
-#saveRDS(object = sim_result, file = output_file)
+# Save simulation result:
+# Use job ID in file name
+output_file <-
+  #paste0("data/testing_stability/stacked_sims_20x10E5x75_20250323_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
+  #paste0("data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_OLD_TRANSITIONS_PARA_20250417_sim_", slurm_job_id, ".rds")
+  paste0("data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.8_NEW_TRANSITIONS_PARA_20250425_sim_", slurm_job_id, ".rds")
+saveRDS(object = sim_result, file = output_file)
 
 ################################################################################
 ################################################################################
@@ -2172,7 +2358,7 @@ sim_result_0 <-
   readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_SEQ_20250416_sim_20015.rds")
 
 sim_result_60 <- 
-  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.7_SEQ_20250415_sim_19962.rds")
+  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.6_SEQ_20250415_sim_19962.rds")
 
 sim_result_70 <- 
   readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.7_SEQ_20250415_sim_19962.rds")
@@ -2183,8 +2369,8 @@ sim_result_80 <-
 ## Load microsim results with vacc strategies (parallel runned):
 #sim_result_0 <- 
 #  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_PARA_20250416_sim_20033.rds")
-sim_result_0 <- 
-  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_NEW_TRANSITIONS_PARA_20250424_sim_20379.rds")
+#sim_result_0 <- 
+#  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_NEW_TRANSITIONS_PARA_20250424_sim_20379.rds")
 #
 #sim_result_60 <- 
 #  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.6_PARA_20250416_sim_20032.rds")
@@ -2214,11 +2400,11 @@ sim_result_0_old_trans <-
 load(file = "data/markov_vacc_CORRECTED_vectors.RData")
 
 ## Use this only to pots-process some of the previous results:
-sim_result <- sim_result_0
+#sim_result <- sim_result_0
 #sim_result <- sim_natural_history
 #sim_result <- sim_result_0_old_trans
-vacc_coverage <- c(0.0,0,0) # for correct plot titles 
 
+vacc_coverage <- c(0.8,0,0) # for correct plot titles 
 
 cat("I have written out the results\n")
 
@@ -2227,8 +2413,6 @@ cat("I have written out the results\n")
 ## purl("your_script.Rmd", output = "your_script.R")
 ## example:
 #purl("Cervix_MicroSim_RMarkdown_v.072_B.Rmd", output = "cervix_microSim_stacked_list.R")
-#purl("Cervix_MicroSim_RMarkdown_v.072_B.Rmd", output = "cervix_microSim_stacked_list_B.R")
-
 
 ## ----Cost-Efectivenes
 ####################### Cost-effectiveness analysis #############################
@@ -2370,126 +2554,9 @@ long_merged_data <- merged_df %>%
 ################################################################################
 
 
-################################################################################  
-## ----Incidences, Prevalences, and Mortalities
-
-# MArkov results (corrected):
-#load(file = "data/markov_results/markov_vacc_incidences_vectors.RData")
-load(file = "data/markov_results/markov_vacc_CORRECTED_incidences_vectors.RData")
-# Markov:
-#markov_CN1_incidences  <- c(0.00000, 204.73492, 981.96179, 1368.24200, 3006.85782, 33.48096, 1362.96678, 459.48051, 697.84223, 794.33833, 223.00222, 246.23082, 176.02167, 126.22963, 53.70939)
-#markov_CN1_incidences  <- markov_sim_vacc$Markov_CIN1_60 
-#markov_CN1_incidences  <- markov_sim_vacc$Markov_CIN1_70 
-#markov_CN1_incidences  <- markov_sim_vacc$Markov_CIN1_80 
-markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_0 
-#markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_60 
-#markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_70
-#markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_80
-
-#markov_CN2_incidences  <- c(0.000000, 6.165629, 54.767952, 140.309815, 216.568392, 1476.306267, 1579.728160, 1298.914564, 466.596151, 637.661611, 442.298632, 304.784447, 250.953880, 165.628020, 116.925192)
-#markov_CN2_incidences  <- markov_sim_vacc$Markov_CIN2_60
-#markov_CN2_incidences  <- markov_sim_vacc$Markov_CIN2_70
-#markov_CN2_incidences  <- markov_sim_vacc$Markov_CIN2_80
-markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_0
-#markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_60
-#markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_70
-#markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_80
-  
-#markov_CN3_incidences  <- c(0.000000, 2.090325, 9.597415, 44.467676, 148.972191, 0.000000, 3.550684, 91.881726, 12.505042, 68.377446, 25.802481, 7.952667, 1.174088, 1.177840, 2.638642)
-#markov_CN3_incidences  <- markov_sim_vacc$Markov_CIN3_60
-#markov_CN3_incidences  <- markov_sim_vacc$Markov_CIN3_70
-#markov_CN3_incidences  <- markov_sim_vacc$Markov_CIN3_80
-markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_0
-#markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_60
-#markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_70
-#markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_80
-
-#markov_CC_incidences   <- c(0.000000, 0.000000, 0.000000, 5.520938, 8.360544, 13.282380, 22.906871, 20.825560, 15.867891, 32.483846, 8.962389, 17.681771, 11.737615, 17.354646, 14.582775)
-#markov_CC_incidences   <- markov_sim_vacc$Markov_CC_60
-#markov_CC_incidences   <- markov_sim_vacc$Markov_CC_70
-#markov_CC_incidences   <- markov_sim_vacc$Markov_CC_80
-markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_0
-#markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_60
-#markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_70
-#markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_80
-
-#markov_HPV_prevalences <- c(0.000000000, 0.343480414, 0.377634762, 0.087223460, 0.307341403, 0.030196332, 0.050562845, 0.050151668, 0.082952596, 0.046644059, 0.018532077, 0.034193076, 0.016407832, 0.015039027, 0.003217326)
-#markov_HPV_prevalences <- markov_sim_vacc$Markov_VPH_60
-#markov_HPV_prevalences <- markov_sim_vacc$Markov_VPH_70
-#markov_HPV_prevalences <- markov_sim_vacc$Markov_VPH_80
-markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_0
-#markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_60
-#markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_70
-#markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_80
-
-# markov_CC_mortality <- c(0.000000e+00, 0.000000e+00, 0.000000e+00, 2.977975e-06, 
-#                          1.574920e-05, 2.715056e-05, 5.489929e-05, 7.284815e-05,
-#                          1.057494e-04, 5.076268e-05, 7.517773e-05, 4.960943e-05,
-#                          4.802468e-05, 4.210457e-05, 4.837655e-05) * 10^5
-markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_0
-#markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_60
-#markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_70
-#markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_80
-
-
-markov_new_CIN1 <- markov_sim_vacc_incidences$`Markov_n CIN1_0`
-markov_new_CIN2 <- markov_sim_vacc_incidences$`Markov_n CIN2_0`
-markov_new_CIN3 <- markov_sim_vacc_incidences$`Markov_n CIN3_0`
-markov_new_Cancer <- markov_sim_vacc_incidences$`Markov_n CC_0`
-################################################################################  
-
-  
-################################################################################  
-## Adding MicroSim results:
-microSim_CN1_incidences          <- sim_result[[1]]$mean_incidence_CIN1_per_age_interval
-microSim_CN2_incidences          <- sim_result[[1]]$mean_incidence_CIN2_per_age_interval
-microSim_CN3_incidences          <- sim_result[[1]]$mean_incidence_CIN3_per_age_interval
-microSim_CC_incidences           <- sim_result[[1]]$mean_CC_incidence
-microSim_HPV_prevalences         <- sim_result[[1]]$mean_HPV_prevalence_per_age_interval
-microSim_CC_mortality            <- sim_result[[1]]$CC_mean_mortality
-microSim_CC_by_diff_mortality    <- sim_result[[1]]$CC_by_diff_mean_mortality
-microSim_new_CIN1                <- sim_result[[1]]$new_averaged_CIN1_per_age_interval
-microSim_new_CIN2                <- sim_result[[1]]$new_averaged_CIN2_per_age_interval
-microSim_new_CIN3                <- sim_result[[1]]$new_averaged_CIN3_per_age_interval
-microSim_new_Cancer              <- sim_result[[1]]$new_averaged_Cancer_per_age_interval
-################################################################################  
 
 ################################################################################  
-## Adding corresponding (to vacc strategy) Markov age-averaged new_cases to sim_result
-library(tibble)
-library(stringr)
-library(purrr)
-
-# Define your state suffixes
-states <- c("CIN1", "CIN2", "CIN3", "Cancer")
-
-# Ensure sim_result exists and has an entry at [[1]]
-if (!exists("sim_result")) sim_result <- list()
-if (is.null(sim_result[[1]])) sim_result[[1]] <- list()
-
-# Helper function to convert vector to tibble
-convert_markov_vector <- function(vec) {
-  tibble(
-    age_interval = names(vec) %>%
-      str_extract("[0-9]{2}-[0-9]{2}") %>%
-      factor(levels = unique(.)),
-    mean_new_cases = as.numeric(vec)
-  )
-}
-
-# Convert and assign each result into sim_result[[1]]
-purrr::walk(states, function(state) {
-  obj_name <- paste0("markov_new_", state)
-  new_name <- paste0("new_averaged_", state, "_Markov_per_age_interval")
-  vec <- get(obj_name, envir = .GlobalEnv)
-  sim_result[[1]][[new_name]] <<- convert_markov_vector(vec)
-})
 ################################################################################  
-
-
-
-
-
 ## ----Ploting incidences and prevalences
 # Load necessary libraries
 library(dplyr)
@@ -2954,7 +3021,6 @@ difference_plot <- function(markov_vector, microsim_tbl,
 #)
 
 
-
 # Create plots for each measure
 plot_CN1_incidences <- plot_comparison(combined_data, "CN1_incidences")
 plot_CN2_incidences <- plot_comparison(combined_data, "CN2_incidences")
@@ -2996,7 +3062,7 @@ combined_plot3 <- (plot_comparison_new_CIN1 | plot_comparison_new_CIN2) /
 print(combined_plot)
 print(combined_plot3)
 
-#ggsave("figures/combined_plots_incidence_vacc_80.pdf", combined_plot, width = 15, height = 10, dpi = 300)
+##ggsave("figures/combined_plots_incidence_vacc_80.pdf", combined_plot, width = 15, height = 10, dpi = 300)
 
 #################################################################################
 #### Check visually for patterns in the difference of microSims and Markov sims:
@@ -3018,7 +3084,7 @@ if (numb_of_sims >=60) {
   # whether there is a numerical artifact or logic code problem producing
   # a tendency of decrease tc_hat_undisc along simulations:
   average_cost <-
-    sim_result[["No Intervention"]]$tc_hat_undisc$tc_hat_undisc
+    sim_result[[1]]$tc_hat_undisc$tc_hat_undisc
   
   # Calculate confidence intervals for groups of 10 simulations
   grouped_means <- tapply(average_cost, (seq_along(average_cost) - 1) %/% 10, mean)
