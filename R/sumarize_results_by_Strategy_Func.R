@@ -1,9 +1,10 @@
-summarize_results_by_Strategy <- function(results_list, numb_of_sims) {
+summarize_results_by_Strategy <- function(strategy, results_list, numb_of_sims) {
   library(dplyr)
   
   result<-list()
   
-  Strategy_name <- "No Intervention" #Sandra: en format funció ho passem com a variable incorporada als parametres de la estrategia.
+  #Strategy_name <- "No Intervention" #Sandra: en format funció ho passem com a variable incorporada als parametres de la estrategia.
+  Strategy_name <- strategy #Sandra: en format funció ho passem com a variable incorporada als parametres de la estrategia.
   result[[Strategy_name]]<-list()
   
   ##for(i in 1:numb_of_sims ){

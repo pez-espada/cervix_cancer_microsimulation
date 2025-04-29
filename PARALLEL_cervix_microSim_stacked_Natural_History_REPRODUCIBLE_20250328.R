@@ -930,7 +930,7 @@ sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims,
                         Pmatrix = Pmatrix, 
                         master_seed = 123, 
                         reproducible = TRUE, 
-                        use_parallel = TRUE)
+                        use_parallel = FALSE)
 
 # For stacking outside the function, we need to comment the stacking function
 # inside  de the MicroSim function, and return the results as a list by commenting
@@ -1507,10 +1507,12 @@ cat("SLURM job ID:", slurm_job_id, "\n")
 # Use job ID in file name
 output_file <-
   #paste0("data/testing_stability/stacked_sims_20x10E5x75_20250323_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
-  paste0("data/last_results_20250324/stacked_sims_PARA_20x10E6x75_20250417_NATURAL_HISTORY_sim_", slurm_job_id, ".rds")
+  #paste0("data/last_results_20250324/stacked_sims_PARA_20x10E6x75_20250424_NATURAL_HISTORY_REPROD_sim_", slurm_job_id, ".rds")
+  paste0("data/last_results_20250324/stacked_sims_SEQ_20x10E6x75_20250424_NATURAL_HISTORY_REPROD_sim_", slurm_job_id, ".rds")
 saveRDS(object = sim_result, file = output_file)
 
 ## to load a pre-run simulation:
+#sim_result <- readRDS(file = "data/testing_stability/stacked_sims_20x10E5x75_2025")
 #sim_result <- readRDS(file = "data/testing_stability/stacked_sims_20x10E5x75_2025")
 
 ### ----Convert .Rmd to .R
