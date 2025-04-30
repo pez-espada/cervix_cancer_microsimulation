@@ -101,7 +101,7 @@ my_Probs9 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs9)
 my_Probs9 <- my_Probs9 %>% as.data.frame() #convert back to data.frame (no needed?)
 ################################################################################
 ## ----Model Parameters
-n_i <- 10^6               # number of simulated individuals
+n_i <- 10^4               # number of simulated individuals
 #n_t <- 3                  # time horizon, 3 cycles (it starts from 1)
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 ################################################################################
@@ -756,81 +756,86 @@ MicroSim <- function(strategy=strategy,
           symptomatics <- bind_rows(symptomatics, new_entries)
         }
         ######################################################################## 
-        
-        ######################################################################## 
-        my_age_prob_matrix <- 
-          my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
-                                  my_age_in_loop = (age_in_loop + 1))
-        # Add colnames and update `v_n`:
-        rownames(my_age_prob_matrix) <- v_n <<- 
-          my_age_prob_matrix %>%
-          dplyr::select(-c(Age.group, Lower, Larger)) %>% 
-          colnames()
-        ######################################################################## 
        
-        ######################################################################## 
-        my_age_prob_matrix_2 <- 
-          my_age_prob_matrix_func(my_Prob_matrix = my_Probs2, 
-                                  my_age_in_loop = (age_in_loop + 1))
-        #rename age column:
-        my_age_prob_matrix_2 <- 
-          my_age_prob_matrix_2 %>%
-          dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
-          dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))# %>% setDT()
-        # Add colnames and update `v_n`:
-        rownames(my_age_prob_matrix_2) <- v_n <<- 
-          my_age_prob_matrix_2 %>%
-          dplyr::select(-c(Age.group, Lower, Larger)) %>% 
-          colnames()
-        ######################################################################## 
         
-        ######################################################################## 
-        my_age_prob_matrix_2_nat_immunity <- 
-          my_age_prob_matrix_func(my_Prob_matrix = my_Probs2_nat_immunity, 
-                                  my_age_in_loop = (age_in_loop + 1))
-        #rename age column:
-        my_age_prob_matrix_2_nat_immunity <- 
-          my_age_prob_matrix_2_nat_immunity %>%
-          dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
-          dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
-        # Add colnames and update `v_n`:
-        rownames(my_age_prob_matrix_2_nat_immunity) <- v_n <<- 
-          my_age_prob_matrix_2_nat_immunity %>%
-          dplyr::select(-c(Age.group, Lower, Larger)) %>% 
-          colnames()
-        ######################################################################## 
-        
-        ######################################################################## 
-        my_age_prob_matrix_4 <- 
-          my_age_prob_matrix_func(my_Prob_matrix = my_Probs4, 
-                                  my_age_in_loop = (age_in_loop + 1))
-        #rename age column:
-        my_age_prob_matrix_4 <- 
-          my_age_prob_matrix_4 %>%
-          dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
-          dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
-        # Add colnames and update `v_n`:
-        rownames(my_age_prob_matrix_4) <- v_n <<- 
-          my_age_prob_matrix_4 %>%
-          dplyr::select(-c(Age.group, Lower, Larger)) %>% 
-          colnames()
-        ######################################################################## 
-        
-        ######################################################################## 
-        my_age_prob_matrix_9 <- 
-          my_age_prob_matrix_func(my_Prob_matrix = my_Probs9, 
-                                  my_age_in_loop = (age_in_loop + 1))
-        #rename age column:
-        my_age_prob_matrix_9 <- 
-          my_age_prob_matrix_9 %>%
-          dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
-          dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
-        # Add colnames and update `v_n`:
-        rownames(my_age_prob_matrix_9) <- v_n <<- 
-          my_age_prob_matrix_9 %>%
-          dplyr::select(-c(Age.group, Lower, Larger)) %>% 
-          colnames()
-        ######################################################################## 
+        # Update prob matrix only when changing age interval
+        age_interval_length <- 5
+        if (age_in_loop %% age_interval_length == 0) { 
+          ######################################################################## 
+          my_age_prob_matrix <- 
+            my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
+                                    my_age_in_loop = (age_in_loop + 1))
+          # Add colnames and update `v_n`:
+          rownames(my_age_prob_matrix) <- v_n <<- 
+            my_age_prob_matrix %>%
+            dplyr::select(-c(Age.group, Lower, Larger)) %>% 
+            colnames()
+          ######################################################################## 
+          
+          ######################################################################## 
+          my_age_prob_matrix_2 <- 
+            my_age_prob_matrix_func(my_Prob_matrix = my_Probs2, 
+                                    my_age_in_loop = (age_in_loop + 1))
+          #rename age column:
+          my_age_prob_matrix_2 <- 
+            my_age_prob_matrix_2 %>%
+            dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
+            dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))# %>% setDT()
+          # Add colnames and update `v_n`:
+          rownames(my_age_prob_matrix_2) <- v_n <<- 
+            my_age_prob_matrix_2 %>%
+            dplyr::select(-c(Age.group, Lower, Larger)) %>% 
+            colnames()
+          ######################################################################## 
+          
+          ######################################################################## 
+          my_age_prob_matrix_2_nat_immunity <- 
+            my_age_prob_matrix_func(my_Prob_matrix = my_Probs2_nat_immunity, 
+                                    my_age_in_loop = (age_in_loop + 1))
+          #rename age column:
+          my_age_prob_matrix_2_nat_immunity <- 
+            my_age_prob_matrix_2_nat_immunity %>%
+            dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
+            dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
+          # Add colnames and update `v_n`:
+          rownames(my_age_prob_matrix_2_nat_immunity) <- v_n <<- 
+            my_age_prob_matrix_2_nat_immunity %>%
+            dplyr::select(-c(Age.group, Lower, Larger)) %>% 
+            colnames()
+          ######################################################################## 
+          
+          ######################################################################## 
+          my_age_prob_matrix_4 <- 
+            my_age_prob_matrix_func(my_Prob_matrix = my_Probs4, 
+                                    my_age_in_loop = (age_in_loop + 1))
+          #rename age column:
+          my_age_prob_matrix_4 <- 
+            my_age_prob_matrix_4 %>%
+            dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
+            dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
+          # Add colnames and update `v_n`:
+          rownames(my_age_prob_matrix_4) <- v_n <<- 
+            my_age_prob_matrix_4 %>%
+            dplyr::select(-c(Age.group, Lower, Larger)) %>% 
+            colnames()
+          ######################################################################## 
+          
+          ######################################################################## 
+          my_age_prob_matrix_9 <- 
+            my_age_prob_matrix_func(my_Prob_matrix = my_Probs9, 
+                                    my_age_in_loop = (age_in_loop + 1))
+          #rename age column:
+          my_age_prob_matrix_9 <- 
+            my_age_prob_matrix_9 %>%
+            dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
+            dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
+          # Add colnames and update `v_n`:
+          rownames(my_age_prob_matrix_9) <- v_n <<- 
+            my_age_prob_matrix_9 %>%
+            dplyr::select(-c(Age.group, Lower, Larger)) %>% 
+            colnames()
+          ######################################################################## 
+        }
         
         # Extract the transition probabilities of each individuals at cycle t
         # given the individual current state and the corresponding 
@@ -1175,8 +1180,8 @@ vacc_lbl <-
 ## START SIMULATION
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
-#numb_of_sims = 3
-numb_of_sims = 20
+numb_of_sims = 3
+#numb_of_sims = 20
 
 #strategy <- "natural_history"
 strategy <- "vacc_2_coverage_0.8"
@@ -2039,14 +2044,14 @@ if (is.na(slurm_job_id)) {
 }
 cat("SLURM job ID:", slurm_job_id, "\n")
 
-# Save simulation result:
-# Use job ID in file name
-output_file <-
-  #paste0("data/testing_stability/stacked_sims_20x10E5x75_20250323_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
-  #paste0("data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_OLD_TRANSITIONS_PARA_20250417_sim_", slurm_job_id, ".rds")
-  paste0("data/TESTING_20250529/stacked_sims_20x10E6x75_vacc2_0.8_NEW_TRANSITIONS_PARA_20250430_sim_", slurm_job_id, ".rds")
-  #paste0("data/last_results_20250324/TEST_vacc2_0.0_NEW_TRANSITIONS_PARA_20250425_sim_", slurm_job_id, ".rds")
-saveRDS(object = sim_result, file = output_file)
+## Save simulation result:
+## Use job ID in file name
+#output_file <-
+#  #paste0("data/testing_stability/stacked_sims_20x10E5x75_20250323_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
+#  #paste0("data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_OLD_TRANSITIONS_PARA_20250417_sim_", slurm_job_id, ".rds")
+#  paste0("data/TESTING_20250529/stacked_sims_20x10E6x75_vacc2_0.8_NEW_TRANSITIONS_PARA_20250430_sim_", slurm_job_id, ".rds")
+#  #paste0("data/last_results_20250324/TEST_vacc2_0.0_NEW_TRANSITIONS_PARA_20250425_sim_", slurm_job_id, ".rds")
+#saveRDS(object = sim_result, file = output_file)
 
 ################################################################################
 ################################################################################
