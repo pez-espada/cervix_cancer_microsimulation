@@ -43,7 +43,7 @@ my_Probs <- my_Probs %>% dplyr::rename(Age.group = `Age group`)
 #my_Probs2<- my_Probs2 %>% dplyr::rename(Age.group = `Age group`)
 
 # Obtaining 'my_Probs2' from 'my_Probs' programatically (Sandra's code):
-infection_reduction <- 0.7 # dut to vaccination
+infection_reduction <- 0.7 # due to vaccination
 my_Probs <- my_Probs %>% as.data.frame()
 my_Probs2 <- my_Probs
 my_Probs2$state <- names(my_Probs2[2:length(my_Probs2)])
@@ -1185,28 +1185,26 @@ numb_of_sims = 3
 
 #strategy <- "natural_history"
 strategy <- "vacc_2_coverage_0.8"
-sim_no_trt  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
+sim_result  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, 
                         Pmatrix = Pmatrix,
                         master_seed = 123,
                         reproducible = TRUE, 
-                        use_parallel = TRUE,
+                        use_parallel = FALSE,
                         cost_vacc2, cost_vacc4, cost_vacc9)
 
 # For stacking outside the function, we need to comment the stacking function
 # inside  de the MicroSim function, and return the results as a list by commenting
 # 'return(stacked_results)' and uncomment 'return(simulation_results)'. And then,
 # uncomment the following lines:
-#source("./R/sumarize_results_by_Strategy_Func_revised.R")
 source("./R/sumarize_results_by_Strategy_Func.R")
-#source("./R/sumarize_results_by_Strategy_Func.R", local = TRUE) # for debugging
 stacked_results <- 
   summarize_results_by_Strategy(strategy = strategy,
-                                results_list = sim_no_trt, 
+                                results_list = sim_result, 
                                 numb_of_sims = numb_of_sims)
-sim_no_trt <- stacked_results
+sim_result <- stacked_results
 
 comp.time = Sys.time() - p
 comp.time %>% print()
@@ -1225,31 +1223,31 @@ comp.time %>% print()
 
 # Adding runtime execution time and some other parameters:
 runtime <- comp.time %>% as_tibble() %>% `colnames<-`("runtime")
-sim_no_trt[[1]]$runtime <- runtime
-sim_no_trt[[1]]$strategy <- strategy
-sim_no_trt[[1]]$numb_of_sims   <- numb_of_sims
-sim_no_trt[[1]]$numb_of_ind    <- n_i
-sim_no_trt[[1]]$numb_of_cycles <- n_t
-sim_no_trt[[1]]$seed <- sim_no_trt[[1]]$seed %>% 
+sim_result[[1]]$runtime <- runtime
+sim_result[[1]]$strategy <- strategy
+sim_result[[1]]$numb_of_sims   <- numb_of_sims
+sim_result[[1]]$numb_of_ind    <- n_i
+sim_result[[1]]$numb_of_cycles <- n_t
+sim_result[[1]]$seed <- sim_result[[1]]$seed %>% 
   dplyr::select(-c("seed", "row_names")) %>% 
   dplyr::rename("seed" = "sim[[i]][[name_level_of_sim]]")
 
-sim_no_trt[[1]]$tc_hat_undisc <- sim_no_trt[[1]]$tc_hat_undisc %>%
+sim_result[[1]]$tc_hat_undisc <- sim_result[[1]]$tc_hat_undisc %>%
   dplyr::select(-c(tc_hat_undisc)) %>% 
   dplyr::rename("tc_hat_undisc" = "sim[[i]][[name_level_of_sim]]")
 
-sim_no_trt[[1]]$tc_hat_disc <- sim_no_trt[[1]]$tc_hat_disc %>%
+sim_result[[1]]$tc_hat_disc <- sim_result[[1]]$tc_hat_disc %>%
   dplyr::select(-c(tc_hat_disc)) %>% 
   dplyr::rename("tc_hat_disc" = "sim[[i]][[name_level_of_sim]]")
 
-sim_no_trt[[1]]$te_hat_undisc <- sim_no_trt[[1]]$te_hat_undisc %>%
+sim_result[[1]]$te_hat_undisc <- sim_result[[1]]$te_hat_undisc %>%
   dplyr::select(-c(te_hat_undisc)) %>% 
   dplyr::rename("te_hat_undisc" = "sim[[i]][[name_level_of_sim]]")
 
-sim_no_trt[[1]]$te_hat_disc <- sim_no_trt[[1]]$te_hat_disc %>%
+sim_result[[1]]$te_hat_disc <- sim_result[[1]]$te_hat_disc %>%
   dplyr::select(-c(te_hat_disc)) %>% 
   dplyr::rename("te_hat_undisc" = "sim[[i]][[name_level_of_sim]]")
-sim_no_trt[[1]]$vacc_coverage <- vacc_coverage
+sim_result[[1]]$vacc_coverage <- vacc_coverage
 ################################################################################
 
 ################################################################################
@@ -1290,7 +1288,7 @@ mean_prevalence_func <- function(sim_stalked_result, my_Probs) {
 
 # Concatenate the prevalence to the sim result 
 mean_prevalence_result <-
-  mean_prevalence_func(sim_stalked_result = sim_no_trt, my_Probs = my_Probs)  
+  mean_prevalence_func(sim_stalked_result = sim_result, my_Probs = my_Probs)  
 
 
 ################################################################################
@@ -1445,9 +1443,9 @@ mean_CC_mortality_func <- function(sim_stalked_result, my_Probs) {
   # Define the age range you want to keep
   age_range <- 10:84
   
-  # Left join sim_no_trt[[1]]$TR with sim_no_trt[[1]]$new_CC_Death by age
-  df <- sim_no_trt[[1]]$TR %>%
-    left_join(sim_no_trt[[1]]$new_CC_Death %>%
+  # Left join sim_result[[1]]$TR with sim_result[[1]]$new_CC_Death by age
+  df <- sim_result[[1]]$TR %>%
+    left_join(sim_result[[1]]$new_CC_Death %>%
                 dplyr::select(sim, age, CC_Death_per_t), 
               by = c("sim", "age"))  %>% #, relationship = "many-to-many") %>%
     
@@ -1501,9 +1499,9 @@ mean_CC_mortality_by_diff_func <- function(sim_stalked_result, my_Probs) {
   # Define the age range you want to keep
   age_range <- min(age_intervals$Lower):max(age_intervals$Larger) 
   
-  # Left join sim_no_trt[[1]]$TR with sim_no_trt[[1]]$new_CC_Death by age
-  df <- sim_no_trt[[1]]$TR %>%
-    left_join(sim_no_trt[[1]]$CC_Death_by_diff %>%
+  # Left join sim_result[[1]]$TR with sim_result[[1]]$new_CC_Death by age
+  df <- sim_result[[1]]$TR %>%
+    left_join(sim_result[[1]]$CC_Death_by_diff %>%
                 dplyr::select(sim, age, CC_Death_by_diff), 
               by = c("sim", "age", "CC_Death_by_diff"), 
               relationship = "many-to-many") %>%
@@ -1624,10 +1622,6 @@ mean_FIGO_prevalence_Func <- function(sim_stalked_result, my_Probs) {
 
 # Initialize the result with the original structure
 sim_result <-  other_mean_mortality_result 
-## Concatenate the prevalence to the sim result 
-#other_mean_mortality_result <-
-#  other_mean_mortality_func(sim_stalked_result = 
-#                              other_mean_mortality_result, my_Probs = my_Probs)  
 
 # Concatenate the prevalence to the sim result 
 sim_result <-
@@ -2044,7 +2038,7 @@ if (is.na(slurm_job_id)) {
 }
 cat("SLURM job ID:", slurm_job_id, "\n")
 
-## Save simulation result:
+## SAVE SIMULATION RESULT: 
 ## Use job ID in file name
 #output_file <-
 #  #paste0("data/testing_stability/stacked_sims_20x10E5x75_20250323_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
@@ -2081,8 +2075,8 @@ sim_result_80 <-
   readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.8_SEQ_20250414_sim_19941.rds")
 
 ## Load microsim results with vacc strategies (parallel runned):
-sim_result_0 <- 
-  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_NEW_TRANSITIONS_PARA_20250425_sim_20495.rds")
+#sim_result_0 <- 
+#  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_NEW_TRANSITIONS_PARA_20250425_sim_20495.rds")
 #sim_result_0 <- 
 #  readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_NEW_TRANSITIONS_PARA_20250424_sim_20379.rds")
 #
@@ -2129,21 +2123,21 @@ cat("I have written out the results\n")
 ## example:
 #purl("Cervix_MicroSim_RMarkdown_v.072_B.Rmd", output = "cervix_microSim_stacked_list.R")
 
-## ----Cost-Efectivenes
+## ---- COST-EFECTIVENES
 ####################### Cost-effectiveness analysis #############################
 ## store the mean costs (and MCSE) of each strategy in a new variable C (vector costs)
-#v_C  <- c(sim_no_trt$tc_hat_disc, sim_trt$tc_hat_disc) 
-#sd_C <- c(sd(sim_no_trt$tc_disc), sd(sim_trt$tc_disc)) / sqrt(n_i)
+#v_C  <- c(sim_result$tc_hat_disc, sim_trt$tc_hat_disc) 
+#sd_C <- c(sd(sim_result$tc_disc), sd(sim_trt$tc_disc)) / sqrt(n_i)
 ## store the mean QALYs (and MCSE) of each strategy in a new variable E (vector effects)
-#v_E  <- c(sim_no_trt$te_hat_disc, sim_trt$te_hat_disc)
-#sd_E <- c(sd(sim_no_trt$te_disc), sd(sim_trt$te_disc)) / sqrt(n_i)
+#v_E  <- c(sim_result$te_hat_disc, sim_trt$te_hat_disc)
+#sd_E <- c(sd(sim_result$te_disc), sd(sim_trt$te_disc)) / sqrt(n_i)
 #
 #delta_C <- v_C[2] - v_C[1]                   # calculate incremental costs
 #delta_E <- v_E[2] - v_E[1]                   # calculate incremental QALYs
 ## Monte Carlo Squared Error (MCSE) of incremental costs:
-#sd_delta_E <- sd(sim_trt$te - sim_no_trt$te) / sqrt(n_i) 
+#sd_delta_E <- sd(sim_trt$te - sim_result$te) / sqrt(n_i) 
 ## Monte Carlo Squared Error (MCSE) of incremental QALYs:
-#sd_delta_C <- sd(sim_trt$tc_disc - sim_no_trt$tc_disc) / sqrt(n_i) 
+#sd_delta_C <- sd(sim_trt$tc_disc - sim_result$tc_disc) / sqrt(n_i) 
 #ICER    <- delta_C / delta_E                 # calculate the ICER
 #results <- c(delta_C, delta_E, ICER)         # store the values in a new variable
 #
@@ -2172,12 +2166,12 @@ cat("I have written out the results\n")
 ###                      PLOTTING ROUTINES                                    ##
 ################################################################################
 ################################################################################
-## ----Plot curves
+## ---- Plot curves
 ## This R chunk is a plot routine (not part of the main program):
 library(RColorBrewer)
 #ensure_library("RColorBrewer")
 # Convert matrix to data frame
-#micro_sim_df <- sim_no_trt[[1]]$TR
+#micro_sim_df <- sim_result[[1]]$TR
 #micro_sim_df <- other_mean_mortality_result[[1]]$TR
 micro_sim_df <- sim_result[[1]]$TR
 
@@ -2202,7 +2196,7 @@ long_micro_sim_df <- averaged_micro_sim_df %>%
                names_to = "Stage", 
                values_to = "Average")
 
-## ----Loading Markov result
+## ---- Loading Markov result
 if (!require("readxl")) install.packages("readxl")
 library(readxl)
 # This R chunk is a plot routine (not part of the main program):
@@ -2265,7 +2259,6 @@ long_merged_data <- merged_df %>%
 #  theme_minimal()  # Optional: customize the theme
 
 ################################################################################
-
 
 
 ################################################################################  
@@ -2516,7 +2509,7 @@ plot_mean_new_CC <-
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ################################################################################
-# create comparison for new individuals in diverse epi clases. 
+# Create comparison for new individuals in diverse epi clases. 
 # # These are raw numbers, not normalized numbers such as incidencem and prevalences
 compare_models_plot <- function(markov_vector, microsim_tbl, 
                                 outcome_label = "Outcome", 
@@ -2593,7 +2586,6 @@ plot_comparison_new_Cancer <- compare_models_plot(
   microsim_tbl = sim_result[[1]]$new_averaged_Cancer_per_age_interval,
   outcome_label = "Cancer"
 )
-
 
 
 ################################################################################
@@ -2768,18 +2760,18 @@ print(plot_mean_new_Cancer)
 print(plot_mean_new_CC)
 
 
-### Combining plots in a single image:
-library("patchwork")
-combined_plot <- (plot_CN1_incidences | plot_CN2_incidences | plot_CN3_incidences) /
-  #(plot_CC_incidences | plot_HPV_prevalences | plot_CC_mortality)
-  (plot_CC_incidences | plot_HPV_prevalences | plot_mean_Diagnosed_FIGO)# plot_CC_mortality)
-
-##combined_plot2 <- (plot_mean_new_CIN1 | plot_mean_new_CIN2 | plot_mean_new_CIN3) |
-combined_plot3 <- (plot_comparison_new_CIN1 | plot_comparison_new_CIN2) /
-  (plot_comparison_new_CIN3 | plot_comparison_new_Cancer) 
-# View it
-print(combined_plot)
-print(combined_plot3)
+#### Combining plots in a single image:
+#library("patchwork") # disable to run as job script with sbatch:
+#combined_plot <- (plot_CN1_incidences | plot_CN2_incidences | plot_CN3_incidences) /
+#  #(plot_CC_incidences | plot_HPV_prevalences | plot_CC_mortality)
+#  (plot_CC_incidences | plot_HPV_prevalences | plot_mean_Diagnosed_FIGO)# plot_CC_mortality)
+#
+###combined_plot2 <- (plot_mean_new_CIN1 | plot_mean_new_CIN2 | plot_mean_new_CIN3) |
+#combined_plot3 <- (plot_comparison_new_CIN1 | plot_comparison_new_CIN2) /
+#  (plot_comparison_new_CIN3 | plot_comparison_new_Cancer) 
+## View it
+#print(combined_plot)
+#print(combined_plot3)
 
 #ggsave("figures/combined_plots_incidence_vacc_80.pdf", combined_plot, width = 15, height = 10, dpi = 300)
 
@@ -2796,6 +2788,7 @@ print(combined_plot3)
 #################################################################################
 
 
+# For checking trend existence:
 ################################################################################
 if (numb_of_sims >=60) {
   ##############################################################################
