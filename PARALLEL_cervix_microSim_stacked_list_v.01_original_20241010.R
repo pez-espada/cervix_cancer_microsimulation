@@ -34,6 +34,7 @@ ensure_library <- function(...) {
 # OLD TRANSITIONS:
 my_Probs_old <- readRDS(file = "./data/probs.rds") # natural history transition matrix
 my_Probs2_old <- readRDS(file = "./data/probs2.rds") # vaccination transition matrix
+################################################################################
 
 # CORRECTED TRANSITIONS (since 2025/04/14):
 library(readxl)
@@ -42,16 +43,48 @@ my_Probs <- my_Probs %>% dplyr::rename(Age.group = `Age group`)
 #my_Probs2 <- read_excel("data/corrected_transitions_20250414/Probs2_20250414.xlsx")
 #my_Probs2<- my_Probs2 %>% dplyr::rename(Age.group = `Age group`)
 
-# Obtaining 'my_Probs2' from 'my_Probs' programatically (Sandra's code):
-infection_reduction <- 0.7 # due to vaccination
-my_Probs <- my_Probs %>% as.data.frame()
-my_Probs2 <- my_Probs
-my_Probs2$state <- names(my_Probs2[2:length(my_Probs2)])
-my_Probs2[my_Probs2$state == "Well", "HR.HPV.infection"  ] <- 
-  my_Probs2[my_Probs2$state=="Well", "HR.HPV.infection"  ]*(1 - infection_reduction)
-my_Probs2[my_Probs2$state == "Well", "Well" ] <- 
-  1-(my_Probs2[my_Probs2$state == "Well", "HR.HPV.infection"] + my_Probs2[my_Probs2$state == "Well", "Other.Death"])
-my_Probs2$state <- NULL
+
+################################################################################
+adjust_infection_probs <- function(my_Probs, infection_reduction = 0.7) {
+  # Convert to data frame
+  my_Probs <- as.data.frame(my_Probs)
+  my_Probs_adjusted <- my_Probs
+  
+  # Add 'state' column from column names (excluding the first column)
+  my_Probs_adjusted$state <- names(my_Probs_adjusted)[2:ncol(my_Probs_adjusted)]
+  
+  # Adjust infection probability for "Well" state
+  my_Probs_adjusted[my_Probs_adjusted$state == "Well", "HR.HPV.infection"] <- 
+    my_Probs_adjusted[my_Probs_adjusted$state == "Well", "HR.HPV.infection"] * (1 - infection_reduction)
+  
+  # Recalculate probability of staying "Well"
+  my_Probs_adjusted[my_Probs_adjusted$state == "Well", "Well"] <- 
+    1 - (my_Probs_adjusted[my_Probs_adjusted$state == "Well", "HR.HPV.infection"] + 
+           my_Probs_adjusted[my_Probs_adjusted$state == "Well", "Other.Death"])
+  
+  # Drop 'state' column
+  my_Probs_adjusted$state <- NULL
+  
+  return(my_Probs_adjusted)
+}
+################################################################################
+
+my_Probs2 <- adjust_infection_probs(my_Probs, infection_reduction = 0.7)
+
+
+## Obtaining 'my_Probs2' from 'my_Probs' programatically (Sandra's code):
+#infection_reduction <- 0.7 # due to vaccination
+#my_Probs <- my_Probs %>% as.data.frame()
+#my_Probs2 <- my_Probs
+#my_Probs2$state <- names(my_Probs2[2:length(my_Probs2)])
+#my_Probs2[my_Probs2$state == "Well", "HR.HPV.infection"  ] <- 
+#  my_Probs2[my_Probs2$state=="Well", "HR.HPV.infection"  ]*(1 - infection_reduction)
+#my_Probs2[my_Probs2$state == "Well", "Well" ] <- 
+#  1-(my_Probs2[my_Probs2$state == "Well", "HR.HPV.infection"] + my_Probs2[my_Probs2$state == "Well", "Other.Death"])
+#my_Probs2$state <- NULL
+##Test 'adjust_infection_probs()' function:
+#my_Probs_adjusted <- adjust_infection_probs(my_Probs, infection_reduction = 0.7)
+#identical(my_Probs_adjusted, my_Probs2) # if TRUE then they're identical
 
 # vaccination 2 associated immunity transition matrix
 my_Probs2_nat_immunity <- readRDS(file = "./data/probs3.rds") 
@@ -101,7 +134,7 @@ my_Probs9 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs9)
 my_Probs9 <- my_Probs9 %>% as.data.frame() #convert back to data.frame (no needed?)
 ################################################################################
 ## ----Model Parameters
-n_i <- 10^4               # number of simulated individuals
+n_i <- 10^6               # number of simulated individuals
 #n_t <- 3                  # time horizon, 3 cycles (it starts from 1)
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 ################################################################################
@@ -438,9 +471,9 @@ return(u_it)
 ensure_library("dplyr", "tidyverse", "purrr")
 # Function to process each column version 3:
 figoSymProb <- c(0.11, 0.23, 0.66, 0.9) 
-screeProbs <- c(0, 0, 1, 1, 1, 0.9688, 0.9066, 0.7064, 0.3986, 0, 0, 0)
+screenProbs <- c(0, 0, 1, 1, 1, 0.9688, 0.9066, 0.7064, 0.3986, 0, 0, 0)
 symptom_prob_vec <- figoSymProb
-survival_prob_vec <- screeProbs[6:9]
+survival_prob_vec <- screenProbs[6:9]
 states_to_check <- c("FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
 
 stored_list <- vector("list", n_t)
@@ -1101,7 +1134,7 @@ is_slurm <- function() {
 # vaccination coverage for vacc 2, 4 and 9:
 #vacc_coverage <- c(0.357, 0.0, 0.0) 
 
-vacc_coverage <- c(0.8, 0.0, 0.0) 
+vacc_coverage <- c(0.0, 0.0, 0.0) 
 
 # natural immunity associated with vacc 2, 4, and 9:
 nat_immunity_linked_to_vacc <- c(0.0, 0.0, 0.0)
@@ -1180,11 +1213,11 @@ vacc_lbl <-
 ## START SIMULATION
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
-numb_of_sims = 3
-#numb_of_sims = 20
+#numb_of_sims = 3
+numb_of_sims = 20
 
 #strategy <- "natural_history"
-strategy <- "vacc_2_coverage_0.8"
+strategy <- "vacc_2_coverage_0.0"
 sim_result  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
@@ -1192,7 +1225,7 @@ sim_result  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims,
                         Pmatrix = Pmatrix,
                         master_seed = 123,
                         reproducible = TRUE, 
-                        use_parallel = FALSE,
+                        use_parallel = TRUE,
                         cost_vacc2, cost_vacc4, cost_vacc9)
 
 # For stacking outside the function, we need to comment the stacking function
@@ -1223,8 +1256,8 @@ comp.time %>% print()
 
 # Adding runtime execution time and some other parameters:
 runtime <- comp.time %>% as_tibble() %>% `colnames<-`("runtime")
-sim_result[[1]]$runtime <- runtime
-sim_result[[1]]$strategy <- strategy
+sim_result[[1]]$runtime        <- runtime
+sim_result[[1]]$strategy       <- strategy
 sim_result[[1]]$numb_of_sims   <- numb_of_sims
 sim_result[[1]]$numb_of_ind    <- n_i
 sim_result[[1]]$numb_of_cycles <- n_t
@@ -1246,7 +1279,7 @@ sim_result[[1]]$te_hat_undisc <- sim_result[[1]]$te_hat_undisc %>%
 
 sim_result[[1]]$te_hat_disc <- sim_result[[1]]$te_hat_disc %>%
   dplyr::select(-c(te_hat_disc)) %>% 
-  dplyr::rename("te_hat_undisc" = "sim[[i]][[name_level_of_sim]]")
+  dplyr::rename("te_hat_disc" = "sim[[i]][[name_level_of_sim]]")
 sim_result[[1]]$vacc_coverage <- vacc_coverage
 ################################################################################
 
@@ -1833,10 +1866,10 @@ load(file = "data/markov_results/markov_vacc_CORRECTED_incidences_vectors_202504
 #markov_CN1_incidences  <- markov_sim_vacc$Markov_CIN1_60 
 #markov_CN1_incidences  <- markov_sim_vacc$Markov_CIN1_70 
 #markov_CN1_incidences  <- markov_sim_vacc$Markov_CIN1_80 
-#sim_result[[1]]$markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_0 
+sim_result[[1]]$markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_0 
 #sim_result[[1]]$markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_60 
 #sim_result[[1]]$markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_70 
-sim_result[[1]]$markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_80 
+#sim_result[[1]]$markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_80 
 #markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_60 
 #markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_70
 #markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_80
@@ -1845,10 +1878,10 @@ sim_result[[1]]$markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1
 #markov_CN2_incidences  <- markov_sim_vacc$Markov_CIN2_60
 #markov_CN2_incidences  <- markov_sim_vacc$Markov_CIN2_70
 #markov_CN2_incidences  <- markov_sim_vacc$Markov_CIN2_80
-#sim_result[[1]]$markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_0
+sim_result[[1]]$markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_0
 #sim_result[[1]]$markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_60
 #sim_result[[1]]$markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_70
-sim_result[[1]]$markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_80
+#sim_result[[1]]$markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_80
 #markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_60
 #markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_70
 #markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_80
@@ -1857,10 +1890,10 @@ sim_result[[1]]$markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2
 #markov_CN3_incidences  <- markov_sim_vacc$Markov_CIN3_60
 #markov_CN3_incidences  <- markov_sim_vacc$Markov_CIN3_70
 #markov_CN3_incidences  <- markov_sim_vacc$Markov_CIN3_80
-#sim_result[[1]]$markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_0
+sim_result[[1]]$markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_0
 #sim_result[[1]]$markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_60
 #sim_result[[1]]$markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_70
-sim_result[[1]]$markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_80
+#sim_result[[1]]$markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_80
 #markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_60
 #markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_70
 #markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_80
@@ -1869,10 +1902,10 @@ sim_result[[1]]$markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3
 #markov_CC_incidences   <- markov_sim_vacc$Markov_CC_60
 #markov_CC_incidences   <- markov_sim_vacc$Markov_CC_70
 #markov_CC_incidences   <- markov_sim_vacc$Markov_CC_80
-#sim_result[[1]]$markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_0
+sim_result[[1]]$markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_0
 #sim_result[[1]]$markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_60
 #sim_result[[1]]$markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_70
-sim_result[[1]]$markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_80
+#sim_result[[1]]$markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_80
 #markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_60
 #markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_70
 #markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_80
@@ -1881,10 +1914,10 @@ sim_result[[1]]$markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_I
 #markov_HPV_prevalences <- markov_sim_vacc$Markov_VPH_60
 #markov_HPV_prevalences <- markov_sim_vacc$Markov_VPH_70
 #markov_HPV_prevalences <- markov_sim_vacc$Markov_VPH_80
-#sim_result[[1]]$markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_0
+sim_result[[1]]$markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_0
 #sim_result[[1]]$markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_60
 #sim_result[[1]]$markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_70
-sim_result[[1]]$markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_80
+#sim_result[[1]]$markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_80
 #markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_60
 #markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_70
 #markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_80
@@ -1893,20 +1926,20 @@ sim_result[[1]]$markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVP
 #                          1.574920e-05, 2.715056e-05, 5.489929e-05, 7.284815e-05,
 #                          1.057494e-04, 5.076268e-05, 7.517773e-05, 4.960943e-05,
 #                          4.802468e-05, 4.210457e-05, 4.837655e-05) * 10^5
-#sim_result[[1]]$markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_0
+sim_result[[1]]$markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_0
 #sim_result[[1]]$markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_60
 #sim_result[[1]]$markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_70
-sim_result[[1]]$markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_80
+#sim_result[[1]]$markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_80
 #markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_60
 #markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_70
 #markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_80
 
 
 # NOTE: change for corresponding vacc strategy 0, 60, 70, or 80:
-sim_result[[1]]$markov_new_CIN1 <- markov_sim_vacc_incidences$`Markov_n CIN1_80`
-sim_result[[1]]$markov_new_CIN2 <- markov_sim_vacc_incidences$`Markov_n CIN2_80`
-sim_result[[1]]$markov_new_CIN3 <- markov_sim_vacc_incidences$`Markov_n CIN3_80`
-sim_result[[1]]$markov_new_Cancer <- markov_sim_vacc_incidences$`Markov_n CC_80`
+sim_result[[1]]$markov_new_CIN1 <- markov_sim_vacc_incidences$`Markov_n CIN1_0`
+sim_result[[1]]$markov_new_CIN2 <- markov_sim_vacc_incidences$`Markov_n CIN2_0`
+sim_result[[1]]$markov_new_CIN3 <- markov_sim_vacc_incidences$`Markov_n CIN3_0`
+sim_result[[1]]$markov_new_Cancer <- markov_sim_vacc_incidences$`Markov_n CC_0`
 ################################################################################  
 
 ################################################################################  
@@ -1917,7 +1950,7 @@ master_markov_vacc_results_CORRECTED <-
 rm(df)
 
 # SELECT VACCINATION LEVEL:
-markov_vacc_lvl <- 80 # it can be 0, 60, 70 or 80
+markov_vacc_lvl <- 0 # it can be 0, 60, 70 or 80
 
 if(markov_vacc_lvl == 0) {
   Mark_vacc_lvl <- "Vaccination coverage: 0%"
@@ -2038,14 +2071,14 @@ if (is.na(slurm_job_id)) {
 }
 cat("SLURM job ID:", slurm_job_id, "\n")
 
-## SAVE SIMULATION RESULT: 
-## Use job ID in file name
-#output_file <-
-#  #paste0("data/testing_stability/stacked_sims_20x10E5x75_20250323_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
-#  #paste0("data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_OLD_TRANSITIONS_PARA_20250417_sim_", slurm_job_id, ".rds")
-#  paste0("data/TESTING_20250529/stacked_sims_20x10E6x75_vacc2_0.8_NEW_TRANSITIONS_PARA_20250430_sim_", slurm_job_id, ".rds")
-#  #paste0("data/last_results_20250324/TEST_vacc2_0.0_NEW_TRANSITIONS_PARA_20250425_sim_", slurm_job_id, ".rds")
-#saveRDS(object = sim_result, file = output_file)
+# SAVE SIMULATION RESULT: 
+# Use job ID in file name
+output_file <-
+  #paste0("data/testing_stability/stacked_sims_20x10E5x75_20250323_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
+  #paste0("data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_OLD_TRANSITIONS_PARA_20250417_sim_", slurm_job_id, ".rds")
+  paste0("data/TESTING_20250529/stacked_sims_20x10E6x75_vacc2_0.0_NEW_TRANSITIONS_PARA_20250505_sim_", slurm_job_id, ".rds")
+  #paste0("data/last_results_20250324/TEST_vacc2_0.0_NEW_TRANSITIONS_PARA_20250425_sim_", slurm_job_id, ".rds")
+saveRDS(object = sim_result, file = output_file)
 
 ################################################################################
 ################################################################################
@@ -2113,7 +2146,7 @@ load(file = "data/markov_vacc_CORRECTED_vectors.RData")
 #sim_result <- sim_natural_history
 #sim_result <- sim_result_0_old_trans
 
-vacc_coverage <- c(0.8,0,0) # for correct plot titles 
+vacc_coverage <- c(0.0,0,0) # for correct plot titles 
 
 cat("I have written out the results\n")
 
