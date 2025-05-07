@@ -789,7 +789,58 @@ MicroSim <- function(strategy=strategy,
           symptomatics <- bind_rows(symptomatics, new_entries)
         }
         ######################################################################## 
-       
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        ######################################################################## 
+        ########### WORK IN PROGRESS ###########################################
+        
+        ##rownames(my_age_prob_matrix) <- v_n
+        #age_interval_length <- 5
+        ## Update age-specific matrices every 5 cycles
+        #if (age_in_loop %% age_interval_length == 0) {
+        #  my_age_prob_matrix <- my_age_prob_matrix_func(my_Probs, age_in_loop + 1)
+        #  rownames(my_age_prob_matrix) <- v_n
+        #  
+        #  my_age_prob_matrix_2 <- my_age_prob_matrix_func(my_Probs2, age_in_loop + 1) %>%
+        #    dplyr::mutate(
+        #      Age.group = ifelse(Age.group == "11-14", "10-14", Age.group),
+        #      Lower = ifelse(Lower == "11", "10", Lower)
+        #    )
+        #  rownames(my_age_prob_matrix_2) <- v_n
+        #  
+        #  my_age_prob_matrix_2_nat_immunity <- my_age_prob_matrix_func(my_Probs2_nat_immunity, age_in_loop + 1) %>%
+        #    dplyr::mutate(
+        #      Age.group = ifelse(Age.group == "11-14", "10-14", Age.group),
+        #      Lower = ifelse(Lower == "11", "10", Lower)
+        #    )
+        #  rownames(my_age_prob_matrix_2_nat_immunity) <- v_n
+        #  
+        #  my_age_prob_matrix_4 <- my_age_prob_matrix_func(my_Probs4, age_in_loop + 1) %>%
+        #    dplyr::mutate(
+        #      Age.group = ifelse(Age.group == "11-14", "10-14", Age.group),
+        #      Lower = ifelse(Lower == "11", "10", Lower)
+        #    )
+        #  rownames(my_age_prob_matrix_4) <- v_n
+        #  
+        #  my_age_prob_matrix_9 <- my_age_prob_matrix_func(my_Probs9, age_in_loop + 1) %>%
+        #    dplyr::mutate(
+        #      Age.group = ifelse(Age.group == "11-14", "10-14", Age.group),
+        #      Lower = ifelse(Lower == "11", "10", Lower)
+        #    )
+        #  rownames(my_age_prob_matrix_9) <- v_n
+        #}
+        
+        
+        
+        
         
         # Update prob matrix only when changing age interval
         age_interval_length <- 5
@@ -798,77 +849,96 @@ MicroSim <- function(strategy=strategy,
           my_age_prob_matrix <- 
             my_age_prob_matrix_func(my_Prob_matrix = my_Probs, 
                                     my_age_in_loop = (age_in_loop + 1))
-          # Add colnames and update `v_n`:
-          rownames(my_age_prob_matrix) <- v_n <<- 
-            my_age_prob_matrix %>%
-            dplyr::select(-c(Age.group, Lower, Larger)) %>% 
-            colnames()
-          ######################################################################## 
-          
-          ######################################################################## 
-          my_age_prob_matrix_2 <- 
-            my_age_prob_matrix_func(my_Prob_matrix = my_Probs2, 
-                                    my_age_in_loop = (age_in_loop + 1))
-          #rename age column:
-          my_age_prob_matrix_2 <- 
-            my_age_prob_matrix_2 %>%
-            dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
-            dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))# %>% setDT()
-          # Add colnames and update `v_n`:
-          rownames(my_age_prob_matrix_2) <- v_n <<- 
-            my_age_prob_matrix_2 %>%
-            dplyr::select(-c(Age.group, Lower, Larger)) %>% 
-            colnames()
-          ######################################################################## 
-          
-          ######################################################################## 
-          my_age_prob_matrix_2_nat_immunity <- 
-            my_age_prob_matrix_func(my_Prob_matrix = my_Probs2_nat_immunity, 
-                                    my_age_in_loop = (age_in_loop + 1))
-          #rename age column:
-          my_age_prob_matrix_2_nat_immunity <- 
-            my_age_prob_matrix_2_nat_immunity %>%
-            dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
-            dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
-          # Add colnames and update `v_n`:
-          rownames(my_age_prob_matrix_2_nat_immunity) <- v_n <<- 
-            my_age_prob_matrix_2_nat_immunity %>%
-            dplyr::select(-c(Age.group, Lower, Larger)) %>% 
-            colnames()
-          ######################################################################## 
-          
-          ######################################################################## 
-          my_age_prob_matrix_4 <- 
-            my_age_prob_matrix_func(my_Prob_matrix = my_Probs4, 
-                                    my_age_in_loop = (age_in_loop + 1))
-          #rename age column:
-          my_age_prob_matrix_4 <- 
-            my_age_prob_matrix_4 %>%
-            dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
-            dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
-          # Add colnames and update `v_n`:
-          rownames(my_age_prob_matrix_4) <- v_n <<- 
-            my_age_prob_matrix_4 %>%
-            dplyr::select(-c(Age.group, Lower, Larger)) %>% 
-            colnames()
-          ######################################################################## 
-          
-          ######################################################################## 
-          my_age_prob_matrix_9 <- 
-            my_age_prob_matrix_func(my_Prob_matrix = my_Probs9, 
-                                    my_age_in_loop = (age_in_loop + 1))
-          #rename age column:
-          my_age_prob_matrix_9 <- 
-            my_age_prob_matrix_9 %>%
-            dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
-            dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
-          # Add colnames and update `v_n`:
-          rownames(my_age_prob_matrix_9) <- v_n <<- 
-            my_age_prob_matrix_9 %>%
-            dplyr::select(-c(Age.group, Lower, Larger)) %>% 
-            colnames()
-          ######################################################################## 
-        }
+          ## Add colnames and update `v_n`:
+          #rownames(my_age_prob_matrix) <- v_n <<- 
+          #  my_age_prob_matrix %>%
+          #  dplyr::select(-c(Age.group, Lower, Larger)) %>% 
+          #  colnames()
+          ######################################################################### 
+          #
+          ######################################################################### 
+          #my_age_prob_matrix_2 <- 
+          #  my_age_prob_matrix_func(my_Prob_matrix = my_Probs2, 
+          #                          my_age_in_loop = (age_in_loop + 1))
+          ##rename age column:
+          #my_age_prob_matrix_2 <- 
+          #  my_age_prob_matrix_2 %>%
+          #  dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
+          #  dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))# %>% setDT()
+          ## Add colnames and update `v_n`:
+          #rownames(my_age_prob_matrix_2) <- v_n <<- 
+          #  my_age_prob_matrix_2 %>%
+          #  dplyr::select(-c(Age.group, Lower, Larger)) %>% 
+          #  colnames()
+          ######################################################################### 
+          #
+          ######################################################################### 
+          #my_age_prob_matrix_2_nat_immunity <- 
+          #  my_age_prob_matrix_func(my_Prob_matrix = my_Probs2_nat_immunity, 
+          #                          my_age_in_loop = (age_in_loop + 1))
+          ##rename age column:
+          #my_age_prob_matrix_2_nat_immunity <- 
+          #  my_age_prob_matrix_2_nat_immunity %>%
+          #  dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
+          #  dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
+          ## Add colnames and update `v_n`:
+          #rownames(my_age_prob_matrix_2_nat_immunity) <- v_n <<- 
+          #  my_age_prob_matrix_2_nat_immunity %>%
+          #  dplyr::select(-c(Age.group, Lower, Larger)) %>% 
+          #  colnames()
+          ######################################################################### 
+          #
+          ######################################################################### 
+          #my_age_prob_matrix_4 <- 
+          #  my_age_prob_matrix_func(my_Prob_matrix = my_Probs4, 
+          #                          my_age_in_loop = (age_in_loop + 1))
+          ##rename age column:
+          #my_age_prob_matrix_4 <- 
+          #  my_age_prob_matrix_4 %>%
+          #  dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
+          #  dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
+          ## Add colnames and update `v_n`:
+          #rownames(my_age_prob_matrix_4) <- v_n <<- 
+          #  my_age_prob_matrix_4 %>%
+          #  dplyr::select(-c(Age.group, Lower, Larger)) %>% 
+          #  colnames()
+          ######################################################################### 
+          #
+          ######################################################################### 
+          #my_age_prob_matrix_9 <- 
+          #  my_age_prob_matrix_func(my_Prob_matrix = my_Probs9, 
+          #                          my_age_in_loop = (age_in_loop + 1))
+          ##rename age column:
+          #my_age_prob_matrix_9 <- 
+          #  my_age_prob_matrix_9 %>%
+          #  dplyr::mutate(Age.group = ifelse(Age.group == "11-14", "10-14", Age.group)) %>%
+          #  dplyr::mutate(Lower = ifelse(Lower == "11", "10", Lower))
+          ## Add colnames and update `v_n`:
+          #rownames(my_age_prob_matrix_9) <- v_n <<- 
+          #  my_age_prob_matrix_9 %>%
+          #  dplyr::select(-c(Age.group, Lower, Larger)) %>% 
+          #  colnames()
+          ######################################################################### 
+        } #endif
+      
+      
+      # Update v_n in every iteration based on the current my_age_prob_matrix
+      rownames(my_age_prob_matrix) <- v_n <<- 
+        my_age_prob_matrix %>%
+        dplyr::select(-c(Age.group, Lower, Larger)) %>% 
+        colnames()
+      
+      ######################################################################## 
+      ########### WORK IN PROGRESS ###########################################
+      
+      
+      
+      
+        
+        
+        
+        
+        
         
         # Extract the transition probabilities of each individuals at cycle t
         # given the individual current state and the corresponding 
@@ -881,19 +951,19 @@ MicroSim <- function(strategy=strategy,
         # for vaccination I'll need a new Probs function:
         # use data.table for speed
         m_P <- Probs_3_optimized(M_it = m_M[, t], v_n = v_n, n_i = n_i, 
-                       prob_matrix = my_age_prob_matrix, 
-                       prob_matrix_2 = my_age_prob_matrix_2,
-                       prob_matrix_2_nat_immunity = my_age_prob_matrix_2_nat_immunity,
-                       prob_matrix_4 = my_age_prob_matrix_4, 
-                       prob_matrix_9 = my_age_prob_matrix_9, 
-                       vacc_lbl = vacc_lbl,
-                       age = age_in_loop)
+                                 prob_matrix = my_age_prob_matrix, 
+                                 prob_matrix_2 = my_age_prob_matrix_2,
+                                 prob_matrix_2_nat_immunity = my_age_prob_matrix_2_nat_immunity,
+                                 prob_matrix_4 = my_age_prob_matrix_4, 
+                                 prob_matrix_9 = my_age_prob_matrix_9, 
+                                 vacc_lbl = vacc_lbl,
+                                 age = age_in_loop)
         cat("Dimension of m_P is (outside the function): ",dim(m_P),"\n")
         
         # RANDOM FUNCTION: 
         m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
-                                                     # and store that state in  
-                                                     # matrix m_M 
+        # and store that state in  
+        # matrix m_M 
         cat("Dimension of m_M is ",dim(m_M),"\n")
         ########################################################################    
         
@@ -1223,7 +1293,8 @@ sim_result  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims,
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, 
                         Pmatrix = Pmatrix,
-                        master_seed = 123,
+                        #master_seed = 123,
+                        master_seed = 321,
                         reproducible = TRUE, 
                         use_parallel = TRUE,
                         cost_vacc2, cost_vacc4, cost_vacc9)
@@ -2041,6 +2112,8 @@ microSim_new_Cancer              <- sim_result[[1]]$new_averaged_Cancer_per_age_
 
 cat("Hey, I'm done, and about to write out the results\n")
 
+
+################################################################################  
 args <- commandArgs(trailingOnly = TRUE)
 
 #if (length(args) == 0) {
@@ -2059,41 +2132,22 @@ if (is.na(slurm_job_id) || slurm_job_id == "") {
   cat("SLURM job ID:", slurm_job_id, "\n")
 }
 
-
 # Extract first vaccine coverage value for filename
 vacc_tag <- sprintf("%.1f", vacc_coverage[1])  # Format as 0.8, 0.0, etc.
 
 # Define directory and static filename components
 output_dir <- "data/TESTING_20250429"
-#base_filename <- "stacked_sims_20x10E6x75_vacc2_0.8_NEW_TRANSITIONS_PARA_20250506_sim_"
-base_filename <- paste0("stacked_sims_20x10E6x75_vacc2_", vacc_tag,
-                        "_NEW_TRANSITIONS_PARA_20250506_sim_")
+base_filename <- paste0("stacked_sims_20x10E6x75_vacc2_WITH_SELECT_TRANS", vacc_tag,
+                        "_TESTING_MAT_SELECTION_NEW_TRANSITIONS_PARA_20250507_sim_")
 
 ## Construct full path
-#output_file <- file.path(output_dir, paste0(base_filename, unique_tag, ".rds"))
-
 output_file <- file.path(output_dir, paste0(base_filename, slurm_job_id, ".rds"))
 
 
 cat("Saving simulation result to:", output_file, "\n")
 saveRDS(object = sim_result, file = output_file)
+################################################################################  
 
-
-## Get SLURM job ID from the environment variable
-#slurm_job_id <- Sys.getenv("SLURM_JOB_ID", unset = NA)
-#if (is.na(slurm_job_id)) {
-#  slurm_job_id <- format(Sys.time(), "%Y%m%d%H%M%S")  # Fallback to timestamp if not running in SLURM
-#}
-#cat("SLURM job ID:", slurm_job_id, "\n")
-#
-## SAVE SIMULATION RESULT: 
-## Use job ID in file name
-#output_file <-
-#  #paste0("data/testing_stability/stacked_sims_20x10E5x75_20250323_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
-#  #paste0("data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_OLD_TRANSITIONS_PARA_20250417_sim_", slurm_job_id, ".rds")
-#  paste0("data/TESTING_20250529/stacked_sims_20x10E6x75_vacc2_0.0_NEW_TRANSITIONS_PARA_20250505_sim_", slurm_job_id, ".rds")
-#  #paste0("data/last_results_20250324/TEST_vacc2_0.0_NEW_TRANSITIONS_PARA_20250425_sim_", slurm_job_id, ".rds")
-#saveRDS(object = sim_result, file = output_file)
 
 ################################################################################
 ################################################################################
@@ -2809,17 +2863,17 @@ print(plot_mean_new_CC)
 
 
 ##### Combining plots in a single image:
-#library("patchwork") # disable to run as job script with sbatch:
-#combined_plot <- (plot_CN1_incidences | plot_CN2_incidences | plot_CN3_incidences) /
-#  #(plot_CC_incidences | plot_HPV_prevalences | plot_CC_mortality)
-#  (plot_CC_incidences | plot_HPV_prevalences | plot_mean_Diagnosed_FIGO)# plot_CC_mortality)
-#
-###combined_plot2 <- (plot_mean_new_CIN1 | plot_mean_new_CIN2 | plot_mean_new_CIN3) |
-#combined_plot3 <- (plot_comparison_new_CIN1 | plot_comparison_new_CIN2) /
-#  (plot_comparison_new_CIN3 | plot_comparison_new_Cancer) 
-## View it
-#print(combined_plot)
-#print(combined_plot3)
+library("patchwork") # disable to run as job script with sbatch:
+combined_plot <- (plot_CN1_incidences | plot_CN2_incidences | plot_CN3_incidences) /
+  #(plot_CC_incidences | plot_HPV_prevalences | plot_CC_mortality)
+  (plot_CC_incidences | plot_HPV_prevalences | plot_mean_Diagnosed_FIGO)# plot_CC_mortality)
+
+##combined_plot2 <- (plot_mean_new_CIN1 | plot_mean_new_CIN2 | plot_mean_new_CIN3) |
+combined_plot3 <- (plot_comparison_new_CIN1 | plot_comparison_new_CIN2) /
+  (plot_comparison_new_CIN3 | plot_comparison_new_Cancer) 
+# View it
+print(combined_plot)
+print(combined_plot3)
 
 #ggsave("figures/combined_plots_incidence_vacc_80.pdf", combined_plot, width = 15, height = 10, dpi = 300)
 
