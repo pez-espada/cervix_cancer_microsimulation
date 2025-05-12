@@ -805,6 +805,9 @@ MicroSim <- function(strategy=strategy,
         
         ### TEST 20250509:
         # Inside the loop
+        # floor()  es la parte entera de la división
+        # Note: we use 'age in loo + 1' because we ask for the transitions to 
+        # move states ahead in the future t + 1.
         age_group <- floor((age_in_loop + 1) / 5)
         
         if (is.na(current_age_group) || age_group != current_age_group) {
@@ -1222,7 +1225,7 @@ is_slurm <- function() {
 # Paramters:
 # vaccination coverage for vacc 2, 4 and 9:
 
-vacc_coverage <- c(0.0, 0.0, 0.0) 
+vacc_coverage <- c(0.8, 0.0, 0.0) 
 
 # natural immunity associated with vacc 2, 4, and 9:
 nat_immunity_linked_to_vacc <- c(0.0, 0.0, 0.0)
@@ -2156,7 +2159,7 @@ vacc_tag <- sprintf("%.1f", vacc_coverage[1])  # Format as 0.8, 0.0, etc.
 output_dir <- "data/TESTING_20250429"
 #base_filename <- "stacked_sims_20x10E6x75_vacc2_0.8_NEW_TRANSITIONS_PARA_20250506_sim_"
 base_filename <- paste0("stacked_sims_20x10E6x75_vacc2_", vacc_tag,
-                        "_vers_b237_update_WITH_select_floorswitch_NEW_TRANSITIONS_PARA_20250511_sim_")
+                        "_update_WITH_select_floorswitch_NEW_TRANSITIONS_PARA_20250512_sim_")
 
 ## Construct full path
 #output_file <- file.path(output_dir, paste0(base_filename, unique_tag, ".rds"))
@@ -2167,22 +2170,6 @@ output_file <- file.path(output_dir, paste0(base_filename, slurm_job_id, ".rds")
 cat("Saving simulation result to:", output_file, "\n")
 saveRDS(object = sim_result, file = output_file)
 
-
-## Get SLURM job ID from the environment variable
-#slurm_job_id <- Sys.getenv("SLURM_JOB_ID", unset = NA)
-#if (is.na(slurm_job_id)) {
-#  slurm_job_id <- format(Sys.time(), "%Y%m%d%H%M%S")  # Fallback to timestamp if not running in SLURM
-#}
-#cat("SLURM job ID:", slurm_job_id, "\n")
-#
-## SAVE SIMULATION RESULT: 
-## Use job ID in file name
-#output_file <-
-#  #paste0("data/testing_stability/stacked_sims_20x10E5x75_20250323_madeinPADO_PARA_from_script_stackedOutside_RND_CORRECTED", slurm_job_id, ".rds")
-#  #paste0("data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_OLD_TRANSITIONS_PARA_20250417_sim_", slurm_job_id, ".rds")
-#  paste0("data/TESTING_20250529/stacked_sims_20x10E6x75_vacc2_0.0_NEW_TRANSITIONS_PARA_20250505_sim_", slurm_job_id, ".rds")
-#  #paste0("data/last_results_20250324/TEST_vacc2_0.0_NEW_TRANSITIONS_PARA_20250425_sim_", slurm_job_id, ".rds")
-#saveRDS(object = sim_result, file = output_file)
 
 ################################################################################
 ################################################################################
@@ -2250,7 +2237,7 @@ load(file = "data/markov_vacc_CORRECTED_vectors.RData")
 #sim_result <- sim_natural_history
 #sim_result <- sim_result_0_old_trans
 
-vacc_coverage <- c(0.0,0,0) # for correct plot titles 
+vacc_coverage <- c(0.8,0,0) # for correct plot titles 
 
 cat("I have written out the results\n")
 
