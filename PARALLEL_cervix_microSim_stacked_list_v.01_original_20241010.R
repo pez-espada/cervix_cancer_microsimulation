@@ -805,7 +805,7 @@ MicroSim <- function(strategy=strategy,
         
         ### TEST 20250509:
         # Inside the loop
-        age_group <- floor(age_in_loop / 5)
+        age_group <- floor((age_in_loop + 1) / 5)
         
         if (is.na(current_age_group) || age_group != current_age_group) {
           current_age_group <- age_group
@@ -840,7 +840,11 @@ MicroSim <- function(strategy=strategy,
               Lower = ifelse(Lower == "11", "10", Lower)
             )
           rownames(my_age_prob_matrix_9) <- v_n
-        }
+        } #endif
+        
+        # TESTING:
+        #cat("Age:", age_in_loop, "Group:", age_group, "Matrix[1,1]:", my_age_prob_matrix[1,1], "Pro H->H", my_age_prob_matrix[1,2], "\n")
+        cat("Age:", age_in_loop, "Matrix[1,1]:", my_age_prob_matrix[1,1], "Pro H->H", my_age_prob_matrix[1,2], "\n")
         
         # Now use the last-calculated my_age_prob_matrix in this cycle:
         
@@ -968,11 +972,11 @@ MicroSim <- function(strategy=strategy,
         m_P <- Probs_3_optimized(M_it = m_M[, t], v_n = v_n, n_i = n_i, 
                                  prob_matrix = my_age_prob_matrix, 
                                  prob_matrix_2 = my_age_prob_matrix_2,
-                       prob_matrix_2_nat_immunity = my_age_prob_matrix_2_nat_immunity,
-                       prob_matrix_4 = my_age_prob_matrix_4, 
-                       prob_matrix_9 = my_age_prob_matrix_9, 
-                       vacc_lbl = vacc_lbl,
-                       age = age_in_loop)
+                                 prob_matrix_2_nat_immunity = my_age_prob_matrix_2_nat_immunity,
+                                 prob_matrix_4 = my_age_prob_matrix_4, 
+                                 prob_matrix_9 = my_age_prob_matrix_9, 
+                                 vacc_lbl = vacc_lbl,
+                                 age = age_in_loop)
         cat("Dimension of m_P is (outside the function): ",dim(m_P),"\n")
         
         # RANDOM FUNCTION: 
@@ -1297,7 +1301,7 @@ vacc_lbl <-
 ## START SIMULATION
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
-#numb_of_sims = 3
+#numb_of_sims = 1
 numb_of_sims = 20
 
 #strategy <- "natural_history"
@@ -1310,7 +1314,7 @@ sim_result  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims,
                         Pmatrix = Pmatrix,
                         master_seed = 123,
                         reproducible = TRUE, 
-                        use_parallel = FALSE,
+                        use_parallel = TRUE,
                         cost_vacc2, cost_vacc4, cost_vacc9)
 
 # For stacking outside the function, we need to comment the stacking function
@@ -2152,7 +2156,7 @@ vacc_tag <- sprintf("%.1f", vacc_coverage[1])  # Format as 0.8, 0.0, etc.
 output_dir <- "data/TESTING_20250429"
 #base_filename <- "stacked_sims_20x10E6x75_vacc2_0.8_NEW_TRANSITIONS_PARA_20250506_sim_"
 base_filename <- paste0("stacked_sims_20x10E6x75_vacc2_", vacc_tag,
-                        "_vers_b237_update_with_select_floorswitch_NEW_TRANSITIONS_SEQ_20250509_sim_")
+                        "_vers_b237_update_WITH_select_floorswitch_NEW_TRANSITIONS_PARA_20250511_sim_")
 
 ## Construct full path
 #output_file <- file.path(output_dir, paste0(base_filename, unique_tag, ".rds"))
