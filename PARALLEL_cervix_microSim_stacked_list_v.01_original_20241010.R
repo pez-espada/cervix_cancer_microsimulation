@@ -184,7 +184,7 @@ cost_vacc9 <- 0
 
 ################################################################################
 ## ---- FUNCTIONS -----                                                       ##  
-#### For extracting the probabilities of transitions given the transition matrix:
+### For extracting the probabilities of transitions given the transition matrix:
 ########### Probably the following function is not needed ######################
 #' Extract transition probability from Transition Matrix
 #'
@@ -205,7 +205,7 @@ return(transition_prob)
 ################################################################################
 
 ################################################################################
-### ---- Probability Function ----                                            ##
+### ---- Probability Function ---- (original)                                 ##
 ### The Probs function that updates the transition probabilities of every cycle:
 #Probs <- function(M_it, my_Probs) {
 #  n_s <- length(v_n)
@@ -710,8 +710,12 @@ MicroSim <- function(strategy=strategy,
   
   # Parallel processing using foreach
   simulation_results <- 
-    #foreach(sim = 1:numb_of_sims, .packages = c("dplyr", "tidyr", "purrr", "data.table"), .export = c("new_cases_2") ) %dopar% { 
-    foreach(sim = 1:numb_of_sims, .packages = c("dplyr", "tidyr", "purrr", "data.table") ) %dopar% { 
+    #foreach(sim = 1:numb_of_sims, .packages = c("dplyr", "tidyr", "purrr", 
+    #                                            "data.table"), 
+    #        .export = c("new_cases_2") ) %dopar% { 
+    foreach(sim = 1:numb_of_sims, .packages = c("dplyr", 
+                                                "tidyr", "purrr", 
+                                                "data.table") ) %dopar% { 
       ## clean memory:
       #if (step %% 10 == 0) gc()
       
@@ -774,7 +778,7 @@ MicroSim <- function(strategy=strategy,
       my_age_prob_matrix_9 <- NULL
       
       ###################### run over all the cycles ########################### 
-      # loop runs over all the cycles of the simulation. It updates the
+      # Loop runs over all the cycles of the simulation. It updates the
       # health state of each individual at each cycle, estimates the costs and
       # QALYs per individual at each cycle, and stores the transitions across
       # states for each individual at each cycle.
@@ -807,7 +811,7 @@ MicroSim <- function(strategy=strategy,
         # Inside the loop
         # floor()  es la parte entera de la división
         # Note: we use 'age in loo + 1' because we ask for the transitions to 
-        # move states ahead in the future t + 1.
+        # move states ahead in the future t + 1. This is because of model design.
         age_group <- floor((age_in_loop + 1) / 5)
         
         if (is.na(current_age_group) || age_group != current_age_group) {
@@ -851,7 +855,7 @@ MicroSim <- function(strategy=strategy,
         
         # Now use the last-calculated my_age_prob_matrix in this cycle:
         
-        ### Update prob matrix only when changing age interval
+        ### Prevouslu used method. Update prob matrix only when changing age interval
         #age_interval_length <- 5
         #if (age_in_loop %% age_interval_length == 0) { 
         #  ######################################################################## 
@@ -970,8 +974,8 @@ MicroSim <- function(strategy=strategy,
         ## m_P is a (n_i x n_s) matrix with the probabilities of transitioning
         #m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
         
-        # for vaccination I'll need a new Probs function:
-        # use data.table for speed
+        # Function to obtain individual transition probabilities based on 
+        # current state and the prob of transition one cycle/t ahead.
         m_P <- Probs_3_optimized(M_it = m_M[, t], v_n = v_n, n_i = n_i, 
                                  prob_matrix = my_age_prob_matrix, 
                                  prob_matrix_2 = my_age_prob_matrix_2,
@@ -982,7 +986,7 @@ MicroSim <- function(strategy=strategy,
                                  age = age_in_loop)
         cat("Dimension of m_P is (outside the function): ",dim(m_P),"\n")
         
-        # RANDOM FUNCTION: 
+        # Make actual transition by  random sampling (RANDOM FUNCTION): 
         m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
                                                      # and store that state in  
                                                      # matrix m_M 
@@ -1225,7 +1229,7 @@ is_slurm <- function() {
 # Paramters:
 # vaccination coverage for vacc 2, 4 and 9:
 
-vacc_coverage <- c(0.8, 0.0, 0.0) 
+vacc_coverage <- c(0.0, 0.0, 0.0) 
 
 # natural immunity associated with vacc 2, 4, and 9:
 nat_immunity_linked_to_vacc <- c(0.0, 0.0, 0.0)
@@ -1656,7 +1660,6 @@ mean_CC_mortality_by_diff_func <- function(sim_stalked_result, my_Probs) {
 }
 ################################################################################
 
-### TESTING ###
 mean_CC_mortality_by_diff_result <- mean_CC_mortality_result
 mean_CC_mortality_by_diff_result <-
   mean_CC_mortality_by_diff_func(sim_stalked_result =
@@ -2159,7 +2162,7 @@ vacc_tag <- sprintf("%.1f", vacc_coverage[1])  # Format as 0.8, 0.0, etc.
 output_dir <- "data/TESTING_20250429"
 #base_filename <- "stacked_sims_20x10E6x75_vacc2_0.8_NEW_TRANSITIONS_PARA_20250506_sim_"
 base_filename <- paste0("stacked_sims_20x10E6x75_vacc2_", vacc_tag,
-                        "_update_WITH_select_floorswitch_NEW_TRANSITIONS_PARA_20250512_sim_")
+                        "_update_WITH_select_floorswitch_NEW_TRANSITIONS_PARA_20250514_sim_")
 
 ## Construct full path
 #output_file <- file.path(output_dir, paste0(base_filename, unique_tag, ".rds"))
@@ -2180,10 +2183,12 @@ saveRDS(object = sim_result, file = output_file)
 #sim_result <- readRDS(file = "data/last_results_20250324/stacked_sims_20x10E6x75_vacc2_0.0_NEW_TRANSITIONS_PARA_20250425_sim_20495.rds")
 ### IF YOU LOAD A PRE-RUN SIMULATION AND WANT TO POST-PROCESS RUN SCRIPT FROM HERE ALL
 ### WAY TO THE BOTTOM AND INCLUDE THE NEEDED FOLLOWING VARIABLES:
-#rm(list = ls())
-n_i <- 10^6
-numb_of_sims <- 20
-n_t = 75
+### (IF NOT LOADING PRE-RUNNED SIMULATION KEEP THE FOLLOWING 4 LINES COMMENTED)
+##rm(list = ls())
+#n_i <- 10^6
+#numb_of_sims <- 20
+#n_t = 75
+#vacc_coverage <- c(0.0,0,0) # for correct plot titles 
 
 # Load microsim results with vacc strategies (sequentially runned):
 sim_result_0 <- 
@@ -2237,7 +2242,6 @@ load(file = "data/markov_vacc_CORRECTED_vectors.RData")
 #sim_result <- sim_natural_history
 #sim_result <- sim_result_0_old_trans
 
-vacc_coverage <- c(0.8,0,0) # for correct plot titles 
 
 cat("I have written out the results\n")
 
