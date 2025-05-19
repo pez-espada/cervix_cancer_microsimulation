@@ -5,7 +5,8 @@ batch_1 <- c(0, 0, 0)
 batch_2 <- c(0.6, 0, 0)
 batch_3 <- c(0.7, 0, 0)
 batch_4 <- c(0.8, 0, 0)
-batch_5 <- c(0.8, 0.1, 0)
+#batch_5 <- c(0.8, 0.1, 0)
+#batch_6 <- c(0.3, 0.1, .1)
 
 # Fixed vaccination column names
 vaccination_times <- c("vacc_2", "vacc_4", "vacc_9")
