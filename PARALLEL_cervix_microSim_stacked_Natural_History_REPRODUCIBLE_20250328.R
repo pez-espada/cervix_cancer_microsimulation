@@ -61,25 +61,6 @@ n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 ################################################################################
  
 
-################################################################################
-### (THIS IS WORK IN PROGRESS):
-# cycle_period can go from one month to one year. that is
-# I think a sensible way is to offer the following frequencies
-cycle_period <- "1mth"
-cycle_period <- "2mth"
-cycle_period <- "3mth"
-cycle_period <- "4mth"
-cycle_period <- "6mth"
-cycle_period <- "1yr" # i.e. 12mth
-if (cycle_period == "1mth"){
-n_t <- n_t * 12
-} else if (cycle_period == "6mth") {
-n_t <- n_t * 2
-} else if (cycle_period == "1yr") {
-n_t <- n_t * 1
-}
-################################################################################
-
 
 ################################################################################
 #v_n <- rownames(my_Probs)
@@ -106,18 +87,10 @@ utilityCoefs = c(1, 1, 0.987, 0.87, 0.87, 0.76, 0.67, 0.67, 0.67, 0.938, 0, 0)
 ## ---- FUNCTIONS -----                                                       ##  
 #### For extracting the probabilities of transitions given the transition matrix:
 ########### Probably the following function is not needed ######################
-#' Extract transition probability from Transition Matrix
-#'
-#' @param P 
-#' @param state1 
-#' @param state2 
-#'
-#' @return a numeric scalar corresponding to the asked probability of transition
-#' @export
-#'
-#' @examples
-#' trans_prb(P = my_Probs, state1 = "Well", state2 = "HR.HPV.infection") 
-#' trans_prb(P = my_Probs, state1 = "CIN1", state2 = "CIN2") 
+# Extract transition probability from Transition Matrix
+# @examples
+# trans_prb(P = my_Probs, state1 = "Well", state2 = "HR.HPV.infection") 
+# trans_prb(P = my_Probs, state1 = "CIN1", state2 = "CIN2") 
 trans_prb <- function(P, state1, state2) {
 transition_prob<-P[state1,state2]
 return(transition_prob)
@@ -276,64 +249,9 @@ return(u_it)
 ################################################################################
 
 
-#################################################################################
-### ----Time period related functions
-############ WORK IN PROGRESS #########################
-#age_factor <- function(my_period) {
-## it receives a string with the period of the cycle, and it can be:
-##  - "1mth"
-##  - "3mth"
-##  - "4mth"
-##  - "6mth"
-##  - "1yr" # i.e. 12 months
-## and it gives back an age factor for scaling cycle period.
-#if (my_period == "1yr") {
-#  my_factor <- 1
-#} else if (my_period == "6mth") {
-#  my_factor <- 2
-#} else if (my_period == "4mth") {
-#  my_factor <- 3
-#} else if (my_period == "3mth") {
-#  my_factor <- 4
-#} else if (my_period == "1mth") {
-#  my_factor <- 12
-#} else {print("Cycle period can only be: '1yr', '6mth','4mth', '3mth' and '12mth'")}
-#return(my_factor)
-#}
-########## WORK IN PROGRESS #################
-#################################################################################
 
 
-#################################################################################
-##### ! NOT USED ! ############################
-#convert_matrix_to_proper_transition <- 
-#function(my_age_prob_matrix, cycle_period) {
-#  my_age_prob_matrix %>% head(3)
-#  ensure_library(c("expm", "pracma", "ctmcd"))
-#  trans_matrix <- my_age_prob_matrix %>% 
-#    select(-c("Age.group", "Lower", "Larger")) %>% 
-#    as.matrix()
-#  # Referenece: https://rpubs.com/crossxwill/transition_matrix
-#  ## method 1: (not working atm)
-#  #ensure_library(expm)
-#  #TM.exp  <- expm::expm((1 / age_factor(cycle_period))) * log(trans_matrix) 
-#  
-#  #method 2 ;
-#  #ensure_library("pracma")
-#  TM_pracma <- 
-#    pracma::rootm(trans_matrix, p=age_factor(cycle_period), 
-#                  kmax = 20, tol = 1e-10)
-#  round(TM_pracma$B, 5)
-#  # Regularization with the `ctmcd` package, The code below uses the 
-#  # quasi-optimization of the generator (QOG) approach from 
-#  # Kreinin and Sidelnikova (2001).:
-#  ensure_library("ctmcd")
-#  TM_qo <- ctmcd::gm(TM_pracma$B, te=1, method = "QO") 
-#}
-##### ! NOT USED ! ############################
-#################################################################################
-
-
+################################################################################
 ## ---- Symptomatic Individuals ----                                          ##
 # An individual can be in cancer states, i.e. FIGO.I, FIGO.II. FIGO.III and FIGO.IV
 # (in the model) and yet no develop symptoms. Form th Markov cohort model we have
@@ -354,7 +272,6 @@ stored_list <- vector("list", n_t)
 
 # Initialize a global vector to store all diagnosed individuals
 #global_diagnosed <- integer()
-
 
 ################################################################################
 # --- Function receives a column with current state of `n_i` individuals and gives
@@ -640,7 +557,8 @@ MicroSim <- function(strategy="natural_history",
         # Select the transition matrix based on the cycle `n_t`:
         # Since our age intervals start at 10 years old,
         age_in_loop <- t + 9
-        cat("Simulation:", sim, "Cycle:", t, ", ", "Age:", age_in_loop, ", ", "seed:", seeds[sim], "\n")
+        cat("Simulation:", sim, "Cycle:", t, ", ", "Age:", age_in_loop, 
+            ", ", "seed:", seeds[sim], "\n")
         ########################################################################
         
         ########################################################################
@@ -720,18 +638,18 @@ MicroSim <- function(strategy="natural_history",
       
       # Combine stored entries in a single data frame
       symptomatics <- bind_rows(stored_list)
-      tc_disc <- m_C[,1:n_t] %*% v_dwc       # total (discounted) cost per individual
-      te_disc <- m_E[,1:n_t] %*% v_dwe       # total (discounted) QALYs per individual 
+      tc_disc <- m_C[,1:n_t] %*% v_dwc  # total (discounted) cost per individual
+      te_disc <- m_E[,1:n_t] %*% v_dwe  # total (discounted) QALYs per individual 
       
-      tc_undisc <- m_C[,1:n_t] %*% rep(1, n_t)       # total (discounted) cost per individual
-      te_undisc <- m_E[,1:n_t] %*% rep(1, n_t)       # total (discounted) QALYs per individual 
+      tc_undisc <- m_C[,1:n_t] %*% rep(1, n_t) # total (discounted) cost per individual
+      te_undisc <- m_E[,1:n_t] %*% rep(1, n_t) # total (discounted) QALYs per individual 
       
       tc_hat_disc <- mean(tc_disc)        # average (discounted) cost 
       te_hat_disc <- mean(te_disc)        # average (discounted) QALYs
       tc_hat_undisc <- mean(tc_undisc)    # average (discounted) cost 
       te_hat_undisc <- mean(te_undisc)    # average (discounted) QALYs
       
-      # Create a matrix of transitions across states transitions from one state to the other:
+      # Create a state transition matrix with actual tranistions
       if (TS_out == TRUE) {  
         TS <- paste(m_M, cbind(m_M[, -1], NA), sep = "->")    
         
@@ -754,15 +672,12 @@ MicroSim <- function(strategy="natural_history",
         TR <- NULL
       }
       
-      # If TS_out == TRUE we can then compute the number of new cases for each type
-      # of cancer state per time (cycle). A new case of cancer state X in time t
-      # is defined as an individual transition to this state X provided the
-      # individual was not in that state X a time t-1.
-      # NOTE that the TR output display individual transitions at each cycle t
-      # that are going to occur at t + 1. That is, "XX->YY" in cycle t meant that the
-      # corresponding individual is in state "XX" in t and is transiting to state
-      # "YY" in t + 1.
-      # A character with all transitions:
+      # If TS_out == TRUE, compute new cancer cases per type and cycle.
+      # A new case in state X at time t means a person entered X at t,
+      # not being in X at t-1. TR output shows transitions at each t
+      # that happen at t+1: "XX->YY" at t means state XX at t, YY at t+1.
+      # Full transition character vector:
+      
       transitions <- 
         TS %>% 
         as_tibble() %>% 
