@@ -31,18 +31,6 @@ ensure_library <- function(...) {
   })
 }
 ################################################################################
-## Arguments for job array:
-args <- commandArgs(trailingOnly = TRUE)
-# Skip args[1] to prevent getting --args
-
-# Check if any arguments were provided
-if (length(args) < 1) {
-  stop("At least one argument is required.", call. = FALSE)
-}
-
-vacc_type <- as.character(args[2])
-vacc_cover <- as.numeric(args[3])
-################################################################################
 # OLD TRANSITIONS:
 my_Probs_old <- readRDS(file = "./data/probs.rds") # natural history transition matrix
 my_Probs2_old <- readRDS(file = "./data/probs2.rds") # vaccination transition matrix
@@ -84,11 +72,29 @@ adjust_infection_probs <- function(my_Probs, infection_reduction = 0.7) {
 my_Probs2 <- adjust_infection_probs(my_Probs, infection_reduction = 0.7)
 
 
+## Obtaining 'my_Probs2' from 'my_Probs' programatically (Sandra's code):
+#infection_reduction <- 0.7 # due to vaccination
+#my_Probs <- my_Probs %>% as.data.frame()
+#my_Probs2 <- my_Probs
+#my_Probs2$state <- names(my_Probs2[2:length(my_Probs2)])
+#my_Probs2[my_Probs2$state == "Well", "HR.HPV.infection"  ] <- 
+#  my_Probs2[my_Probs2$state=="Well", "HR.HPV.infection"  ]*(1 - infection_reduction)
+#my_Probs2[my_Probs2$state == "Well", "Well" ] <- 
+#  1-(my_Probs2[my_Probs2$state == "Well", "HR.HPV.infection"] + my_Probs2[my_Probs2$state == "Well", "Other.Death"])
+#my_Probs2$state <- NULL
+##Test 'adjust_infection_probs()' function:
+#my_Probs_adjusted <- adjust_infection_probs(my_Probs, infection_reduction = 0.7)
+#identical(my_Probs_adjusted, my_Probs2) # if TRUE then they're identical
+
 # vaccination 2 associated immunity transition matrix
 my_Probs2_nat_immunity <- readRDS(file = "./data/probs3.rds") 
 my_Probs4 <- readRDS(file = "./data/probs3.rds") # vaccination transition matrix
 my_Probs9 <- readRDS(file = "./data/probs3.rds") # vaccination transition matrix
 
+## arbitrary correction of an obvious error (for old matrices);
+#my_Probs2$Other.Death[my_Probs2$Other.Death == 8.150000e+08] <- 8.150000e-08
+#my_Probs2 <- my_Probs2 %>%
+#  dplyr::rename("CC_Death" = "Death")
 
 ################################################################################
 # Function to extract and convert numbers from factor levels
@@ -128,7 +134,7 @@ my_Probs9 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs9)
 my_Probs9 <- my_Probs9 %>% as.data.frame() #convert back to data.frame (no needed?)
 ################################################################################
 ## ----Model Parameters
-n_i <- 10^4               # number of simulated individuals
+n_i <- 10^6               # number of simulated individuals
 #n_t <- 3                  # time horizon, 3 cycles (it starts from 1)
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 ################################################################################
@@ -360,9 +366,11 @@ samplev <- function (probs, m) {
   ########## Creating the matrix of cumulative distributions U #################
   U <- t(probs)    # transpose probs from (`n_i*n_s`) to (`n_s*n_i`)
   for(i in 2:k) {  
-    # Fill `U` with cumulative transition probabilities per individual (from `v_s` or `lev`).
-    # Each column is a CDF over that individual's possible transitions.
-    # Last element in each column should be ~1.
+    # This loop fills U with the cumulative probabilities of each individual
+    # across all its possible transitions (`v_s`or `lev` within thus function).
+    # That is each column of `U` represents the cumulative distribution for each
+    # individual across its corresponding transitions. 
+    # The last element of each column must sum 1 (or close enough:)
     U[i, ] <- U[i, ] + U[i - 1, ]
   }
   #U[k, ] <- 1  # Force last row to be exactly 1
@@ -375,9 +383,14 @@ samplev <- function (probs, m) {
   for (j in 1:m) {
     # RANDOM GEN CODE HERE:
     un <- rep(runif(n), rep(k, n)) # repeat `runif(n)` `rep(k,n)`times
-    # Create an `n_i x n_s` numeric matrix of uniform(0,1) samples.
-    # Each row contains `n_s` copies of the same random draw; repeated for `n_i` rows.
-    # Note: each call to `runif()` yields a fresh sample (seed-dependent as usual)
+    # this create a numeric of `n_i x n_s` that 
+    # sample  an uniformed distributed number 
+    # between 0 and 1. The generated random number
+    # repeats itself `n_s` times and then another 
+    # rand unif number is drawn. This process is 
+    # carried out `n_i` times. NOTE: every time
+    # runif() is run it produces a new random sample
+    # i.e. it does not seem dependent on the seed
     
     ## Here's where we choose the individuals' next states:
     #ran[, j] <- lev[1 + colSums(un > U)]
@@ -575,16 +588,24 @@ new_cases_2 <- function(state1, state2, Tot_Trans_per_t) {
     if (length(missing_cols) > 0) {
       warning(paste0("Some transitions not found: ", paste(missing_cols, collapse = ", "), ". Using columns of zeros for these."))
     }
-    # `!!!` (unquote-splice) unpacks a list into individual arguments (rlang).
-    # Here, it unpacks the `setNames()` list so each element becomes a column in `tibble()`,
-    # using names from `missing_cols`.
+    # The operator ' unquote-splice` ("!!!") splices or unpack (corte y pega) 
+    # a list or vector into multiple arguments (used with functions of `rlang`).
+    # in our case the !!! is used to unpack the list returned by setNames() 
+    # and pass it as individual arguments to tibble(). This way, each item in 
+    # the list becomes a separate column in the tibble, with the names provided
+    # by missing_cols.
     missing_df <- tibble(
       !!!setNames(lapply(missing_cols, function(x) rep(0, nrow(Tot_Trans_per_t_tbl))), missing_cols)
     )
     # Combine and process
-    # `!!` (unquote) injects a single value or expression into a function.
-    # `!!!` (unquote-splice) injects multiple values from a list or vector.
-    # Both are used to programmatically pass arguments (rlang/tidyverse).
+    # The "unquote" operator unquotes a value or an expression, rather than 
+    # treating it as a literal symbol or character string.
+    # a) !! (Unquote): Injects a single value or expression into a function. 
+    # It is typically used when you want to reference or compute something based
+    # on a single variable or expression.
+    # b) !!! (Unquote-splice): Injects or "splices" multiple values or elements 
+    #from a list or vector into a function. It is used when you need to spread 
+    # a list of arguments across multiple positions or inputs.
     transition_cases <- Tot_Trans_per_t_tbl %>%
       select(all_of(existing_cols)) %>%
       bind_cols(missing_df) %>%
@@ -670,43 +691,22 @@ MicroSim <- function(strategy=strategy,
   # If vaccination, apply vaccination cost to those vaccinated individuals
   # ONLY ONCE per sim batch:
   vacc_cost <- rep(0, n_i)
-  #if (any(vacc_coverage != 0)) { 
-  #  # vacc_covverage pos1 is bivalent, pos2 is 4-valent and pos3 is 9-valent
-  #  if (vacc_coverage[1] != 0) {
-  #    vaccinated_id <- which(vacc_lbl$vacc_state == "vacc_2")
-  #    vacc_cost[vaccinated_id] <- cost_vacc2
-  #    #cat("we have vaccinated here!\n")
-  #  }
-  #  if (vacc_coverage[2] != 0) {
-  #    vaccinated_id <- which(vacc_lbl$vacc_state == "vacc_4")
-  #    vacc_cost[vaccinated_id] <- cost_vacc4
-  #  }
-  #  if (vacc_coverage[2] != 0) {
-  #    vaccinated_id <- which(vacc_lbl$vacc_state == "vacc_9")
-  #    vacc_cost[vaccinated_id] <- cost_vacc9
-  #  }
-  #}
- 
-  # using args  for the job array:
-  if(vacc_type == "vacc_2") {
+  if (any(vacc_coverage != 0)) { 
+    # vacc_covverage pos1 is bivalent, pos2 is 4-valent and pos3 is 9-valent
+    if (vacc_coverage[1] != 0) {
       vaccinated_id <- which(vacc_lbl$vacc_state == "vacc_2")
       vacc_cost[vaccinated_id] <- cost_vacc2
-      cat("we have vaccinated with vacc_2 here!\n")
-  }
-  if(vacc_type == "vacc_4") {
+      #cat("we have vaccinated here!\n")
+    }
+    if (vacc_coverage[2] != 0) {
       vaccinated_id <- which(vacc_lbl$vacc_state == "vacc_4")
       vacc_cost[vaccinated_id] <- cost_vacc4
-      cat("we have vaccinated with vacc_4 here!\n")
-  }
-  if(vacc_type == "vacc_9") {
+    }
+    if (vacc_coverage[2] != 0) {
       vaccinated_id <- which(vacc_lbl$vacc_state == "vacc_9")
       vacc_cost[vaccinated_id] <- cost_vacc9
-      cat("we have vaccinated with vacc_8 here!\n")
+    }
   }
-  
-  
-  
-  
   
   # Parallel processing using foreach
   simulation_results <- 
@@ -777,9 +777,11 @@ MicroSim <- function(strategy=strategy,
       my_age_prob_matrix_4 <- NULL
       my_age_prob_matrix_9 <- NULL
       
-      ###################### Run Over All Cycles ###########################
-      # Loop updates each individual's health state, estimates costs and QALYs,
-      # and records state transitions for every cycle of the simulation.
+      ###################### run over all the cycles ########################### 
+      # Loop runs over all the cycles of the simulation. It updates the
+      # health state of each individual at each cycle, estimates the costs and
+      # QALYs per individual at each cycle, and stores the transitions across
+      # states for each individual at each cycle.
       for (t in 1:(n_t-1)) {
         ########################################################################
         # Select the transition matrix based on the cycle `n_t`:
@@ -803,7 +805,8 @@ MicroSim <- function(strategy=strategy,
         }
         ######################################################################## 
         
-        ## AGE_INTERVAL TRANS MATRIX SELECTION:
+        
+        
         ### TEST 20250509:
         # Inside the loop
         # floor()  es la parte entera de la división
@@ -847,6 +850,7 @@ MicroSim <- function(strategy=strategy,
         } #endif
         
         # TESTING:
+        #cat("Age:", age_in_loop, "Group:", age_group, "Matrix[1,1]:", my_age_prob_matrix[1,1], "Pro H->H", my_age_prob_matrix[1,2], "\n")
         cat("Age:", age_in_loop, "Matrix[1,1]:", my_age_prob_matrix[1,1], "Pro H->H", my_age_prob_matrix[1,2], "\n")
         
         # Now use the last-calculated my_age_prob_matrix in this cycle:
@@ -1055,12 +1059,15 @@ MicroSim <- function(strategy=strategy,
         TR <- NULL
       }
       
-      # If TS_out == TRUE, compute new cancer cases per state and cycle.
-      # A new case occurs if an individual transitions to state X at time t,
-      # and was not in state X at t-1.
-      # NOTE: TR output shows transitions at cycle t that will occur at t+1
-      # (e.g., "XX->YY" means the individual is in "XX" at t and will 
-      # transition to "YY" at t+1).
+      # If TS_out == TRUE we can then compute the number of new cases for each type
+      # of cancer state per time (cycle). A new case of cancer state X in time t
+      # is defined as an individual transition to this state X provided the
+      # individual was not in that state X a time t-1.
+      # NOTE that the TR output display individual transitions at each cycle t
+      # that are going to occur at t + 1. That is, "XX->YY" in cycle t meant that the
+      # corresponding individual is in state "XX" in t and is transiting to state
+      # "YY" in t + 1.
+      # A character with all transitions:
       transitions <- 
         TS %>% 
         as_tibble() %>% 
@@ -1222,91 +1229,23 @@ is_slurm <- function() {
 # Paramters:
 # vaccination coverage for vacc 2, 4 and 9:
 
-#vacc_coverage <- c(0.0, 0.0, 0.0) 
-vacc_coverage <- vacc_cover  # correspond to args[3] in the job array 
+vacc_coverage <- c(0.0, 0.0, 0.0) 
 
 # natural immunity associated with vacc 2, 4, and 9:
 nat_immunity_linked_to_vacc <- c(0.0, 0.0, 0.0)
 
-#################################################################################
-## RANDOM FUNCTION
-#generate_vaccine_labels <- function(n_i, vacc_coverage, nat_immunity, seed) {
-#  # Ensure the sum of coverage is valid
-#  if (sum(vacc_coverage) > 1) {
-#    stop("The sum of vacc_coverage cannot exceed 1.")
-#  }
-#  
-#  # Calculate the number of individuals for each vaccine
-#  n_vacc_2 <- round(vacc_coverage[1] * n_i)
-#  n_vacc_4 <- round(vacc_coverage[2] * n_i)
-#  n_vacc_9 <- round(vacc_coverage[3] * n_i)
-#  
-#  # Remaining individuals are "no_vacc"
-#  n_no_vacc <- n_i - (n_vacc_2 + n_vacc_4 + n_vacc_9)
-#  
-#  if (n_no_vacc < 0) {
-#    stop("The specified coverage results in more vaccinated individuals than n_i.")
-#  }
-#  
-#  # Create the label vector
-#  vacc_lbl <- c(
-#    rep("vacc_2", n_vacc_2),
-#    rep("vacc_4", n_vacc_4),
-#    rep("vacc_9", n_vacc_9),
-#    rep("no_vacc", n_no_vacc)
-#  )
-# 
-#  # RANDOM GEN line: 
-#  # Shuffle the vector randomly
-#  seed_2 <- 123
-#  set.seed(seed_2)
-#  vacc_lbl <- sample(vacc_lbl, size = n_i, replace = FALSE)
-#  
-#  # Initialize the 'immuned' vector with FALSE for everyone
-#  immuned <- rep(FALSE, n_i)
-#  
-#  # For vaccinated individuals, check if they overcome their immunity probability:
-#  for (i in 1:n_i) {
-#    if (vacc_lbl[i] == "vacc_2") {
-#      # Check if individual overcomes immunity probability for vacc_2
-#      immuned[i] <- runif(1) < nat_immunity[1]
-#    } else if (vacc_lbl[i] == "vacc_4") {
-#      # Check if individual overcomes immunity probability for vacc_4
-#      immuned[i] <- runif(1) < nat_immunity[2]
-#    } else if (vacc_lbl[i] == "vacc_9") {
-#      # Check if individual overcomes immunity probability for vacc_9
-#      immuned[i] <- runif(1) < nat_immunity[3]
-#    }
-#    # Individuals with "no_vacc" remain FALSE for immunity
-#  }
-#  
-#  # Create the final data frame with ID, vacc_state, and immuned status
-#  result_df <- data.frame(
-#    ID = seq_len(n_i),
-#    vacc_state = vacc_lbl,
-#    immuned = immuned
-#  )
-#  
-#  return(result_df)
-#}
-#################################################################################
-
 ################################################################################
 # RANDOM FUNCTION
-# New function to accomodate arguments for job array
-generate_vaccine_labels <- 
-  function(n_i, vacc_cover, vacc_type, nat_immunity, seed) {
+generate_vaccine_labels <- function(n_i, vacc_coverage, nat_immunity, seed) {
   # Ensure the sum of coverage is valid
-  #if (sum(vacc_coverage) > 1) {
-  if (sum(vacc_cover) > 1) {
-    stop("The sum of vaccination coverage cannot exceed 1.")
+  if (sum(vacc_coverage) > 1) {
+    stop("The sum of vacc_coverage cannot exceed 1.")
   }
   
   # Calculate the number of individuals for each vaccine
   n_vacc_2 <- round(vacc_coverage[1] * n_i)
   n_vacc_4 <- round(vacc_coverage[2] * n_i)
   n_vacc_9 <- round(vacc_coverage[3] * n_i)
-  
   
   # Remaining individuals are "no_vacc"
   n_no_vacc <- n_i - (n_vacc_2 + n_vacc_4 + n_vacc_9)
@@ -1374,9 +1313,7 @@ numb_of_sims = 20
 
 #strategy <- "natural_history"
 #strategy <- "vacc_2_coverage_0.0"
-#strategy <- paste0("vacc_2_coverage_", sprintf("%.1f", vacc_coverage[1]))
-#using argumets for the job array:
-strategy <- paste0(vacc_type, "_", sprintf("%.1f", vacc_cover))
+strategy <- paste0("vacc_2_coverage_", sprintf("%.1f", vacc_coverage[1]))
 sim_result  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
@@ -1439,8 +1376,7 @@ sim_result[[1]]$te_hat_undisc <- sim_result[[1]]$te_hat_undisc %>%
 sim_result[[1]]$te_hat_disc <- sim_result[[1]]$te_hat_disc %>%
   dplyr::select(-c(te_hat_disc)) %>% 
   dplyr::rename("te_hat_disc" = "sim[[i]][[name_level_of_sim]]")
-#sim_result[[1]]$vacc_coverage <- vacc_coverage
-sim_result[[1]]$vacc_coverage <- vacc_cover
+sim_result[[1]]$vacc_coverage <- vacc_coverage
 ################################################################################
 
 ################################################################################
@@ -2026,39 +1962,34 @@ load(file = "data/markov_results/markov_vacc_CORRECTED_incidences_vectors_202504
 #sim_result[[1]]$markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_60 
 #sim_result[[1]]$markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_70 
 #sim_result[[1]]$markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_80 
-#sim_result[[1]]$markov_CN1_incidences  <- markov_sim_vacc_incidences[[paste0("Markov_CIN1_Incidence_", vacc_coverage[1]*10^2)]] 
-sim_result[[1]]$markov_CN1_incidences  <- markov_sim_vacc_incidences[[paste0("Markov_CIN1_Incidence_", vacc_cover*10^2)]] 
+sim_result[[1]]$markov_CN1_incidences  <- markov_sim_vacc_incidences[[paste0("Markov_CIN1_Incidence_", vacc_coverage[1]*10^2)]] 
 
 #markov_CN2_incidences  <- c(0.000000, 6.165629, 54.767952, 140.309815, 216.568392, 1476.306267, 1579.728160, 1298.914564, 466.596151, 637.661611, 442.298632, 304.784447, 250.953880, 165.628020, 116.925192)
 #sim_result[[1]]$markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_0
 #sim_result[[1]]$markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_60
 #sim_result[[1]]$markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_70
 #sim_result[[1]]$markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_80
-#sim_result[[1]]$markov_CN2_incidences  <- markov_sim_vacc_incidences[[paste0("Markov_CIN2_Incidence_", vacc_coverage[1]*10^2)]]
-sim_result[[1]]$markov_CN2_incidences  <- markov_sim_vacc_incidences[[paste0("Markov_CIN2_Incidence_", vacc_cover*10^2)]]
+sim_result[[1]]$markov_CN2_incidences  <- markov_sim_vacc_incidences[[paste0("Markov_CIN2_Incidence_", vacc_coverage[1]*10^2)]]
 
 #markov_CN3_incidences  <- c(0.000000, 2.090325, 9.597415, 44.467676, 148.972191, 0.000000, 3.550684, 91.881726, 12.505042, 68.377446, 25.802481, 7.952667, 1.174088, 1.177840, 2.638642)
 #sim_result[[1]]$markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_0
 #sim_result[[1]]$markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_60
 #sim_result[[1]]$markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_70
 #sim_result[[1]]$markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_80
-#sim_result[[1]]$markov_CN3_incidences  <- markov_sim_vacc_incidences[[paste0("Markov_CIN3_Incidence_", vacc_coverage[1]*10^2)]]
-sim_result[[1]]$markov_CN3_incidences  <- markov_sim_vacc_incidences[[paste0("Markov_CIN3_Incidence_", vacc_cover*10^2)]]
+sim_result[[1]]$markov_CN3_incidences  <- markov_sim_vacc_incidences[[paste0("Markov_CIN3_Incidence_", vacc_coverage[1]*10^2)]]
 
 #markov_CC_incidences   <- c(0.000000, 0.000000, 0.000000, 5.520938, 8.360544, 13.282380, 22.906871, 20.825560, 15.867891, 32.483846, 8.962389, 17.681771, 11.737615, 17.354646, 14.582775)
 #sim_result[[1]]$markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_0
 #sim_result[[1]]$markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_60
 #sim_result[[1]]$markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_70
 #sim_result[[1]]$markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_80
-#sim_result[[1]]$markov_CC_incidences   <- markov_sim_vacc_incidences[[paste0("Markov_CC_Incidence_", vacc_coverage[1]*10^2)]]
-sim_result[[1]]$markov_CC_incidences   <- markov_sim_vacc_incidences[[paste0("Markov_CC_Incidence_", vacc_cover10^2)]]
+sim_result[[1]]$markov_CC_incidences   <- markov_sim_vacc_incidences[[paste0("Markov_CC_Incidence_", vacc_coverage[1]*10^2)]]
 
 #markov_HPV_prevalences <- c(0.000000000, 0.343480414, 0.377634762, 0.087223460, 0.307341403, 0.030196332, 0.050562845, 0.050151668, 0.082952596, 0.046644059, 0.018532077, 0.034193076, 0.016407832, 0.015039027, 0.003217326)
 #sim_result[[1]]$markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_0
 #sim_result[[1]]$markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_60
 #sim_result[[1]]$markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_70
 #sim_result[[1]]$markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_80
-#sim_result[[1]]$markov_HPV_prevalences <- markov_sim_vacc_incidences[[paste0("Markov_HPVPrevalence_", vacc_coverage[1]*10^2)]]
 sim_result[[1]]$markov_HPV_prevalences <- markov_sim_vacc_incidences[[paste0("Markov_HPVPrevalence_", vacc_coverage[1]*10^2)]]
 
 # markov_CC_mortality <- c(0.000000e+00, 0.000000e+00, 0.000000e+00, 2.977975e-06, 
@@ -2069,23 +2000,18 @@ sim_result[[1]]$markov_HPV_prevalences <- markov_sim_vacc_incidences[[paste0("Ma
 #sim_result[[1]]$markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_60
 #sim_result[[1]]$markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_70
 #sim_result[[1]]$markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_80
-#sim_result[[1]]$markov_CC_mortality <- markov_sim_vacc_incidences[[paste0("Markov_CCMortality_", vacc_coverage[1]*10^2)]]
-sim_result[[1]]$markov_CC_mortality <- markov_sim_vacc_incidences[[paste0("Markov_CCMortality_", vacc_cover*10^2)]]
+sim_result[[1]]$markov_CC_mortality <- markov_sim_vacc_incidences[[paste0("Markov_CCMortality_", vacc_coverage[1]*10^2)]]
 
 
 # NOTE: change for corresponding vacc strategy 0, 60, 70, or 80:
 #sim_result[[1]]$markov_new_CIN1   <- markov_sim_vacc_incidences$`Markov_n CIN1_80`
-#sim_result[[1]]$markov_new_CIN1   <- markov_sim_vacc_incidences[[paste0("Markov_n CIN1_", vacc_coverage[1]*10^2)]]
-sim_result[[1]]$markov_new_CIN1   <- markov_sim_vacc_incidences[[paste0("Markov_n CIN1_", vacc_cover*10^2)]]
+sim_result[[1]]$markov_new_CIN1   <- markov_sim_vacc_incidences[[paste0("Markov_n CIN1_", vacc_coverage[1]*10^2)]]
 #sim_result[[1]]$markov_new_CIN2   <- markov_sim_vacc_incidences$`Markov_n CIN2_80`
-#sim_result[[1]]$markov_new_CIN2   <- markov_sim_vacc_incidences[[paste0("Markov_n CIN2_", vacc_coverage[1]*10^2)]]
-sim_result[[1]]$markov_new_CIN2   <- markov_sim_vacc_incidences[[paste0("Markov_n CIN2_", vacc_cover*10^2)]]
+sim_result[[1]]$markov_new_CIN2   <- markov_sim_vacc_incidences[[paste0("Markov_n CIN2_", vacc_coverage[1]*10^2)]]
 #sim_result[[1]]$markov_new_CIN3   <- markov_sim_vacc_incidences$`Markov_n CIN3_80`
-#sim_result[[1]]$markov_new_CIN3   <- markov_sim_vacc_incidences[[paste0("Markov_n CIN3_", vacc_coverage[1]*10^2)]]
-sim_result[[1]]$markov_new_CIN3   <- markov_sim_vacc_incidences[[paste0("Markov_n CIN3_", vacc_cover*10^2)]]
+sim_result[[1]]$markov_new_CIN3   <- markov_sim_vacc_incidences[[paste0("Markov_n CIN3_", vacc_coverage[1]*10^2)]]
 #sim_result[[1]]$markov_new_Cancer <- markov_sim_vacc_incidences$`Markov_n CC_80`
-#sim_result[[1]]$markov_new_Cancer <- markov_sim_vacc_incidences[[paste0("Markov_n CC_", vacc_coverage[1]*10^2)]]
-sim_result[[1]]$markov_new_Cancer <- markov_sim_vacc_incidences[[paste0("Markov_n CC_", vacc_cover*10^2)]]
+sim_result[[1]]$markov_new_Cancer <- markov_sim_vacc_incidences[[paste0("Markov_n CC_", vacc_coverage[1]*10^2)]]
 ################################################################################  
 
 ################################################################################  
@@ -2097,8 +2023,7 @@ rm(df)
 
 # SELECT VACCINATION LEVEL:
 #markov_vacc_lvl <- 80 # it can be 0, 60, 70 or 80
-#markov_vacc_lvl <- vacc_coverage[1]*10^2 # it can be 0, 60, 70 or 80
-markov_vacc_lvl <- vacc_cover*10^2 # it can be 0, 60, 70 or 80
+markov_vacc_lvl <- vacc_coverage[1]*10^2 # it can be 0, 60, 70 or 80
 
 if(markov_vacc_lvl == 0) {
   Mark_vacc_lvl <- "Vaccination coverage: 0%"
@@ -2231,11 +2156,10 @@ if (is.na(slurm_job_id) || slurm_job_id == "") {
 
 
 # Extract first vaccine coverage value for filename
-#vacc_tag <- sprintf("%.1f", vacc_coverage[1])  # Format as 0.8, 0.0, etc.
-vacc_tag <- sprintf("%.1f", vacc_cover)  # Format as 0.8, 0.0, etc.
+vacc_tag <- sprintf("%.1f", vacc_coverage[1])  # Format as 0.8, 0.0, etc.
 
 # Define directory and static filename components
-output_dir <- "data/job_array_outputs/"
+output_dir <- "data/TESTING_20250429"
 #base_filename <- "stacked_sims_20x10E6x75_vacc2_0.8_NEW_TRANSITIONS_PARA_20250506_sim_"
 base_filename <- paste0("stacked_sims_20x10E6x75_vacc2_", vacc_tag,
                         "_update_WITH_select_floorswitch_NEW_TRANSITIONS_PARA_20250514_sim_")
@@ -2554,8 +2478,7 @@ plot_comparison <- function(data, measure_name) {
         ";  cycles=", sim_result[[1]]$numb_of_cycles, 
         "Para.", 
         "Avgd. sims =", numb_of_sims, "\n",
-        #"Vacc.=", vacc_coverage[1]
-        "Vacc.=", vacc_cover
+        "Vacc.=", vacc_coverage[1]
       ),
       x = "Age Group",
       y = measure_name
@@ -2722,8 +2645,7 @@ compare_models_plot <- function(markov_vector, microsim_tbl,
                                 #N = "1e+06", cycles = 75, sims = 20, vacc = 0.8) {
                                 N = n_i, cycles = n_t,
                                 sims = numb_of_sims, 
-                                #vacc = vacc_coverage[1]) {
-                                vacc = vacc_cover) {
+                                vacc = vacc_coverage[1]) {
   # Clean age group labels from Markov vector
   age_labels <- sub("^n [^ ]+ ", "", names(markov_vector))
   
@@ -2801,8 +2723,7 @@ difference_plot <- function(markov_vector, microsim_tbl,
                             type = c("relative", "absolute"),
                             N = n_i, cycles = n_t,
                             sims = numb_of_sims, 
-                            #vacc = vacc_coverage[1]) {
-                            vacc = vacc_cover) {
+                            vacc = vacc_coverage[1]) {
   
   type <- match.arg(type)
   
