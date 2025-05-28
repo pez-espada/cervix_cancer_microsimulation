@@ -680,7 +680,7 @@ MicroSim <- function(strategy=strategy,
   } else {
     seeds <- NULL  # No reproducibility
   }
- 
+  
   # Some Initiliazations: 
   simulation_results <- list() 
   
@@ -709,17 +709,19 @@ MicroSim <- function(strategy=strategy,
     }
   }
   
-  ### RUN OVER STRATEGIES:
+  source("./R/sumarize_results_by_Strategy_Func.R")
   
+  ### RUN OVER STRATEGIES:
   # Screening Strategies:
   source(file = "R/params_only_cyto_AMontoliu.R") # load Parameters_strategies()
   screening_strategies <- Parameters_strategy(Coverage = 0.4, cobertura_vacuna = 0.8)
   screening_strategies <- c("STRATEGY A", "STRATEGY B", "STRATEGY C")
+  stacked_results <- NULL
+  # initialize joined_batches_per_strategy
+  joined_batches_per_strategy <- list()
   
   for(strat in 1:length(screening_strategies))
   {
-    # initialize joined_batches_per_strategy
-    joined_batches_per_strategy <- list()
     cat("==================================================================\n")
     cat("==================================================================\n")
     cat("==================================================================\n")
@@ -738,8 +740,6 @@ MicroSim <- function(strategy=strategy,
                                                   "tidyr", "purrr", 
                                                   "data.table") ) %dopar%
       { 
-        ## clean memory:
-        #if (step %% 10 == 0) gc()
         
         seed <- seeds[sim]
         
@@ -779,9 +779,6 @@ MicroSim <- function(strategy=strategy,
                                           Trt)             
         # account for vaccination cost:
         m_C[, 1] <- m_C[, 1] + vacc_cost
-        #cat("Vacc_cost is: \n")
-        #vacc_cost %>% head(10)
-        #cat("\n")
         
         # estimate QALYs per individual for the initial health state 
         m_E[, 1] <- Effs(m_M[, 1], Trt, utilityCoefs = utilityCoefs)  
@@ -1112,7 +1109,7 @@ MicroSim <- function(strategy=strategy,
     #return(simulation_results)
     cat("Lenght of simulation_results = ", length(simulation_results), "\n")
     
-    source("./R/sumarize_results_by_Strategy_Func.R")
+    #source("./R/sumarize_results_by_Strategy_Func.R")
     #stacked_results <- 
     #  summarize_results_by_Strategy(strategy = strategy,
     #                                results_list = sim_result, 
@@ -1122,11 +1119,12 @@ MicroSim <- function(strategy=strategy,
                                     results_list = simulation_results, 
                                     numb_of_sims = numb_of_sims)
     
-    #joined_batches_per_strategy <- list(joined_batches_per_strategy, simulation_results)
-    #joined_batches_per_strategy <- list(joined_batches_per_strategy, stacked_results)
     joined_batches_per_strategy[[strat]] <-  stacked_results
+    #return(joined_batches_per_strategy)
+    #return(simulation_results)
     
-  }
+    
+  } # end of strategies loop
   
   ### END RUN OVER STRATEGIES
   return(joined_batches_per_strategy)
@@ -1253,17 +1251,6 @@ sim_result  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims,
                         reproducible = TRUE, 
                         use_parallel = FALSE,
                         cost_vacc2, cost_vacc4, cost_vacc9)
-
-# For stacking outside the function, we need to comment the stacking function
-# inside  de the MicroSim function, and return the results as a list by commenting
-# 'return(stacked_results)' and uncomment 'return(simulation_results)'. And then,
-# uncomment the following lines:
-#source("./R/sumarize_results_by_Strategy_Func.R")
-#stacked_results <- 
-#  summarize_results_by_Strategy(strategy = strategy,
-#                                results_list = sim_result, 
-#                                numb_of_sims = numb_of_sims)
-sim_result <- stacked_results
 
 comp.time = Sys.time() - p
 comp.time %>% print()
@@ -1909,6 +1896,8 @@ sim_result <-
                            ... = "sim.1", "row_names")
 ################################################################################
 ################################################################################
+##### END POST-PROCESSING ######################################################
+
 
 ################################################################################  
 ## ----Incidences, Prevalences, and Mortalities
