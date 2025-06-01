@@ -1277,59 +1277,31 @@ source(file = "R/post_process_strategies.R", local = environment())
 load(file = "data/markov_results/markov_vacc_CORRECTED_incidences_vectors_20250425.RData")
 # Markov:
 #markov_CN1_incidences  <- c(0.00000, 204.73492, 981.96179, 1368.24200, 3006.85782, 33.48096, 1362.96678, 459.48051, 697.84223, 794.33833, 223.00222, 246.23082, 176.02167, 126.22963, 53.70939)
-sim_result[[1]]$markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_0 
-#sim_result[[1]]$markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_60 
-#sim_result[[1]]$markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_70 
-#sim_result[[1]]$markov_CN1_incidences  <- markov_sim_vacc_incidences$Markov_CIN1_Incidence_80 
 sim_result[[1]]$markov_CN1_incidences  <- markov_sim_vacc_incidences[[paste0("Markov_CIN1_Incidence_", vacc_coverage[1]*10^2)]] 
 
 #markov_CN2_incidences  <- c(0.000000, 6.165629, 54.767952, 140.309815, 216.568392, 1476.306267, 1579.728160, 1298.914564, 466.596151, 637.661611, 442.298632, 304.784447, 250.953880, 165.628020, 116.925192)
-#sim_result[[1]]$markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_0
-#sim_result[[1]]$markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_60
-#sim_result[[1]]$markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_70
-#sim_result[[1]]$markov_CN2_incidences  <- markov_sim_vacc_incidences$Markov_CIN2_Incidence_80
 sim_result[[1]]$markov_CN2_incidences  <- markov_sim_vacc_incidences[[paste0("Markov_CIN2_Incidence_", vacc_coverage[1]*10^2)]]
 
 #markov_CN3_incidences  <- c(0.000000, 2.090325, 9.597415, 44.467676, 148.972191, 0.000000, 3.550684, 91.881726, 12.505042, 68.377446, 25.802481, 7.952667, 1.174088, 1.177840, 2.638642)
-#sim_result[[1]]$markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_0
-#sim_result[[1]]$markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_60
-#sim_result[[1]]$markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_70
-#sim_result[[1]]$markov_CN3_incidences  <- markov_sim_vacc_incidences$Markov_CIN3_Incidence_80
 sim_result[[1]]$markov_CN3_incidences  <- markov_sim_vacc_incidences[[paste0("Markov_CIN3_Incidence_", vacc_coverage[1]*10^2)]]
 
 #markov_CC_incidences   <- c(0.000000, 0.000000, 0.000000, 5.520938, 8.360544, 13.282380, 22.906871, 20.825560, 15.867891, 32.483846, 8.962389, 17.681771, 11.737615, 17.354646, 14.582775)
-#sim_result[[1]]$markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_0
-#sim_result[[1]]$markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_60
-#sim_result[[1]]$markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_70
-#sim_result[[1]]$markov_CC_incidences   <- markov_sim_vacc_incidences$Markov_CC_Incidence_80
 sim_result[[1]]$markov_CC_incidences   <- markov_sim_vacc_incidences[[paste0("Markov_CC_Incidence_", vacc_coverage[1]*10^2)]]
 
 #markov_HPV_prevalences <- c(0.000000000, 0.343480414, 0.377634762, 0.087223460, 0.307341403, 0.030196332, 0.050562845, 0.050151668, 0.082952596, 0.046644059, 0.018532077, 0.034193076, 0.016407832, 0.015039027, 0.003217326)
-#sim_result[[1]]$markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_0
-#sim_result[[1]]$markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_60
-#sim_result[[1]]$markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_70
-#sim_result[[1]]$markov_HPV_prevalences <- markov_sim_vacc_incidences$Markov_HPVPrevalence_80
 sim_result[[1]]$markov_HPV_prevalences <- markov_sim_vacc_incidences[[paste0("Markov_HPVPrevalence_", vacc_coverage[1]*10^2)]]
 
 # markov_CC_mortality <- c(0.000000e+00, 0.000000e+00, 0.000000e+00, 2.977975e-06, 
 #                          1.574920e-05, 2.715056e-05, 5.489929e-05, 7.284815e-05,
 #                          1.057494e-04, 5.076268e-05, 7.517773e-05, 4.960943e-05,
 #                          4.802468e-05, 4.210457e-05, 4.837655e-05) * 10^5
-#sim_result[[1]]$markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_0
-#sim_result[[1]]$markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_60
-#sim_result[[1]]$markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_70
-#sim_result[[1]]$markov_CC_mortality <- markov_sim_vacc_incidences$Markov_CCMortality_80
 sim_result[[1]]$markov_CC_mortality <- markov_sim_vacc_incidences[[paste0("Markov_CCMortality_", vacc_coverage[1]*10^2)]]
 
 
 # NOTE: change for corresponding vacc strategy 0, 60, 70, or 80:
-#sim_result[[1]]$markov_new_CIN1   <- markov_sim_vacc_incidences$`Markov_n CIN1_80`
 sim_result[[1]]$markov_new_CIN1   <- markov_sim_vacc_incidences[[paste0("Markov_n CIN1_", vacc_coverage[1]*10^2)]]
-#sim_result[[1]]$markov_new_CIN2   <- markov_sim_vacc_incidences$`Markov_n CIN2_80`
 sim_result[[1]]$markov_new_CIN2   <- markov_sim_vacc_incidences[[paste0("Markov_n CIN2_", vacc_coverage[1]*10^2)]]
-#sim_result[[1]]$markov_new_CIN3   <- markov_sim_vacc_incidences$`Markov_n CIN3_80`
 sim_result[[1]]$markov_new_CIN3   <- markov_sim_vacc_incidences[[paste0("Markov_n CIN3_", vacc_coverage[1]*10^2)]]
-#sim_result[[1]]$markov_new_Cancer <- markov_sim_vacc_incidences$`Markov_n CC_80`
 sim_result[[1]]$markov_new_Cancer <- markov_sim_vacc_incidences[[paste0("Markov_n CC_", vacc_coverage[1]*10^2)]]
 ################################################################################  
 
