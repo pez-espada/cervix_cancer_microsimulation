@@ -633,6 +633,31 @@ my_age_prob_matrix_func <- function(my_Prob_matrix, my_age_in_loop) {
 }
 ################################################################################
 
+
+################################################################################
+extract_screening_days <- function(strategy_string) {
+  # Extract the age range and period using regular expressions
+  matches <-
+    regmatches(strategy_string, regexec("(\\d+)-(\\d+).*?(\\d+)", 
+                                        strategy_string))[[1]]
+  start_age <- as.integer(matches[2])
+  end_age <- as.integer(matches[3])
+  period <- as.integer(matches[4])
+  
+  # Generate screening days
+  days <- seq(start_age, end_age, by = period)
+  return(days)
+}
+
+## Example usage
+#extract_screening_days("25-29 cito 3 anys")
+## Output: [1] 25 28
+################################################################################
+
+
+
+
+
  
 
 ################################################################################
@@ -649,7 +674,12 @@ MicroSim <- function(strategy=strategy,
                      reproducible = TRUE, 
                      master_seed = 123,
                      cost_vacc2, cost_vacc4, cost_vacc9,
-                     screening_strategies) 
+                     screening_strategies, 
+                     screening_coverage ,
+                     vacc_coverage,
+                     ScreenPrice,
+                     costCoeff_md
+                     )
 {
   cl <- NULL  # Ensure cl exists in all cases
   
@@ -722,17 +752,14 @@ MicroSim <- function(strategy=strategy,
     cat("==================================================================\n")
     cat("==================================================================\n")
     cat("==================================================================\n")
-    #cat("Sim Name is: ", screening_strategies[[strat]]$sim.name, "\n")
-    cat("Sim Name is: ", screening_strategies[strat], "\n")
+    cat("Sim Name is: ", screening_strategies[[strat]]$sim.name, "\n")
+    #cat("Sim Name is: ", screening_strategies[strat], "\n")
     cat("==================================================================\n")
     cat("==================================================================\n")
     cat("==================================================================\n")
     
     # Parallel processing using foreach
     simulation_results <- 
-      #foreach(sim = 1:numb_of_sims, .packages = c("dplyr", "tidyr", "purrr", 
-      #                                            "data.table"), 
-      #        .export = c("new_cases_2") ) %dopar% { 
       foreach(sim = 1:numb_of_sims, .packages = c("dplyr", 
                                                   "tidyr", "purrr", 
                                                   "data.table") ) %dopar%
@@ -743,10 +770,10 @@ MicroSim <- function(strategy=strategy,
         cat("\n")
         cat("\n")
         cat("\n")
-        cat("-------------------------------------------------------\n")
-        cat("-------------------------------------------------------\n")
+        cat("----------------------------------------------------\n")
+        cat("----------------------------------------------------\n")
         cat("Running simulation", sim, "with seed", seeds[sim], "\n")
-        cat("-------------------------------------------------------\n")
+        cat("----------------------------------------------------\n")
         
         # Initialize a global vector to store all diagnosed individuals
         global_diagnosed <<- integer()
@@ -765,7 +792,7 @@ MicroSim <- function(strategy=strategy,
                                   paste0("cycle_", 1:(n_t),
                                          sep = "")))  
         
-        m_M[, 1] <- v_M_1  # indicate the initial health state   
+        m_M[, 1] <- v_M_1  # Indicate the initial health state   
         
         
         # estimate costs per individual for the initial health state
@@ -782,7 +809,6 @@ MicroSim <- function(strategy=strategy,
         
         stored_list <- list()
         
-        
         ### TEST 20250509
         # Before the loop
         current_age_group <- NA
@@ -792,15 +818,19 @@ MicroSim <- function(strategy=strategy,
         my_age_prob_matrix_4 <- NULL
         my_age_prob_matrix_9 <- NULL
         
-        
-        
-        ###################### run over all the cycles ########################### 
+        ## Cyto Screening days:
+        cyto_screening_days <-
+          extract_screening_days(screening_strategies[[strat]]$sim.name) 
+       
+         
+        ########################################################################
+        #################### run over all the cycles ########################### 
         # Loop runs over all the cycles of the simulation. It updates the
         # health state of each individual at each cycle, estimates the costs and
         # QALYs per individual at each cycle, and stores the transitions across
         # states for each individual at each cycle.
         for (t in 1:(n_t-1)) {
-          ########################################################################
+          ######################################################################
           # Select the transition matrix based on the cycle `n_t`:
           # Since our age intervals start at 10 years old,
           age_in_loop <- t + 9
@@ -914,15 +944,50 @@ MicroSim <- function(strategy=strategy,
           m_E[, t + 1] <- # estimate QALYs per individual during cycle t + 1
             Effs( m_M[, t + 1], Trt, 
                   utilityCoefs = utilityCoefs)                   
-          #########################################################################    
-          #########################################################################    
+          ######################################################################    
+          ######################################################################    
           #cat('\r', paste(round(t/n_t * 100),          # display the 
           #                "% done\n", sep = " "))      # progress of  the simulation
           
-          ## Screening
+          ######################################################################    
+          ## Cytology Screening Routine at time t
+          # Determine whether a cytology is due at this age:
+          if (age_in_loop %in% cyto_screening_days) {
+            cat("I perform a cyto screening at age = ", age_in_loop, "\n")
+            
+            # 1. Sample individuals for cyto screening with prob = screening_coverage: 
+            screening_prob <- rep(screening_coverage, n_i)
+            
+            screened <- runif(n_i) < screening_prob
+            
+            screened_ids <- IDs[screened]
+            
+            # 2. Apply cost involved to those 
+            # sampled individuals ("ScreenPrice" in Markov model), and log it:
+            if (length(screened_ids) > 0) {
+              cost_log <- rbindlist(list(cost_log, data.table(
+                sim = sim,
+                age = age_in_loop,
+                ID = screened_ids,
+                cost_type = screening_strategies[[strat]]$sim.name, #"cyto_screening",
+                cost = ScreenPrice
+              )), use.names = TRUE)
+            }
+            
+            
+            # 3. Determine whether it's positive or negative
+            # 4. If negative: Screening at "HPVPeriod" (?)
+            # 5. If positive: if CIN1 (cost follow up: "costCoefs[CIN1]" in Markov model)
+            # 6. If positive: if CIN2/3 (cost follow up: "costCoefs[CIN2/m]" in Markov model)
+            # 7. If positive: if FIGOI/IV (cost follow up: "costCoefs[FIGOI/IV]" in Markov model)
+            
+          } else {
+            cat("I do NOT perform a cyto screening\n")
+          }
           
-        }  
-        #################### close loop for cycles ############################### 
+          
+        }
+        #################### close loop for cycles ############################# 
         
         # Combine stored entries in a single data frame
         symptomatics <- bind_rows(stored_list)
@@ -1085,7 +1150,8 @@ MicroSim <- function(strategy=strategy,
           new_CIN3 = new_CIN3,
           new_Cancer = new_Cancer,
           new_CC_Death = new_CC_Death,
-          CC_Death_by_diff = CC_Death_by_diff) 
+          CC_Death_by_diff = CC_Death_by_diff, 
+          screening_cost = cost_log) 
         
         results$seed <- seeds[sim]
         #results$seed <- seed
@@ -1112,7 +1178,7 @@ MicroSim <- function(strategy=strategy,
     #                                results_list = sim_result, 
     #                                numb_of_sims = numb_of_sims)
     stacked_results <- 
-      summarize_results_by_Strategy(strategy = screening_strategies[strat],
+      summarize_results_by_Strategy(strategy = screening_strategies[[strat]]$sim.name,
                                     results_list = simulation_results, 
                                     numb_of_sims = numb_of_sims)
     
@@ -1236,19 +1302,48 @@ p = Sys.time()
 numb_of_sims = 3
 #numb_of_sims = 20
 
+# Initialize individual IDs
+IDs <- 1:n_i
 #strategy <- "natural_history"
 #strategy <- "vacc_2_coverage_0.0"
 
 # Screening Strategies:
 source(file = "R/params_only_cyto_AMontoliu.R") # load Parameters_strategies()
-screening_strategies <- Parameters_strategy(Coverage = 0.4, cobertura_vacuna = 0.8)
-screening_strategies <- c("STRATEGY A", "STRATEGY B", "STRATEGY C")
+screening_coverage = 0.8; vacc_coverage = 0
+ScreenPrice.md = ScreenPrice = 27.86
+# Direct medical costs of monitoring and treatment in each state:
+costCoeff_md <- c(0, 39.54, 288.91, 1552.27, 1552.27, 5759.81,
+                   12903.63, 23032.41, 35323.14, 0, 0, 0)
+# Direct non-medical costs of monitoring and treatment in each state:
+costCoeff_nmd <-  c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+
+# Indirect costs of monitoring and treatment in each state:
+costCoeff_i <-  c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+
+# Sensitivity of cytology as a primary test for each state:
+screenSensi <-	c(0, 0, 0.177, 0.5, 0.523, 1, 1, 1, 1, 0, 0, 0)
+
+# Cytology Specificity:
+citoSpecif <- 0
+
+screening_strategies <- Parameters_strategy(Coverage = screening_coverage, 
+                                            cobertura_vacuna = vacc_coverage)
+# Storage for costs output
+cost_log <- 
+  data.table(sim = integer(), 
+             t = integer(), 
+             ID = integer(), 
+             cost_type = character(),
+             cost = numeric())
+
+#screening_strategies <- c("STRATEGY A", "STRATEGY B", "STRATEGY C")
 numb_screening_strat <- screening_strategies %>% length()
 
 # The following line needs to be replaced or deleted:
 strategy <- paste0("vacc_2_coverage_", sprintf("%.1f", vacc_coverage[1]))
 
-sim_result  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims, 
+sim_result  <- MicroSim(strategy = strategy, 
+                        numb_of_sims = numb_of_sims, 
                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
                         Trt = FALSE, 
@@ -1257,7 +1352,12 @@ sim_result  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims,
                         reproducible = TRUE, 
                         use_parallel = FALSE,
                         cost_vacc2, cost_vacc4, cost_vacc9,
-                        screening_strategies = screening_strategies)
+                        screening_strategies = screening_strategies,
+                        screening_coverage = screening_coverage,
+                        vacc_coverage = vacc_coverage,
+                        ScreenPrice = ScreenPrice,
+                        costCoeff_md = costCoeff_md
+                        )
 
 comp.time = Sys.time() - p
 comp.time %>% print()
@@ -1268,108 +1368,119 @@ source(file = "R/post_process_strategies.R", local = environment())
 ################################################################################
 
 
-################################################################################  
-## ----Incidences, Prevalences, and Mortalities
-# ADDING MARKOV RESULTS (corrected):
-#load(file = "data/markov_results/markov_vacc_incidences_vectors.RData")
-# Loading the CORRECTED-TRANSITIONs results, the 'markov_sim_vacc_incidences' object:
-#load(file = "data/markov_results/markov_vacc_CORRECTED_incidences_vectors.RData")
-load(file = "data/markov_results/markov_vacc_CORRECTED_incidences_vectors_20250425.RData")
-# Markov:
-#markov_CN1_incidences  <- c(0.00000, 204.73492, 981.96179, 1368.24200, 3006.85782, 33.48096, 1362.96678, 459.48051, 697.84223, 794.33833, 223.00222, 246.23082, 176.02167, 126.22963, 53.70939)
-sim_result[[1]]$markov_CN1_incidences  <- markov_sim_vacc_incidences[[paste0("Markov_CIN1_Incidence_", vacc_coverage[1]*10^2)]] 
 
-#markov_CN2_incidences  <- c(0.000000, 6.165629, 54.767952, 140.309815, 216.568392, 1476.306267, 1579.728160, 1298.914564, 466.596151, 637.661611, 442.298632, 304.784447, 250.953880, 165.628020, 116.925192)
-sim_result[[1]]$markov_CN2_incidences  <- markov_sim_vacc_incidences[[paste0("Markov_CIN2_Incidence_", vacc_coverage[1]*10^2)]]
+################################################################################
+# ADD MARKOV RESULTS
+source(file = "R/add_markov_results.R")
+################################################################################
 
-#markov_CN3_incidences  <- c(0.000000, 2.090325, 9.597415, 44.467676, 148.972191, 0.000000, 3.550684, 91.881726, 12.505042, 68.377446, 25.802481, 7.952667, 1.174088, 1.177840, 2.638642)
-sim_result[[1]]$markov_CN3_incidences  <- markov_sim_vacc_incidences[[paste0("Markov_CIN3_Incidence_", vacc_coverage[1]*10^2)]]
-
-#markov_CC_incidences   <- c(0.000000, 0.000000, 0.000000, 5.520938, 8.360544, 13.282380, 22.906871, 20.825560, 15.867891, 32.483846, 8.962389, 17.681771, 11.737615, 17.354646, 14.582775)
-sim_result[[1]]$markov_CC_incidences   <- markov_sim_vacc_incidences[[paste0("Markov_CC_Incidence_", vacc_coverage[1]*10^2)]]
-
-#markov_HPV_prevalences <- c(0.000000000, 0.343480414, 0.377634762, 0.087223460, 0.307341403, 0.030196332, 0.050562845, 0.050151668, 0.082952596, 0.046644059, 0.018532077, 0.034193076, 0.016407832, 0.015039027, 0.003217326)
-sim_result[[1]]$markov_HPV_prevalences <- markov_sim_vacc_incidences[[paste0("Markov_HPVPrevalence_", vacc_coverage[1]*10^2)]]
-
-# markov_CC_mortality <- c(0.000000e+00, 0.000000e+00, 0.000000e+00, 2.977975e-06, 
-#                          1.574920e-05, 2.715056e-05, 5.489929e-05, 7.284815e-05,
-#                          1.057494e-04, 5.076268e-05, 7.517773e-05, 4.960943e-05,
-#                          4.802468e-05, 4.210457e-05, 4.837655e-05) * 10^5
-sim_result[[1]]$markov_CC_mortality <- markov_sim_vacc_incidences[[paste0("Markov_CCMortality_", vacc_coverage[1]*10^2)]]
+cat("Markov results added, stop here for the moment\n")
+stop()
 
 
-# NOTE: change for corresponding vacc strategy 0, 60, 70, or 80:
-sim_result[[1]]$markov_new_CIN1   <- markov_sim_vacc_incidences[[paste0("Markov_n CIN1_", vacc_coverage[1]*10^2)]]
-sim_result[[1]]$markov_new_CIN2   <- markov_sim_vacc_incidences[[paste0("Markov_n CIN2_", vacc_coverage[1]*10^2)]]
-sim_result[[1]]$markov_new_CIN3   <- markov_sim_vacc_incidences[[paste0("Markov_n CIN3_", vacc_coverage[1]*10^2)]]
-sim_result[[1]]$markov_new_Cancer <- markov_sim_vacc_incidences[[paste0("Markov_n CC_", vacc_coverage[1]*10^2)]]
-################################################################################  
-
-################################################################################  
-## Adding corresponding (to vacc strategy) Markov QUALYs and Costs to sim_result
-master_markov_vacc_results_CORRECTED <- 
-  get(load(file = "data/corrected_transitions_20250414/Markov_results_only_vaccination_Strategies_only_vac_20250414.rda"))
-# Select vaccination-associated QALYs, Costs (discounted and undiscounted):
-rm(df)
-
-# SELECT VACCINATION LEVEL:
-#markov_vacc_lvl <- 80 # it can be 0, 60, 70 or 80
-markov_vacc_lvl <- vacc_coverage[1]*10^2 # it can be 0, 60, 70 or 80
-
-if(markov_vacc_lvl == 0) {
-  Mark_vacc_lvl <- "Vaccination coverage: 0%"
-} else if (markov_vacc_lvl == 60) {
-  Mark_vacc_lvl <- "Vaccination coverage: 60%"
-} else if (markov_vacc_lvl == 70) {
-  Mark_vacc_lvl <- "Vaccination coverage: 70%"
-} else if (markov_vacc_lvl == 80) {
-  Mark_vacc_lvl <- "Vaccination coverage: 80%"
-} else {
-  cat("Not valid Markov vacc level")
-}
-
-sim_result[[1]]$markov_qaly_undis <- master_markov_vacc_results_CORRECTED %>% 
-  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
-  dplyr::select(`Per person QALYs und`) %>% 
-  as.numeric()
-
-sim_result[[1]]$markov_qaly_undis_Tot <- master_markov_vacc_results_CORRECTED %>% 
-  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
-  dplyr::select(`Total QALYs und`) %>% 
-  as.numeric()
-
-sim_result[[1]]$markov_qaly_disc <- master_markov_vacc_results_CORRECTED %>% 
-  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
-  dplyr::select(`Per person QALYs disc`) %>% 
-  as.numeric()
-
-sim_result[[1]]$markov_qaly_disc_Tot <- master_markov_vacc_results_CORRECTED %>% 
-  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
-  dplyr::select(`Total QALYs disc`) %>% 
-  as.numeric()
-
-## -- ##
-
-sim_result[[1]]$markov_cost_undis <- master_markov_vacc_results_CORRECTED %>% 
-  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
-  dplyr::select(`Per person D cost und`) %>% 
-  as.numeric()
-
-sim_result[[1]]$markov_cost_undis_Tot <- master_markov_vacc_results_CORRECTED %>% 
-  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
-  dplyr::select(`Total D cost und`) %>% 
-  as.numeric()
-
-sim_result[[1]]$markov_cost_disc <- master_markov_vacc_results_CORRECTED %>% 
-  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
-  dplyr::select(`Per person D cost disc`) %>% 
-  as.numeric()
-
-sim_result[[1]]$markov_cost_disc_Tot <- master_markov_vacc_results_CORRECTED %>% 
-  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
-  dplyr::select(`Total D cost disc`) %>% 
-  as.numeric()
-################################################################################  
+#################################################################################  
+### ----Incidences, Prevalences, and Mortalities
+## ADDING MARKOV RESULTS (corrected):
+##load(file = "data/markov_results/markov_vacc_incidences_vectors.RData")
+## Loading the CORRECTED-TRANSITIONs results, the 'markov_sim_vacc_incidences' object:
+##load(file = "data/markov_results/markov_vacc_CORRECTED_incidences_vectors.RData")
+#load(file = "data/markov_results/markov_vacc_CORRECTED_incidences_vectors_20250425.RData")
+## Markov:
+##markov_CN1_incidences  <- c(0.00000, 204.73492, 981.96179, 1368.24200, 3006.85782, 33.48096, 1362.96678, 459.48051, 697.84223, 794.33833, 223.00222, 246.23082, 176.02167, 126.22963, 53.70939)
+#sim_result[[1]]$markov_CN1_incidences  <- markov_sim_vacc_incidences[[paste0("Markov_CIN1_Incidence_", vacc_coverage[1]*10^2)]] 
+#
+##markov_CN2_incidences  <- c(0.000000, 6.165629, 54.767952, 140.309815, 216.568392, 1476.306267, 1579.728160, 1298.914564, 466.596151, 637.661611, 442.298632, 304.784447, 250.953880, 165.628020, 116.925192)
+#sim_result[[1]]$markov_CN2_incidences  <- markov_sim_vacc_incidences[[paste0("Markov_CIN2_Incidence_", vacc_coverage[1]*10^2)]]
+#
+##markov_CN3_incidences  <- c(0.000000, 2.090325, 9.597415, 44.467676, 148.972191, 0.000000, 3.550684, 91.881726, 12.505042, 68.377446, 25.802481, 7.952667, 1.174088, 1.177840, 2.638642)
+#sim_result[[1]]$markov_CN3_incidences  <- markov_sim_vacc_incidences[[paste0("Markov_CIN3_Incidence_", vacc_coverage[1]*10^2)]]
+#
+##markov_CC_incidences   <- c(0.000000, 0.000000, 0.000000, 5.520938, 8.360544, 13.282380, 22.906871, 20.825560, 15.867891, 32.483846, 8.962389, 17.681771, 11.737615, 17.354646, 14.582775)
+#sim_result[[1]]$markov_CC_incidences   <- markov_sim_vacc_incidences[[paste0("Markov_CC_Incidence_", vacc_coverage[1]*10^2)]]
+#
+##markov_HPV_prevalences <- c(0.000000000, 0.343480414, 0.377634762, 0.087223460, 0.307341403, 0.030196332, 0.050562845, 0.050151668, 0.082952596, 0.046644059, 0.018532077, 0.034193076, 0.016407832, 0.015039027, 0.003217326)
+#sim_result[[1]]$markov_HPV_prevalences <- markov_sim_vacc_incidences[[paste0("Markov_HPVPrevalence_", vacc_coverage[1]*10^2)]]
+#
+## markov_CC_mortality <- c(0.000000e+00, 0.000000e+00, 0.000000e+00, 2.977975e-06, 
+##                          1.574920e-05, 2.715056e-05, 5.489929e-05, 7.284815e-05,
+##                          1.057494e-04, 5.076268e-05, 7.517773e-05, 4.960943e-05,
+##                          4.802468e-05, 4.210457e-05, 4.837655e-05) * 10^5
+#sim_result[[1]]$markov_CC_mortality <- markov_sim_vacc_incidences[[paste0("Markov_CCMortality_", vacc_coverage[1]*10^2)]]
+#
+#
+## NOTE: change for corresponding vacc strategy 0, 60, 70, or 80:
+#sim_result[[1]]$markov_new_CIN1   <- markov_sim_vacc_incidences[[paste0("Markov_n CIN1_", vacc_coverage[1]*10^2)]]
+#sim_result[[1]]$markov_new_CIN2   <- markov_sim_vacc_incidences[[paste0("Markov_n CIN2_", vacc_coverage[1]*10^2)]]
+#sim_result[[1]]$markov_new_CIN3   <- markov_sim_vacc_incidences[[paste0("Markov_n CIN3_", vacc_coverage[1]*10^2)]]
+#sim_result[[1]]$markov_new_Cancer <- markov_sim_vacc_incidences[[paste0("Markov_n CC_", vacc_coverage[1]*10^2)]]
+#################################################################################  
+#
+#################################################################################  
+### Adding corresponding (to vacc strategy) Markov QUALYs and Costs to sim_result
+#master_markov_vacc_results_CORRECTED <- 
+#  get(load(file = "data/corrected_transitions_20250414/Markov_results_only_vaccination_Strategies_only_vac_20250414.rda"))
+## Select vaccination-associated QALYs, Costs (discounted and undiscounted):
+#rm(df)
+#
+## SELECT VACCINATION LEVEL:
+##markov_vacc_lvl <- 80 # it can be 0, 60, 70 or 80
+#markov_vacc_lvl <- vacc_coverage[1]*10^2 # it can be 0, 60, 70 or 80
+#
+#if(markov_vacc_lvl == 0) {
+#  Mark_vacc_lvl <- "Vaccination coverage: 0%"
+#} else if (markov_vacc_lvl == 60) {
+#  Mark_vacc_lvl <- "Vaccination coverage: 60%"
+#} else if (markov_vacc_lvl == 70) {
+#  Mark_vacc_lvl <- "Vaccination coverage: 70%"
+#} else if (markov_vacc_lvl == 80) {
+#  Mark_vacc_lvl <- "Vaccination coverage: 80%"
+#} else {
+#  cat("Not valid Markov vacc level")
+#}
+#
+#sim_result[[1]]$markov_qaly_undis <- master_markov_vacc_results_CORRECTED %>% 
+#  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
+#  dplyr::select(`Per person QALYs und`) %>% 
+#  as.numeric()
+#
+#sim_result[[1]]$markov_qaly_undis_Tot <- master_markov_vacc_results_CORRECTED %>% 
+#  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
+#  dplyr::select(`Total QALYs und`) %>% 
+#  as.numeric()
+#
+#sim_result[[1]]$markov_qaly_disc <- master_markov_vacc_results_CORRECTED %>% 
+#  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
+#  dplyr::select(`Per person QALYs disc`) %>% 
+#  as.numeric()
+#
+#sim_result[[1]]$markov_qaly_disc_Tot <- master_markov_vacc_results_CORRECTED %>% 
+#  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
+#  dplyr::select(`Total QALYs disc`) %>% 
+#  as.numeric()
+#
+### -- ##
+#
+#sim_result[[1]]$markov_cost_undis <- master_markov_vacc_results_CORRECTED %>% 
+#  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
+#  dplyr::select(`Per person D cost und`) %>% 
+#  as.numeric()
+#
+#sim_result[[1]]$markov_cost_undis_Tot <- master_markov_vacc_results_CORRECTED %>% 
+#  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
+#  dplyr::select(`Total D cost und`) %>% 
+#  as.numeric()
+#
+#sim_result[[1]]$markov_cost_disc <- master_markov_vacc_results_CORRECTED %>% 
+#  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
+#  dplyr::select(`Per person D cost disc`) %>% 
+#  as.numeric()
+#
+#sim_result[[1]]$markov_cost_disc_Tot <- master_markov_vacc_results_CORRECTED %>% 
+#  dplyr::filter(sim.name == Mark_vacc_lvl) %>%
+#  dplyr::select(`Total D cost disc`) %>% 
+#  as.numeric()
+#################################################################################  
+#################################################################################  
   
 ################################################################################  
 ## Adding corresponding (to vacc strategy) Markov age-averaged new_cases to sim_result
@@ -1408,6 +1519,8 @@ purrr::walk(states, function(state) {
 
 ################################################################################ 
 
+################################################################################  
+################################################################################  
 ################################################################################  
 ## Adding MicroSim results:
 microSim_CN1_incidences          <- sim_result[[1]]$mean_incidence_CIN1_per_age_interval
