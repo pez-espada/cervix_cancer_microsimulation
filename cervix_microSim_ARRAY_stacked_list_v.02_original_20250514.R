@@ -30,87 +30,6 @@ ensure_library <- function(...) {
     library(pkg, character.only = TRUE)
   })
 }
-################################################################################
-## Arguments for job array:
-#args <- commandArgs(trailingOnly = TRUE)
-# Skip args[1] to prevent getting --args
-
-## Check if any arguments were provided
-#if (length(args) < 3) {
-#  stop("At least one argument is required.", call. = FALSE)
-#}
-
-##vacc_type <- as.character(args[2])
-#vacc_cover_vacc_2 <- as.numeric(args[2])
-#vacc_cover_vacc_4 <- as.numeric(args[3])
-#vacc_cover_vacc_9 <- as.numeric(args[4])
-
-
-#################################################################################
-#args <- commandArgs(trailingOnly = TRUE)
-#
-#if (length(args) != 3) stop("Need three coverage values") # vacc_2, vacc_4, vacc_9
-#
-#cat("Received args (should be 3):", paste(args, collapse = " | "), "\n")
-#
-#if (length(args) != 3) {
-#  stop("ERROR: expected 3 coverage values, but got: ", length(args))
-#}
-#vacc_coverage <- as.numeric(args)
-#
-#if (any(is.na(vacc_coverage))) {
-#  stop("ERROR: one of the coverage values wasn’t numeric: ",
-#       paste(args, collapse = ", "))
-#}
-#
-#
-#cat("vacc_coverage:", paste(vacc_coverage, collapse = " "), "\n\n")
-### ────────────────────────────────────────────────────────────────────────
-#
-##cat("vacc_coverage:", vacc_coverage, "\n")
-#
-#
-#cat("This is the current directory: ", getwd(), "\n")
-#
-##vacc_coverage <- c(as.numeric(args[2]), as.numeric(args[3]), as.numeric(args[4]))
-#
-### Split the string into numeric values
-##vacc_coverage <- as.numeric(strsplit(args[1], " ")[[1]])
-#
-#
-#
-#
-##vacc_coverage <- c(0,0,0)
-#cat("vacc_coverage: ", vacc_coverage, "\n")
-################################################################################
-
-
-#################################################################################
-### ─── ARGUMENT PARSING FOR SLURM ARRAY ───────────────────────────────────
-#args <- commandArgs(trailingOnly = TRUE)
-#
-## Echo exactly what we got:
-#cat(">> Received args (should be exactly 3):", paste0("‘", args, "’", collapse = " "), "\n")
-#
-## Enforce exactly three:
-#if (length(args) != 3) {
-#  stop("ERROR: expected exactly 3 coverage values but got: ", length(args))
-#}
-#
-## Convert straight to numeric (no splitting, no old code):
-#vacc_coverage <- as.numeric(args)
-#
-## Fail if any non‐numeric snuck in:
-#if (any(is.na(vacc_coverage))) {
-#  stop("ERROR: non‐numeric coverage value in: ", paste(args, collapse = ", "))
-#}
-#
-## Final check echo:
-#cat(">> Final vacc_coverage vector:", paste(vacc_coverage, collapse = " "), "\n\n")
-### ────────────────────────────────────────────────────────────────────────
-#################################################################################
-
-
 
 
 ################################################################################
@@ -136,11 +55,6 @@ if (any(is.na(vacc_coverage))) {
 cat(">> Final vacc_coverage vector:", paste(vacc_coverage, collapse = " "), "\n\n")
 ## ────────────────────────────────────────────────────────────────────────
 ################################################################################
-
-
-
-
-
 
 
 
@@ -229,7 +143,7 @@ my_Probs9 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs9)
 my_Probs9 <- my_Probs9 %>% as.data.frame() #convert back to data.frame (no needed?)
 ################################################################################
 ## ----Model Parameters
-n_i <- 10^4               # number of simulated individuals
+n_i <- 10^6               # number of simulated individuals
 #n_t <- 3                  # time horizon, 3 cycles (it starts from 1)
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 ################################################################################
@@ -727,13 +641,16 @@ MicroSim <- function(strategy=strategy,
                      use_parallel = FALSE, 
                      reproducible = TRUE, 
                      master_seed = 123,
-                     cost_vacc2, cost_vacc4, cost_vacc9
-) 
-  {
+                     cost_vacc2, cost_vacc4, cost_vacc9) 
+{
   cl <- NULL  # Ensure cl exists in all cases
   
   if (use_parallel) {
-    n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+    #n_cores <- min(detectCores() - 1, 20)  # Try using 8 or fewer cores
+    
+    n_cores <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
+    if (is.na(n_cores) || n_cores < 1) n_cores <- 1
+    
     cat("Number of cores: ", n_cores, "\n")
     # 6-hours timeout to prevent socket drop issues
     cl <- makeCluster(n_cores, timeout = 6*60*60) 
@@ -1470,8 +1387,8 @@ vacc_lbl <-
 ## START SIMULATION
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
-numb_of_sims = 3
-#numb_of_sims = 20
+#numb_of_sims = 3
+numb_of_sims = 20
 
 #strategy <- "natural_history"
 #strategy <- "vacc_2_coverage_0.0"
@@ -1485,7 +1402,7 @@ sim_result  <- MicroSim(strategy = strategy, numb_of_sims = numb_of_sims,
                         Pmatrix = Pmatrix,
                         master_seed = 123,
                         reproducible = TRUE, 
-                        use_parallel = FALSE,
+                        use_parallel = TRUE,
                         cost_vacc2, cost_vacc4, cost_vacc9)
 
 # For stacking outside the function, we need to comment the stacking function
@@ -2335,20 +2252,20 @@ if (is.na(slurm_job_id) || slurm_job_id == "") {
 vacc_tag <- sprintf("%.1f", vacc_coverage[1])  # Format as 0.8, 0.0, etc.
 #vacc_tag <- sprintf("%.1f", vacc_cover)  # Format as 0.8, 0.0, etc.
 
-## Define directory and static filename components
-#output_dir <- "data/job_array_outputs/"
-##base_filename <- "stacked_sims_20x10E6x75_vacc2_0.8_NEW_TRANSITIONS_PARA_20250506_sim_"
-#base_filename <- paste0("stacked_sims_20x10E4x75_vacc2_", vacc_tag,
-#                        "_PARA_20250516_sim_")
-#
-### Construct full path
-##output_file <- file.path(output_dir, paste0(base_filename, unique_tag, ".rds"))
-#
-#output_file <- file.path(output_dir, paste0(base_filename, slurm_job_id, ".rds"))
-#
-#
-#cat("Saving simulation result to:", output_file, "\n")
-#saveRDS(object = sim_result, file = output_file)
+# Define directory and static filename components
+output_dir <- "data/job_array_outputs/"
+#base_filename <- "stacked_sims_20x10E6x75_vacc2_0.8_NEW_TRANSITIONS_PARA_20250506_sim_"
+base_filename <- paste0("stacked_sims_20x10E6x75_vacc2_", vacc_tag,
+                        "_PARA_20250516_sim_")
+
+## Construct full path
+#output_file <- file.path(output_dir, paste0(base_filename, unique_tag, ".rds"))
+
+output_file <- file.path(output_dir, paste0(base_filename, slurm_job_id, ".rds"))
+
+
+cat("Saving simulation result to:", output_file, "\n")
+saveRDS(object = sim_result, file = output_file)
 
 
 ################################################################################
@@ -3068,18 +2985,18 @@ plot_CC_mortality <- plot_comparison(combined_data, "CC_mortality")
 #print(plot_mean_new_CC)
 
 
-##### Combining plots in a single image:
-library("patchwork") # disable to run as job script with sbatch:
-combined_plot <- (plot_CN1_incidences | plot_CN2_incidences | plot_CN3_incidences) /
-  #(plot_CC_incidences | plot_HPV_prevalences | plot_CC_mortality)
-  (plot_CC_incidences | plot_HPV_prevalences | plot_mean_Diagnosed_FIGO)# plot_CC_mortality)
-
-##combined_plot2 <- (plot_mean_new_CIN1 | plot_mean_new_CIN2 | plot_mean_new_CIN3) |
-combined_plot3 <- (plot_comparison_new_CIN1 | plot_comparison_new_CIN2) /
-  (plot_comparison_new_CIN3 | plot_comparison_new_Cancer) 
-# View it
-print(combined_plot)
-print(combined_plot3)
+###### Combining plots in a single image:
+#library("patchwork") # disable to run as job script with sbatch:
+#combined_plot <- (plot_CN1_incidences | plot_CN2_incidences | plot_CN3_incidences) /
+#  #(plot_CC_incidences | plot_HPV_prevalences | plot_CC_mortality)
+#  (plot_CC_incidences | plot_HPV_prevalences | plot_mean_Diagnosed_FIGO)# plot_CC_mortality)
+#
+###combined_plot2 <- (plot_mean_new_CIN1 | plot_mean_new_CIN2 | plot_mean_new_CIN3) |
+#combined_plot3 <- (plot_comparison_new_CIN1 | plot_comparison_new_CIN2) /
+#  (plot_comparison_new_CIN3 | plot_comparison_new_Cancer) 
+## View it
+#print(combined_plot)
+#print(combined_plot3)
 
 #ggsave("figures/combined_plots_incidence_vacc_80.pdf", combined_plot, width = 15, height = 10, dpi = 300)
 

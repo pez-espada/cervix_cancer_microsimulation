@@ -18,7 +18,9 @@ module load apps/R
 #Rscript PARALLEL_cervix_microSim_stacked_list_v.01_original_20241010.R "$unique_tag"
 
 # Pass the SLURM job ID to the R script:
-Rscript PARALLEL_cervix_microSim_stacked_list_v.01_original_20241010.R "$SLURM_JOB_ID"
-
+#Rscript PARALLEL_cervix_microSim_stacked_list_v.01_original_20241010.R "$SLURM_JOB_ID"
+#Rscript cervix_microSim_ARRAY_stacked_list_v.02_original_20250514.R "$SLURM_JOB_ID"
+#Rscript cervix_microSim_stacked_list_v.02_original_20250514.R "$SLURM_JOB_ID"
+Rscript cervix_microSim_stacked_list_v.02_B_original_20250514.R "$SLURM_JOB_ID"
 #Rscript PARALLEL_cervix_microSim_stacked_Natural_History_REPRODUCIBLE_20250328.R
 #Rscript PARALLEL_cervix_microSim_stacked_Natural_History_20250211.R # for natural history simulation

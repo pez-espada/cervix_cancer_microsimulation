@@ -469,7 +469,7 @@ return(u_it)
 ################################################################################
 
 
-ensure_library("dplyr", "tidyverse", "purrr")
+ensure_library("dplyr", "tidyverse", "purrr", "data.table")
 # Function to process each column version 3:
 figoSymProb <- c(0.11, 0.23, 0.66, 0.9) 
 screenProbs <- c(0, 0, 1, 1, 1, 0.9688, 0.9066, 0.7064, 0.3986, 0, 0, 0)
@@ -1314,6 +1314,7 @@ ScreenPrice.md = ScreenPrice = 27.86
 # Direct medical costs of monitoring and treatment in each state:
 costCoeff_md <- c(0, 39.54, 288.91, 1552.27, 1552.27, 5759.81,
                    12903.63, 23032.41, 35323.14, 0, 0, 0)
+
 # Direct non-medical costs of monitoring and treatment in each state:
 costCoeff_nmd <-  c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
@@ -1321,7 +1322,7 @@ costCoeff_nmd <-  c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 costCoeff_i <-  c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
 # Sensitivity of cytology as a primary test for each state:
-screenSensi <-	c(0, 0, 0.177, 0.5, 0.523, 1, 1, 1, 1, 0, 0, 0)
+screenSensi <- c(0, 0, 0.177, 0.5, 0.523, 1, 1, 1, 1, 0, 0, 0)
 
 # Cytology Specificity:
 citoSpecif <- 0
@@ -1331,7 +1332,7 @@ screening_strategies <- Parameters_strategy(Coverage = screening_coverage,
 # Storage for costs output
 cost_log <- 
   data.table(sim = integer(), 
-             t = integer(), 
+             age = integer(), 
              ID = integer(), 
              cost_type = character(),
              cost = numeric())

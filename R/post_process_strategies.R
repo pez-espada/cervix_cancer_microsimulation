@@ -234,12 +234,12 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
   
   ############################################################################## 
   
-  ################################################################################
+  ##############################################################################
   # Computing Mortality:
   # A. Cancer-related deaths at certain age (cycle) / total alive at that age (cycle)
   # B. Cancer-unrelated deaths at certain age (cycle) / total alive at that age (cycle)
   
-  ################################################################################
+  ##############################################################################
   # A. Cancer-related Deaths per age
   mean_CC_mortality_func <- function(sim_stalked_result, my_Probs) {
     
@@ -287,7 +287,7 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
     #return(sim_stalked_result)
     return(df)
   }
-  ################################################################################
+  ##############################################################################
   
   sim_result[[strategy_name]]$CC_mean_mortality <-
     mean_CC_mortality_func(sim_stalked_result = sim_result[[strategy_name]],
@@ -295,7 +295,7 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
   
 
   
-  ################################################################################
+  ##############################################################################
   # A.2 Cancer-related Deaths (per differences) per age
   mean_CC_mortality_by_diff_func <- function(sim_stalked_result, my_Probs) {
     
@@ -344,14 +344,14 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
     #sim_stalked_result[[1]]$CC_by_diff_mean_mortality <- df
     #return(sim_stalked_result)
   }
-  ################################################################################
+  ##############################################################################
   
   sim_result[[strategy_name]]$CC_by_diff_mean_mortality <-
     mean_CC_mortality_by_diff_func(sim_stalked_result = sim_result[[strategy_name]],
                                    my_Probs = my_Probs)  
   
   
-  ################################################################################
+  ##############################################################################
   # B. Cancer-unrelated Mortality
   other_mean_mortality_func <- function(sim_stalked_result, my_Probs) {
     
@@ -382,14 +382,14 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
     #sim_stalked_result[[1]]$other_mean_mortality <- df
     #return(sim_stalked_result)
   }
-  ################################################################################
+  ##############################################################################
   
   sim_result[[strategy_name]]$other_mean_mortality <-
     other_mean_mortality_func(sim_stalked_result = sim_result[[strategy_name]],
                               my_Probs = my_Probs)  
   
   
-  ################################################################################
+  ##############################################################################
   # Mean FIGO states across simulations by age interval
   mean_FIGO_prevalence_Func <- function(sim_stalked_result, my_Probs) {
     age_intervals <- my_Probs %>% 
@@ -429,15 +429,15 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
     # return(sim_stalked_result) 
     return(df)
   }
-  ################################################################################
+  ##############################################################################
   
   
   sim_result[[strategy_name]]$mean_FIGO_prevalence <-
     mean_FIGO_prevalence_Func(sim_stalked_result = 
                                 sim_result[[strategy_name]], my_Probs = my_Probs)  
-  ################################################################################
+  ##############################################################################
   
-  ################################################################################
+  ##############################################################################
   # Mean (accross simulations) of Cancer (FIGO.I-.IV)
   mean_Figo_Func  <- function (sim_stalked_result, my_Probs) {
     age_intervals <- my_Probs %>% 
@@ -478,216 +478,189 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
     #return(sim_stalked_result) 
     return(df)
   }
-  ################################################################################
+  ##############################################################################
   
   # Concatenate the prevalence to the sim result 
   sim_result[[strategy_name]]$mean_FIGO <-
     mean_Figo_Func(sim_stalked_result = 
                      sim_result[[strategy_name]], my_Probs = my_Probs)  
-  ################################################################################
+  ##############################################################################
   
+  ##############################################################################
+  # Mean diagnosed of Cancer averaged by age intervals (FIGO.I-.IV) and by sims
+  mean_Diagnosed_Func  <- function (sim_stacked_result, my_Probs) {
+    age_intervals <- my_Probs %>% 
+      dplyr::select(Lower, Larger) %>% 
+      unique() %>% 
+      arrange(Lower)
+    
+    # Create a vector of the breaks for the intervals
+    breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
+    
+    # Create labels for the intervals
+    labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
+    
+    # extracting diagnosed:
+    sympt <- sim_stacked_result$symptomatics
+    
+    # add age column:
+    sympt <- sympt %>% dplyr::mutate(age = TimeStep + 9)
+    
+    # add age interval column:
+    sympt <- sympt %>%
+      mutate(age_interval = cut(age, 
+                                breaks = seq(min(breaks), max(breaks), by = 5), 
+                                labels = labels, 
+                                right = FALSE))
+    
+    # Calculate the maximum simulation count
+    max_sim <- max(sympt$sim)
+    
+    # Create a complete data frame with all combinations of age intervals and DiagnosedStates
+    complete_data <- expand.grid(
+      age_interval = labels,
+      DiagnosedState = c("FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
+    )
+    
+    # Summarize data in the desired format
+    df <- sympt %>%
+      group_by(age_interval, DiagnosedState) %>%
+      summarise(mean_count = n() / max_sim, .groups = "drop") %>%
+      right_join(complete_data, by = c("age_interval", "DiagnosedState")) %>%
+      replace_na(list(mean_count = 0)) %>%  # Replace NA values with 0
+      pivot_wider(names_from = DiagnosedState, 
+                  values_from = mean_count, 
+                  names_prefix = "mean_Diagnosed_") %>%
+      arrange(age_interval)
+    
+    ## View the result
+    #print(df)
+    
+    ## Storing the results in the simulation object
+    #sim_stacked_result[[1]]$mean_Diagnosed <- df 
+    #return(sim_stacked_result) 
+    return(df)
+  }
+  ##############################################################################
   
+  sim_result[[strategy_name]]$mean_Diagnosed <-
+    mean_Diagnosed_Func(sim_stacked_result =
+                          sim_result[[strategy_name]], my_Probs = my_Probs)  
+  ##############################################################################
+
+  ##############################################################################
+  ## Compute averaged new_cases per age interval:
+  ##############################################################################
+  mean_new_cases_func <- function(sim_result, new_cases_name, my_Probs) {
+    # Extract age intervals from my_Probs
+    age_intervals <- my_Probs %>%
+      dplyr::select(Lower, Larger) %>%
+      unique() %>%
+      dplyr::arrange(Lower)
+    
+    # Define breaks and labels
+    breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
+    labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
+    
+    # Get the new cases data.frame by name
+    #df <- sim_result[[1]][[new_cases_name]] %>%
+    df <- sim_result[[new_cases_name]] %>% dplyr::select(-row_names) %>%
+      dplyr::rename(new_cases = 2) %>%  # assumes second column is the one with cases
+      dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>%
+      dplyr::group_by(sim, age_interval) %>%
+      dplyr::summarise(mean_new_cases = mean(new_cases, na.rm = TRUE), .groups = "drop") %>%
+      dplyr::group_by(age_interval) %>%
+      dplyr::summarise(mean_new_cases = mean(mean_new_cases, na.rm = TRUE), .groups = "drop") %>%
+      dplyr::mutate(mean_new_cases = round(mean_new_cases, 2))  # keep up to two decimals
+    
+    # Return summary table
+    return(df)
+  }
+  ##############################################################################
+  new_averaged_CIN1_per_age_interval <- 
+    mean_new_cases_func(sim_result = sim_result[[strategy_name]], 
+                        new_cases_name = "new_CIN1",
+                        my_Probs = my_Probs)
   
+  new_averaged_CIN2_per_age_interval <- 
+    mean_new_cases_func(sim_result = sim_result[[strategy_name]], 
+                        new_cases_name = "new_CIN2",
+                        my_Probs = my_Probs)
   
+  new_averaged_CIN3_per_age_interval <- 
+    mean_new_cases_func(sim_result = sim_result[[strategy_name]], 
+                        new_cases_name = "new_CIN3",
+                        my_Probs = my_Probs)
   
+  new_averaged_Cancer_per_age_interval <- 
+    mean_new_cases_func(sim_result = sim_result[[strategy_name]], 
+                        new_cases_name = "new_Cancer",
+                        my_Probs = my_Probs)
   
+  new_averaged_CC_Death_per_age_interval <- 
+    mean_new_cases_func(sim_result = sim_result[[strategy_name]], 
+                        new_cases_name = "new_CC_Death",
+                        my_Probs = my_Probs)
   
+  sim_result[[strategy_name]]$new_averaged_CIN1_per_age_interval <- 
+    new_averaged_CIN1_per_age_interval
   
+  sim_result[[strategy_name]]$new_averaged_CIN2_per_age_interval <- 
+    new_averaged_CIN2_per_age_interval
+  
+  sim_result[[strategy_name]]$new_averaged_CIN3_per_age_interval <- 
+    new_averaged_CIN3_per_age_interval
+  
+  sim_result[[strategy_name]]$new_averaged_Cancer_per_age_interval <- 
+    new_averaged_Cancer_per_age_interval
+  
+  sim_result[[strategy_name]]$new_averaged_CC_Death_per_age_interval <- 
+    new_averaged_CC_Death_per_age_interval
+  
+  ##############################################################################
+ 
+  ##### Adding mean diagnosed per symptoms FIGOs and total cancer:
+  sim_result[[strategy_name]]$mean_Diagnosed_per_symp_FIGOI <-
+    sim_result[[strategy_name]]$symptomatics %>%
+    dplyr::filter(DiagnosedState == 'FIGO.I') %>%
+    nrow() %>%
+    `/`(numb_of_sims)
+  
+  sim_result[[strategy_name]]$mean_Diagnosed_Per_Symp_FIGOII <-
+    sim_result[[strategy_name]]$symptomatics %>%
+    dplyr::filter(DiagnosedState == 'FIGO.II') %>%
+    nrow() %>%
+    `/`(numb_of_sims)
+  
+  sim_result[[strategy_name]]$mean_Diagnosed_Per_Symp_FIGOIII <-
+    sim_result[[strategy_name]]$symptomatics %>%
+    dplyr::filter(DiagnosedState == 'FIGO.III') %>%
+    nrow() %>%
+    `/`(numb_of_sims)
+  
+  sim_result[[strategy_name]]$mean_Diagnosed_Per_Symp_FIGOIV <-
+    sim_result[[strategy_name]]$symptomatics %>%
+    dplyr::filter(DiagnosedState == 'FIGO.IV') %>%
+    nrow() %>%
+    `/`(numb_of_sims)
+  
+  sim_result[[strategy_name]]$mean_Diagnosed_Per_Symp_Cancer <-
+    sim_result[[strategy_name]]$symptomatics %>%
+    nrow() %>%
+    `/`(numb_of_sims)
+  
+  ##############################################################################
+  ##############################################################################
+  
+  ## Cleaning
+  source("./R/Remove_columnS_from_list_Func.R")
+  sim_result[[strategy_name]] <- 
+    remove_columns_from_list(complex_list = sim_result[[strategy_name]], 
+                             ... = "sim.1", "row_names")
+  ##############################################################################
   
 } # endfor strategy_name
-################################################################################
-################################################################################
 
-
-
-
-
-
-
-#sim_result[[1]]$strategy       <- strategy
-#sim_result[[1]]$numb_of_sims   <- numb_of_sims
-#sim_result[[1]]$numb_of_ind    <- n_i
-#sim_result[[1]]$numb_of_cycles <- n_t
-
-
-
-
-
-################################################################################
-
-
-
-################################################################################
-# Mean diagnosed of Cancer averaged by age intervals (FIGO.I-.IV) and by sims
-mean_Diagnosed_Func  <- function (sim_stacked_result, my_Probs) {
-  age_intervals <- my_Probs %>% 
-    dplyr::select(Lower, Larger) %>% 
-    unique() %>% 
-    arrange(Lower)
-  
-  # Create a vector of the breaks for the intervals
-  breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
-  
-  # Create labels for the intervals
-  labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
-  
-  # extracting diagnosed:
-  sympt <- sim_stacked_result[[1]]$symptomatics
-  
-  # add age column:
-  sympt <- sympt %>% dplyr::mutate(age = TimeStep + 9)
-  
-  # add age interval column:
-  sympt <- sympt %>%
-    mutate(age_interval = cut(age, 
-                              breaks = seq(min(breaks), max(breaks), by = 5), 
-                              labels = labels, 
-                              right = FALSE))
-  
-  # Calculate the maximum simulation count
-  max_sim <- max(sympt$sim)
-  
-  # Create a complete data frame with all combinations of age intervals and DiagnosedStates
-  complete_data <- expand.grid(
-    age_interval = labels,
-    DiagnosedState = c("FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
-  )
-  
-  # Summarize data in the desired format
-  df <- sympt %>%
-    group_by(age_interval, DiagnosedState) %>%
-    summarise(mean_count = n() / max_sim, .groups = "drop") %>%
-    right_join(complete_data, by = c("age_interval", "DiagnosedState")) %>%
-    replace_na(list(mean_count = 0)) %>%  # Replace NA values with 0
-    pivot_wider(names_from = DiagnosedState, 
-                values_from = mean_count, 
-                names_prefix = "mean_Diagnosed_") %>%
-    arrange(age_interval)
-  
-  ## View the result
-  #print(df)
-  
-  # Storing the results in the simulation object
-  sim_stacked_result[[1]]$mean_Diagnosed <- df 
-  return(sim_stacked_result) 
-}
-################################################################################
-
-# Concatenate the prevalence to the sim result 
-sim_result <-
-  mean_Diagnosed_Func(sim_stacked_result = sim_result, my_Probs = my_Probs)  
-################################################################################
-
-################################################################################
-################################################################################
-## Compute averaged new_cases per age interval:
-################################################################################
-mean_new_cases_func <- function(sim_result, new_cases_name, my_Probs) {
-  # Extract age intervals from my_Probs
-  age_intervals <- my_Probs %>%
-    dplyr::select(Lower, Larger) %>%
-    unique() %>%
-    dplyr::arrange(Lower)
-  
-  # Define breaks and labels
-  breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
-  labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
-  
-  # Get the new cases data.frame by name
-  #df <- sim_result[[1]][[new_cases_name]] %>%
-  df <- sim_result[[1]][[new_cases_name]] %>% dplyr::select(-row_names) %>%
-    dplyr::rename(new_cases = 2) %>%  # assumes second column is the one with cases
-    dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>%
-    dplyr::group_by(sim, age_interval) %>%
-    dplyr::summarise(mean_new_cases = mean(new_cases, na.rm = TRUE), .groups = "drop") %>%
-    dplyr::group_by(age_interval) %>%
-    dplyr::summarise(mean_new_cases = mean(mean_new_cases, na.rm = TRUE), .groups = "drop") %>%
-    dplyr::mutate(mean_new_cases = round(mean_new_cases, 2))  # keep up to two decimals
-  
-  # Return summary table
-  return(df)
-}
-################################################################################
-new_averaged_CIN1_per_age_interval <- 
-  mean_new_cases_func(sim_result = sim_result, 
-                      new_cases_name = "new_CIN1",
-                      my_Probs = my_Probs)
-
-new_averaged_CIN2_per_age_interval <- 
-  mean_new_cases_func(sim_result = sim_result, 
-                      new_cases_name = "new_CIN2",
-                      my_Probs = my_Probs)
-
-new_averaged_CIN3_per_age_interval <- 
-  mean_new_cases_func(sim_result = sim_result, 
-                      new_cases_name = "new_CIN3",
-                      my_Probs = my_Probs)
-
-new_averaged_Cancer_per_age_interval <- 
-  mean_new_cases_func(sim_result = sim_result, 
-                      new_cases_name = "new_Cancer",
-                      my_Probs = my_Probs)
-
-new_averaged_CC_Death_per_age_interval <- 
-  mean_new_cases_func(sim_result = sim_result, 
-                      new_cases_name = "new_CC_Death",
-                      my_Probs = my_Probs)
-
-sim_result[[1]]$new_averaged_CIN1_per_age_interval <- 
-  new_averaged_CIN1_per_age_interval
-
-sim_result[[1]]$new_averaged_CIN2_per_age_interval <- 
-  new_averaged_CIN2_per_age_interval
-
-sim_result[[1]]$new_averaged_CIN3_per_age_interval <- 
-  new_averaged_CIN3_per_age_interval
-
-sim_result[[1]]$new_averaged_Cancer_per_age_interval <- 
-  new_averaged_Cancer_per_age_interval
-
-sim_result[[1]]$new_averaged_CC_Death_per_age_interval <- 
-  new_averaged_CC_Death_per_age_interval
-
-################################################################################
-
-##### Adding mean diagnosed per symptoms FIGOs and total cancer:
-sim_result[[1]]$mean_Diagnosed_per_symp_FIGOI <-
-  sim_result[[1]]$symptomatics %>%
-  dplyr::filter(DiagnosedState == 'FIGO.I') %>%
-  nrow() %>%
-  `/`(numb_of_sims)
-
-sim_result[[1]]$mean_Diagnosed_Per_Symp_FIGOII <-
-  sim_result[[1]]$symptomatics %>%
-  dplyr::filter(DiagnosedState == 'FIGO.II') %>%
-  nrow() %>%
-  `/`(numb_of_sims)
-
-sim_result[[1]]$mean_Diagnosed_Per_Symp_FIGOIII <-
-  sim_result[[1]]$symptomatics %>%
-  dplyr::filter(DiagnosedState == 'FIGO.III') %>%
-  nrow() %>%
-  `/`(numb_of_sims)
-
-sim_result[[1]]$mean_Diagnosed_Per_Symp_FIGOIV <-
-  sim_result[[1]]$symptomatics %>%
-  dplyr::filter(DiagnosedState == 'FIGO.IV') %>%
-  nrow() %>%
-  `/`(numb_of_sims)
-
-sim_result[[1]]$mean_Diagnosed_Per_Symp_Cancer <-
-  sim_result[[1]]$symptomatics %>%
-  nrow() %>%
-  `/`(numb_of_sims)
-
-################################################################################
-################################################################################
-
-## Cleaning
-source("./R/Remove_columnS_from_list_Func.R")
-sim_result <- 
-  remove_columns_from_list(complex_list = sim_result, 
-                           ... = "sim.1", "row_names")
 ################################################################################
 ################################################################################
 ##### END POST-PROCESSING ######################################################

@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=R-jobarray
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=netid@illinois.edu
-#SBATCH --time=00:10:00
+##SBATCH --mail-type=ALL
+##SBATCH --mail-user=netid@illinois.edu
+#SBATCH --time=48:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=5gb
