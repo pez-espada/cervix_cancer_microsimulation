@@ -821,6 +821,9 @@ MicroSim <- function(strategy=strategy,
         ## Cyto Screening days:
         cyto_screening_days <-
           extract_screening_days(screening_strategies[[strat]]$sim.name) 
+        
+        # Init detected IDs by screening
+        detected_IDs <- integer(0)  # or character(0) depending on your ID format
        
          
         ########################################################################
@@ -955,6 +958,9 @@ MicroSim <- function(strategy=strategy,
           if (age_in_loop %in% cyto_screening_days) {
             cat("I perform a cyto screening at age = ", age_in_loop, "\n")
             
+            # Skip already detected individuals (only screen those not yet detected)
+            not_detected <- !IDs %in% detected_IDs  # detected_IDs must be initialized outside loop
+            
             # 1. Sample individuals for cyto screening with prob = screening_coverage: 
             screening_prob <- rep(screening_coverage, n_i)
             
@@ -974,17 +980,37 @@ MicroSim <- function(strategy=strategy,
               )), use.names = TRUE)
             }
             
+            # 3. Determine epidemiological state of screened individuals:
+            screened_states <- m_M[screened, t]  # character vector of states
+            state_indices <- match(screened_states, v_n)  # for indexing screenSensi and costCoeff_md
             
-            # 3. Determine whether it's positive or negative
-            # 4. If negative: Screening at "HPVPeriod" (?)
-            # 5. If positive: if CIN1 (cost follow up: "costCoefs[CIN1]" in Markov model)
-            # 6. If positive: if CIN2/3 (cost follow up: "costCoefs[CIN2/m]" in Markov model)
-            # 7. If positive: if FIGOI/IV (cost follow up: "costCoefs[FIGOI/IV]" in Markov model)
+            # 4. Probabilistically detect based on screenSensi[state]
+            detection_probs <- screenSensi[state_indices]
+            detected <- runif(length(detection_probs)) < detection_probs
+            detected_ids <- screened_ids[detected]
+            detected_states <- screened_states[detected]
+            detected_state_indices <- state_indices[detected]
+            
+            # 5. Apply follow-up cost to detected individuals
+            if (length(detected_ids) > 0) {
+              followup_costs <- costCoeff_md[detected_state_indices]
+              
+              cost_log <- rbindlist(list(cost_log, data.table(
+                sim = sim,
+                age = age_in_loop,
+                ID = detected_ids,
+                cost_type = paste0("detected_", detected_states),  # e.g., detected_CIN2
+                cost = followup_costs
+              )), use.names = TRUE)
+              
+              # 6. Mark them as detected (so they won’t be screened again)
+              detected_IDs <- unique(c(detected_IDs, detected_ids))
+            }
             
           } else {
             cat("I do NOT perform a cyto screening\n")
           }
-          
+          ######################################################################    
           
         }
         #################### close loop for cycles ############################# 
