@@ -258,8 +258,10 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
     age_range <- 10:84
     
     # Left join sim_result[[1]]$TR with sim_result[[1]]$new_CC_Death by age
-    df <- sim_result[[1]]$TR %>%
-      left_join(sim_result[[1]]$new_CC_Death %>%
+    #df <- sim_result[[1]]$TR %>%
+    df <- sim_stalked_result$TR %>%
+      #left_join(sim_result[[1]]$new_CC_Death %>%
+      left_join(sim_stalked_result$new_CC_Death %>%
                   dplyr::select(sim, age, CC_Death_per_t), 
                 by = c("sim", "age"))  %>% #, relationship = "many-to-many") %>%
       
