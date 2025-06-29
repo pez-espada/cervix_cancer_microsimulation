@@ -688,6 +688,7 @@ MicroSim <- function(strat=strat,
                      citoSpecif
                      )
 {
+  cat("I HAVE ENTERED THE SIMULATOR \n")
   cl <- NULL  # Ensure cl exists in all cases
   
   if (use_parallel) {
@@ -748,7 +749,7 @@ MicroSim <- function(strat=strat,
   }
   
   source("./R/sumarize_results_by_Strategy_Func.R")
-  source("./R/sumarize_results_by_Strategy_Func_v2.R")
+  #source("./R/sumarize_results_by_Strategy_Func_v2.R")
   
   stacked_results <- NULL
   # initialize joined_batches_per_strategy
@@ -832,7 +833,8 @@ MicroSim <- function(strat=strat,
         # screened_registry <- data.table(sim = integer(), age = integer(), ID = character())  # Uniqueness log
         
         # --- Initialize screening logic state per simulation ---
-        cyto_screening_days <- extract_screening_days(screening_strategies[[strat]]$sim.name)
+        #cyto_screening_days <- extract_screening_days(screening_strategies[[strat]]$sim.name)
+        cyto_screening_days <- extract_screening_days(strat)
         
         detected_IDs <- character()              # CIN2+ detections (screened or from CIN1 follow-up)
         CIN1_followup_IDs <- character()         # Under CIN1 follow-up
@@ -996,7 +998,8 @@ MicroSim <- function(strat=strat,
                 sim = sim,
                 age = age_in_loop,
                 ID = screened_ids,
-                cost_type = screening_strategies[[strat]]$sim.name,
+                #cost_type = screening_strategies[[strat]]$sim.name,
+                cost_type = strat,
                 cost = ScreenPrice
               )), use.names = TRUE)
               
@@ -1062,11 +1065,13 @@ MicroSim <- function(strat=strat,
             # 2. Regressed → remove from follow-up
             regressed <- current_states %in% c("H", "HR.HPV.infection")
             if (any(regressed)) {
-              CIN1_followup_IDs <- setdiff(CIN1_followup_IDs, CIN1_followup_IDs[regressed])
+              CIN1_followup_IDs <- setdiff(CIN1_followup_IDs,
+                                           CIN1_followup_IDs[regressed])
             }
             
             # 3. Progressed to CIN2+ → single-time treatment cost
-            progressed <- current_states %in% c("CIN2", "CIN3", "FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
+            progressed <- current_states %in% c("CIN2", "CIN3", "FIGO.I", 
+                                                "FIGO.II", "FIGO.III", "FIGO.IV")
             if (any(progressed)) {
               progressed_IDs <- CIN1_followup_IDs[progressed]
               progressed_states <- current_states[progressed]
@@ -1279,9 +1284,11 @@ MicroSim <- function(strat=strat,
     cat("Lenght of simulation_results = ", length(simulation_results), "\n")
     
     stacked_results <- 
-      summarize_results_by_Strategy_v2(strategy = screening_strategies[[strat]]$sim.name,
-                                    results_list = simulation_results, 
-                                    numb_of_sims = numb_of_sims)
+      summarize_results_by_Strategy_v2(
+        #strategy = screening_strategies[[strat]]$sim.name,
+        strategy = strat,
+        results_list = simulation_results, 
+        numb_of_sims = numb_of_sims)
     
     #joined_batches_per_strategy[[strat]] <-  stacked_results
     #return(simulation_results)
@@ -1462,9 +1469,14 @@ numb_screening_strat <- screening_strategy_1 %>% length()
 #                         citoSpecif = citoSpecif 
 #                         )
 
-all_results <- list()
-for (strat in names(screening_strategies)) {
-  all_results[[strat]] <- MicroSim(strat = strat, 
+#all_results <- list()
+sim_result <- list()
+#for (strat in names(screening_strategies)) {
+for (n_strat in 1:length(screening_strategies)) {
+  #all_results[[strat]] <- MicroSim(strat = strat,
+  strat <- screening_strategies[[n_strat]]$sim.name
+  cat ("The strategy is ", strat, "\n")
+  sim_result[[strat]] <- MicroSim(strat = strat, 
                                    numb_of_sims = numb_of_sims, 
                                    v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
                                    d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
