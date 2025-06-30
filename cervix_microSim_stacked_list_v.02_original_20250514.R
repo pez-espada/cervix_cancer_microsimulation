@@ -757,7 +757,7 @@ MicroSim <- function(strat=strat,
     }
   }
   
-  source("./R/sumarize_results_by_Strategy_Func.R")
+  # source("./R/sumarize_results_by_Strategy_Func.R")
   #source("./R/sumarize_results_by_Strategy_Func_v2.R")
   
   stacked_results <- NULL
@@ -1051,7 +1051,7 @@ MicroSim <- function(strat=strat,
           }
           
         } else {
-          cat("✘ No screening at age", age_in_loop, "\n")
+          # cat("✘ No screening at age", age_in_loop, "\n")
         }
         
         ### ------------------ CIN1 Follow-up Handling Block ----------------------
@@ -1289,15 +1289,15 @@ MicroSim <- function(strat=strat,
       
     } # end of `foreach/dopar` loop
   
-  #return(simulation_results)
-  cat("Lenght of simulation_results = ", length(simulation_results), "\n")
-  
-  stacked_results <- 
-    summarize_results_by_Strategy_v2(
-      #strategy = screening_strategies[[strat]]$sim.name,
-      strategy = strat,
-      results_list = simulation_results, 
-      numb_of_sims = numb_of_sims)
+  return(simulation_results)
+  #cat("Lenght of simulation_results = ", length(simulation_results), "\n")
+  #
+  #stacked_results <- 
+  #  summarize_results_by_Strategy_v2(
+  #    #strategy = screening_strategies[[strat]]$sim.name,
+  #    strategy = strat,
+  #    results_list = simulation_results, 
+  #    numb_of_sims = numb_of_sims)
   
   #joined_batches_per_strategy[[strat]] <-  stacked_results
   #return(simulation_results)
@@ -1458,39 +1458,19 @@ numb_screening_strat <- screening_strategies %>% length()
 # TEST:
 numb_screening_strat <- screening_strategy_1 %>% length()
 
-# # The following line needs to be replaced or deleted:
-# sim_result  <- MicroSim(strat = strat, 
-#                         numb_of_sims = numb_of_sims, 
-#                         v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
-#                         d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
-#                         Trt = FALSE, 
-#                         Pmatrix = Pmatrix,
-#                         master_seed = 123,
-#                         reproducible = TRUE, 
-#                         use_parallel = FALSE,
-#                         cost_vacc2, cost_vacc4, cost_vacc9,
-#                         #screening_strategies = screening_strategies,
-#                         screening_strategies = screening_strategy_1,
-#                         screening_coverage = screening_coverage,
-#                         vacc_coverage = vacc_coverage,
-#                         ScreenPrice = ScreenPrice,
-#                         costCoeff_md = costCoeff_md,
-#                         citoSpecif = citoSpecif 
-#                         )
-
-#all_results <- list()
 sim_result <- list()
-#for (strat in names(screening_strategies)) {
+source("./R/sumarize_results_by_Strategy_Func.R")
+
 for (n_strat in 1:length(screening_strategies)) {
-  #all_results[[strat]] <- MicroSim(strat = strat,
   strat <- screening_strategies[[n_strat]]$sim.name
-  cat("#######################################################################\n")
+  
   cat("#######################################################################\n")
   cat ("The Strategy is ", strat, "\n")
   cat ("n_strat is ", n_strat, "\n")
   cat("#######################################################################\n")
-  cat("#######################################################################\n")
-  sim_result[[strat]] <- MicroSim(strat = strat, 
+  
+  #sim_result[[strat]] <- MicroSim(strat = strat, 
+  sim_raw_result <- MicroSim(strat = strat, 
                                   numb_of_sims = numb_of_sims, 
                                   v_M_1 = v_M_1,
                                   n_i = n_i, 
@@ -1508,15 +1488,30 @@ for (n_strat in 1:length(screening_strategies)) {
                                   cost_vacc2, 
                                   cost_vacc4, 
                                   cost_vacc9,
-                                  ##screening_strategies = screening_strategies,
-                                  #screening_strategies = screening_strategy_1,
                                   screening_coverage = screening_coverage,
                                   vacc_coverage = vacc_coverage,
                                   ScreenPrice = ScreenPrice,
                                   costCoeff_md = costCoeff_md,
                                   citoSpecif = citoSpecif 
   )
+  
+  # Check MicroSim output
+  if (is.null(sim_raw_result)) {
+    warning(paste("MicroSim returned NULL for strategy:", strat))
+    next
+  }
+  
+  # Summarize results
+  stacked_results <- summarize_results_by_Strategy(strategy = strat,
+                                                   results_list = sim_raw_result, 
+                                                   numb_of_sims = numb_of_sims)
+  
+  # Save
+  sim_result[[strat]] <- stacked_results 
+  #sim_result[[strat]] <- stacked_results[[strat]] 
+  
 }
+
 comp.time = Sys.time() - p
 comp.time %>% print()
 
