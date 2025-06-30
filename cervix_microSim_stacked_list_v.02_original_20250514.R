@@ -673,20 +673,29 @@ state_transition_log <- data.table()  # only used if log_transitions == TRUE
 # This version stacks solution of simulations but produces a list with stacked elements
 MicroSim <- function(strat=strat, 
                      numb_of_sims = 20,
-                     v_M_1, n_i, n_t, v_n, d_c, d_e, 
-                     TR_out = TRUE, TS_out = TRUE, Trt = FALSE,  
+                     v_M_1,
+                     n_i, 
+                     n_t, 
+                     v_n, 
+                     d_c, 
+                     d_e, 
+                     TR_out = TRUE, 
+                     TS_out = TRUE, 
+                     Trt = FALSE,  
                      Pmatrix,
                      use_parallel = FALSE, 
                      reproducible = TRUE, 
                      master_seed = 123,
-                     cost_vacc2, cost_vacc4, cost_vacc9,
-                     screening_strategies, 
+                     cost_vacc2, 
+                     cost_vacc4, 
+                     cost_vacc9,
+                     #screening_strategies, 
                      screening_coverage ,
                      vacc_coverage,
                      ScreenPrice,
                      costCoeff_md,
                      citoSpecif
-                     )
+)
 {
   cat("I HAVE ENTERED THE SIMULATOR \n")
   cl <- NULL  # Ensure cl exists in all cases
@@ -755,544 +764,544 @@ MicroSim <- function(strat=strat,
   # initialize joined_batches_per_strategy
   #joined_batches_per_strategy <- list()
   
-    # Parallel processing using foreach - batch-level loop
-    simulation_results <- 
-      foreach(sim = 1:numb_of_sims, .packages = c("dplyr", 
-                                                  "tidyr", "purrr", 
-                                                  "data.table") ) %dopar%
-      { 
+  # Parallel processing using foreach - batch-level loop
+  simulation_results <- 
+    foreach(sim = 1:numb_of_sims, .packages = c("dplyr", 
+                                                "tidyr", "purrr", 
+                                                "data.table") ) %dopar%
+    { 
+      
+      seed <- seeds[sim]
+      
+      cat("\n")
+      cat("\n")
+      cat("\n")
+      cat("----------------------------------------------------\n")
+      cat("----------------------------------------------------\n")
+      cat("Running simulation", sim, "with seed", seeds[sim], "\n")
+      cat("----------------------------------------------------\n")
+      
+      # Initialize a global vector to store all diagnosed individuals
+      global_diagnosed <<- integer()
+      symptomatics <-
+        data.frame(ID = integer(), TimeStep = integer(), 
+                   DiagnosedState = character(), 
+                   RecoveredFromState = logical(), stringsAsFactors = FALSE)
+      
+      
+      # Create the matrix capturing the state name/costs/health outcomes 
+      # for all individuals at each time point:
+      #m_M <- m_C <- m_E <-  matrix(nrow = n_i, ncol = (n_t + 1), 
+      m_M <- m_C <- m_E <- 
+        matrix(nrow = n_i, ncol = (n_t), 
+               dimnames = list( 1:n_i, 
+                                paste0("cycle_", 1:(n_t),
+                                       sep = "")))  
+      
+      m_M[, 1] <- v_M_1  # Indicate the initial health state   
+      
+      
+      # estimate costs per individual for the initial health state
+      m_C[, 1] <- Costs_per_Cancer_Diag(M_it = m_M[, 1], 
+                                        symptomatics = symptomatics,
+                                        time_iteration = 1,
+                                        cost_Vec = cost_Vec,  
+                                        Trt)             
+      # account for vaccination cost:
+      m_C[, 1] <- m_C[, 1] + vacc_cost
+      
+      # estimate QALYs per individual for the initial health state 
+      m_E[, 1] <- Effs(m_M[, 1], Trt, utilityCoefs = utilityCoefs)  
+      
+      stored_list <- list()
+      
+      ### TEST 20250509
+      # Before the t loop
+      current_age_group <- NA
+      my_age_prob_matrix <- NULL
+      my_age_prob_matrix_2 <- NULL
+      my_age_prob_matrix_2_nat_immunity <- NULL
+      my_age_prob_matrix_4 <- NULL
+      my_age_prob_matrix_9 <- NULL
+      
+      ## Cyto Screening days:
+      # cyto_screening_days <-
+      #   extract_screening_days(screening_strategies[[strat]]$sim.name) 
+      # 
+      # # Init detected IDs by screening
+      # detected_IDs <- integer(0)  # or character(0) depending on your ID format
+      # 
+      # ## For Cyto screening logic version 3:
+      # CIN1_followup_IDs <- character()   # Under CIN1 follow-up
+      # #CIN1_diagnosed_this_year <- character()  # Temp storage, cleared after each year
+      # 
+      # # === Per-simulation screening state ===
+      # detected_IDs <- character()               # IDs already diagnosed CIN2+
+      # CIN1_followup_IDs <- character()          # IDs under CIN1 follow-up
+      # #CIN2plus_treated_IDs <- character()       # IDs treated once for CIN2+
+      # screened_registry <- data.table(sim = integer(), age = integer(), ID = character())  # Uniqueness log
+      
+      # --- Initialize screening logic state per simulation ---
+      #cyto_screening_days <- extract_screening_days(screening_strategies[[strat]]$sim.name)
+      cyto_screening_days <- extract_screening_days(strat)
+      
+      detected_IDs <- character()              # CIN2+ detections (screened or from CIN1 follow-up)
+      CIN1_followup_IDs <- character()         # Under CIN1 follow-up
+      screened_registry <- data.table(sim = integer(), age = integer(), ID = character())  # Per (sim, age) uniqueness
+      
+      
+      
+      ########################################################################
+      #################### run over all the cycles ########################### 
+      # Loop runs over all the cycles of the simulation. It updates the
+      # health state of each individual at each cycle, estimates the costs and
+      # QALYs per individual at each cycle, and stores the transitions across
+      # states for each individual at each cycle.
+      for(t in 1:(n_t-1)) {
+        ######################################################################
+        # Select the transition matrix based on the cycle `n_t`:
+        # Since our age intervals start at 10 years old,
+        age_in_loop <- t + 9
         
-        seed <- seeds[sim]
-        
-        cat("\n")
-        cat("\n")
-        cat("\n")
-        cat("----------------------------------------------------\n")
-        cat("----------------------------------------------------\n")
-        cat("Running simulation", sim, "with seed", seeds[sim], "\n")
-        cat("----------------------------------------------------\n")
-        
-        # Initialize a global vector to store all diagnosed individuals
-        global_diagnosed <<- integer()
-        symptomatics <-
-          data.frame(ID = integer(), TimeStep = integer(), 
-                     DiagnosedState = character(), 
-                     RecoveredFromState = logical(), stringsAsFactors = FALSE)
-        
-        
-        # Create the matrix capturing the state name/costs/health outcomes 
-        # for all individuals at each time point:
-        #m_M <- m_C <- m_E <-  matrix(nrow = n_i, ncol = (n_t + 1), 
-        m_M <- m_C <- m_E <- 
-          matrix(nrow = n_i, ncol = (n_t), 
-                 dimnames = list( 1:n_i, 
-                                  paste0("cycle_", 1:(n_t),
-                                         sep = "")))  
-        
-        m_M[, 1] <- v_M_1  # Indicate the initial health state   
-        
-        
-        # estimate costs per individual for the initial health state
-        m_C[, 1] <- Costs_per_Cancer_Diag(M_it = m_M[, 1], 
-                                          symptomatics = symptomatics,
-                                          time_iteration = 1,
-                                          cost_Vec = cost_Vec,  
-                                          Trt)             
-        # account for vaccination cost:
-        m_C[, 1] <- m_C[, 1] + vacc_cost
-        
-        # estimate QALYs per individual for the initial health state 
-        m_E[, 1] <- Effs(m_M[, 1], Trt, utilityCoefs = utilityCoefs)  
-        
-        stored_list <- list()
-        
-        ### TEST 20250509
-        # Before the t loop
-        current_age_group <- NA
-        my_age_prob_matrix <- NULL
-        my_age_prob_matrix_2 <- NULL
-        my_age_prob_matrix_2_nat_immunity <- NULL
-        my_age_prob_matrix_4 <- NULL
-        my_age_prob_matrix_9 <- NULL
-        
-        ## Cyto Screening days:
-        # cyto_screening_days <-
-        #   extract_screening_days(screening_strategies[[strat]]$sim.name) 
-        # 
-        # # Init detected IDs by screening
-        # detected_IDs <- integer(0)  # or character(0) depending on your ID format
-        # 
-        # ## For Cyto screening logic version 3:
-        # CIN1_followup_IDs <- character()   # Under CIN1 follow-up
-        # #CIN1_diagnosed_this_year <- character()  # Temp storage, cleared after each year
-        # 
-        # # === Per-simulation screening state ===
-        # detected_IDs <- character()               # IDs already diagnosed CIN2+
-        # CIN1_followup_IDs <- character()          # IDs under CIN1 follow-up
-        # #CIN2plus_treated_IDs <- character()       # IDs treated once for CIN2+
-        # screened_registry <- data.table(sim = integer(), age = integer(), ID = character())  # Uniqueness log
-        
-        # --- Initialize screening logic state per simulation ---
-        #cyto_screening_days <- extract_screening_days(screening_strategies[[strat]]$sim.name)
-        cyto_screening_days <- extract_screening_days(strat)
-        
-        detected_IDs <- character()              # CIN2+ detections (screened or from CIN1 follow-up)
-        CIN1_followup_IDs <- character()         # Under CIN1 follow-up
-        screened_registry <- data.table(sim = integer(), age = integer(), ID = character())  # Per (sim, age) uniqueness
-        
-        
+        #cat("Simulation:", sim, "Cycle:", t, ", ", "Age:", age_in_loop, ", ", "seed:", seed, "\n")
         
         ########################################################################
-        #################### run over all the cycles ########################### 
-        # Loop runs over all the cycles of the simulation. It updates the
-        # health state of each individual at each cycle, estimates the costs and
-        # QALYs per individual at each cycle, and stores the transitions across
-        # states for each individual at each cycle.
-        for(t in 1:(n_t-1)) {
-          ######################################################################
-          # Select the transition matrix based on the cycle `n_t`:
-          # Since our age intervals start at 10 years old,
-          age_in_loop <- t + 9
+        
+        ######################################################################## 
+        # Computation of Symptomatics:
+        # RANDOM FUNCTION:
+        new_entries <- diagnose_column(m_M[, t], t) 
+        
+        if (!is.null(new_entries)) {
+          stored_list[[t]] <- new_entries
+        }
+        if (nrow(new_entries) > 0) {
+          symptomatics <- bind_rows(symptomatics, new_entries)
+        }
+        ######################################################################## 
+        
+        
+        ### TEST 20250509:
+        # Inside the loop
+        # floor()  es la parte entera de la división
+        # Note: we use 'age in loop + 1' because we ask for the transitions to 
+        # move states ahead in the future t + 1. This is because of model design.
+        age_group <- floor((age_in_loop + 1) / 5)
+        
+        if (is.na(current_age_group) || age_group != current_age_group) {
+          current_age_group <- age_group
           
-          #cat("Simulation:", sim, "Cycle:", t, ", ", "Age:", age_in_loop, ", ", "seed:", seed, "\n")
+          my_age_prob_matrix <- my_age_prob_matrix_func(my_Probs, age_in_loop + 1)
+          rownames(my_age_prob_matrix) <- v_n
           
-          ########################################################################
+          my_age_prob_matrix_2 <- my_age_prob_matrix_func(my_Probs2, age_in_loop + 1) %>%
+            dplyr::mutate(
+              Age.group = ifelse(Age.group == "11-14", "10-14", Age.group),
+              Lower = ifelse(Lower == "11", "10", Lower)
+            )
+          rownames(my_age_prob_matrix_2) <- v_n
           
-          ######################################################################## 
-          # Computation of Symptomatics:
-          # RANDOM FUNCTION:
-          new_entries <- diagnose_column(m_M[, t], t) 
+          my_age_prob_matrix_2_nat_immunity <- my_age_prob_matrix_func(my_Probs2_nat_immunity, age_in_loop + 1) %>%
+            dplyr::mutate(
+              Age.group = ifelse(Age.group == "11-14", "10-14", Age.group),
+              Lower = ifelse(Lower == "11", "10", Lower)
+            )
+          rownames(my_age_prob_matrix_2_nat_immunity) <- v_n
           
-          if (!is.null(new_entries)) {
-            stored_list[[t]] <- new_entries
-          }
-          if (nrow(new_entries) > 0) {
-            symptomatics <- bind_rows(symptomatics, new_entries)
-          }
-          ######################################################################## 
+          my_age_prob_matrix_4 <- my_age_prob_matrix_func(my_Probs4, age_in_loop + 1) %>%
+            dplyr::mutate(
+              Age.group = ifelse(Age.group == "11-14", "10-14", Age.group),
+              Lower = ifelse(Lower == "11", "10", Lower)
+            )
+          rownames(my_age_prob_matrix_4) <- v_n
           
+          my_age_prob_matrix_9 <- my_age_prob_matrix_func(my_Probs9, age_in_loop + 1) %>%
+            dplyr::mutate(
+              Age.group = ifelse(Age.group == "11-14", "10-14", Age.group),
+              Lower = ifelse(Lower == "11", "10", Lower)
+            )
+          rownames(my_age_prob_matrix_9) <- v_n
+        } #endif
+        
+        
+        # Extract the transition probabilities of each individuals at cycle t
+        # given the individual current state and the corresponding 
+        # transition probability matrix that depends on age:
+        # Next time (t+1) transition:
+        ## m_P is a (n_i x n_s) matrix with the probabilities of transitioning
+        #m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
+        
+        # Function to obtain individual transition probabilities based on 
+        # current state and the prob of transition one cycle/t ahead.
+        m_P <- Probs_3_optimized(M_it = m_M[, t], v_n = v_n, n_i = n_i, 
+                                 prob_matrix = my_age_prob_matrix, 
+                                 prob_matrix_2 = my_age_prob_matrix_2,
+                                 prob_matrix_2_nat_immunity = my_age_prob_matrix_2_nat_immunity,
+                                 prob_matrix_4 = my_age_prob_matrix_4, 
+                                 prob_matrix_9 = my_age_prob_matrix_9, 
+                                 vacc_lbl = vacc_lbl,
+                                 age = age_in_loop)
+        #cat("Dimension of m_P is (outside the function): ",dim(m_P),"\n")
+        
+        # Make actual transition by  random sampling (RANDOM FUNCTION): 
+        m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
+        # and store that state in  
+        ## matrix m_M 
+        #cat("Dimension of m_M is ",dim(m_M),"\n")
+        ########################################################################    
+        
+        # m_M[, t + 1] <- update_column(m_M[, t], new_entries)
+        next_col <- m_M[, t + 1]
+        next_col <- update_column(m_M[, t], new_entries, next_col)
+        
+        # Ensure next_col updates are preserved after sampling
+        m_M[, t + 1] <- ifelse(next_col == "Survival", "Survival", m_M[, t + 1])
+        
+        ########################################################################    
+        ## Costs per CC diagnose at time t + 1.
+        # Estimate costs per individual during cycle t + 1 conditional on treatment:
+        m_C[, t + 1] <-                              
+          Costs_per_Cancer_Diag(M_it = m_M[, t + 1],  
+                                symptomatics = symptomatics,
+                                time_iteration = t,
+                                cost_Vec = cost_Vec,    
+                                Trt) %>% round(., 4)            
+        #browser()
+        
+        m_E[, t + 1] <- # estimate QALYs per individual during cycle t + 1
+          Effs( m_M[, t + 1], Trt, 
+                utilityCoefs = utilityCoefs)                   
+        ######################################################################    
+        ######################################################################    
+        #cat('\r', paste(round(t/n_t * 100),          # display the 
+        #                "% done\n", sep = " "))      # progress of  the simulation
+        
+        
+        
+        
+        ## ------------------- Cytology Screening Block ----------------------
+        ## Version 2-E
+        
+        if (age_in_loop %in% cyto_screening_days) {
+          cat("✔ Performing cytology screening at age", age_in_loop, "\n")
           
-          ### TEST 20250509:
-          # Inside the loop
-          # floor()  es la parte entera de la división
-          # Note: we use 'age in loop + 1' because we ask for the transitions to 
-          # move states ahead in the future t + 1. This is because of model design.
-          age_group <- floor((age_in_loop + 1) / 5)
+          # 1. Determine eligible individuals: not previously detected & not screened at this sim/age
+          not_detected <- !IDs %in% detected_IDs
+          already_screened <- screened_registry[sim == !!sim & age == !!age_in_loop, ID]
+          eligible_ids <- setdiff(IDs[not_detected], already_screened)
           
-          if (is.na(current_age_group) || age_group != current_age_group) {
-            current_age_group <- age_group
+          if (length(eligible_ids) > 0) {
+            # 2. Sample for screening
+            eligible_screened <- runif(length(eligible_ids)) < screening_coverage
+            screened_ids <- eligible_ids[eligible_screened]
             
-            my_age_prob_matrix <- my_age_prob_matrix_func(my_Probs, age_in_loop + 1)
-            rownames(my_age_prob_matrix) <- v_n
+            # 3. Update global screening registry
+            screened_registry <- rbind(screened_registry, data.table(
+              sim = sim,
+              age = age_in_loop,
+              ID = screened_ids
+            ))
             
-            my_age_prob_matrix_2 <- my_age_prob_matrix_func(my_Probs2, age_in_loop + 1) %>%
-              dplyr::mutate(
-                Age.group = ifelse(Age.group == "11-14", "10-14", Age.group),
-                Lower = ifelse(Lower == "11", "10", Lower)
-              )
-            rownames(my_age_prob_matrix_2) <- v_n
+            # 4. Apply screening cost
+            cost_log <- rbindlist(list(cost_log, data.table(
+              sim = sim,
+              age = age_in_loop,
+              ID = screened_ids,
+              #cost_type = screening_strategies[[strat]]$sim.name,
+              cost_type = strat,
+              cost = ScreenPrice
+            )), use.names = TRUE)
             
-            my_age_prob_matrix_2_nat_immunity <- my_age_prob_matrix_func(my_Probs2_nat_immunity, age_in_loop + 1) %>%
-              dplyr::mutate(
-                Age.group = ifelse(Age.group == "11-14", "10-14", Age.group),
-                Lower = ifelse(Lower == "11", "10", Lower)
-              )
-            rownames(my_age_prob_matrix_2_nat_immunity) <- v_n
+            # 5. Get health states of screened individuals
+            screened_states <- m_M[match(screened_ids, IDs), t]
+            state_indices <- match(screened_states, v_n)
             
-            my_age_prob_matrix_4 <- my_age_prob_matrix_func(my_Probs4, age_in_loop + 1) %>%
-              dplyr::mutate(
-                Age.group = ifelse(Age.group == "11-14", "10-14", Age.group),
-                Lower = ifelse(Lower == "11", "10", Lower)
-              )
-            rownames(my_age_prob_matrix_4) <- v_n
+            # 6. Simulate diagnosis based on state-dependent sensitivity
+            diagnose_probs <- screenSensi[state_indices]
+            diagnosed <- runif(length(diagnose_probs)) < diagnose_probs
             
-            my_age_prob_matrix_9 <- my_age_prob_matrix_func(my_Probs9, age_in_loop + 1) %>%
-              dplyr::mutate(
-                Age.group = ifelse(Age.group == "11-14", "10-14", Age.group),
-                Lower = ifelse(Lower == "11", "10", Lower)
-              )
-            rownames(my_age_prob_matrix_9) <- v_n
-          } #endif
-          
-          
-          # Extract the transition probabilities of each individuals at cycle t
-          # given the individual current state and the corresponding 
-          # transition probability matrix that depends on age:
-          # Next time (t+1) transition:
-          ## m_P is a (n_i x n_s) matrix with the probabilities of transitioning
-          #m_P <- Probs(M_it =  m_M[, t], my_Probs = my_age_prob_matrix)
-          
-          # Function to obtain individual transition probabilities based on 
-          # current state and the prob of transition one cycle/t ahead.
-          m_P <- Probs_3_optimized(M_it = m_M[, t], v_n = v_n, n_i = n_i, 
-                                   prob_matrix = my_age_prob_matrix, 
-                                   prob_matrix_2 = my_age_prob_matrix_2,
-                                   prob_matrix_2_nat_immunity = my_age_prob_matrix_2_nat_immunity,
-                                   prob_matrix_4 = my_age_prob_matrix_4, 
-                                   prob_matrix_9 = my_age_prob_matrix_9, 
-                                   vacc_lbl = vacc_lbl,
-                                   age = age_in_loop)
-          #cat("Dimension of m_P is (outside the function): ",dim(m_P),"\n")
-          
-          # Make actual transition by  random sampling (RANDOM FUNCTION): 
-          m_M[, t + 1] <- samplev(probs = m_P, m = 1)  # sample the next health state 
-          # and store that state in  
-          ## matrix m_M 
-          #cat("Dimension of m_M is ",dim(m_M),"\n")
-          ########################################################################    
-          
-          # m_M[, t + 1] <- update_column(m_M[, t], new_entries)
-          next_col <- m_M[, t + 1]
-          next_col <- update_column(m_M[, t], new_entries, next_col)
-          
-          # Ensure next_col updates are preserved after sampling
-          m_M[, t + 1] <- ifelse(next_col == "Survival", "Survival", m_M[, t + 1])
-          
-          ########################################################################    
-          ## Costs per CC diagnose at time t + 1.
-          # Estimate costs per individual during cycle t + 1 conditional on treatment:
-          m_C[, t + 1] <-                              
-            Costs_per_Cancer_Diag(M_it = m_M[, t + 1],  
-                                  symptomatics = symptomatics,
-                                  time_iteration = t,
-                                  cost_Vec = cost_Vec,    
-                                  Trt) %>% round(., 4)            
-          #browser()
-          
-          m_E[, t + 1] <- # estimate QALYs per individual during cycle t + 1
-            Effs( m_M[, t + 1], Trt, 
-                  utilityCoefs = utilityCoefs)                   
-          ######################################################################    
-          ######################################################################    
-          #cat('\r', paste(round(t/n_t * 100),          # display the 
-          #                "% done\n", sep = " "))      # progress of  the simulation
-          
-          
-          
-          
-          ## ------------------- Cytology Screening Block ----------------------
-          ## Version 2-E
-          
-          if (age_in_loop %in% cyto_screening_days) {
-            cat("✔ Performing cytology screening at age", age_in_loop, "\n")
+            diagnosed_ids <- screened_ids[diagnosed]
+            diagnosed_states <- screened_states[diagnosed]
+            diagnosed_indices <- state_indices[diagnosed]
             
-            # 1. Determine eligible individuals: not previously detected & not screened at this sim/age
-            not_detected <- !IDs %in% detected_IDs
-            already_screened <- screened_registry[sim == !!sim & age == !!age_in_loop, ID]
-            eligible_ids <- setdiff(IDs[not_detected], already_screened)
-            
-            if (length(eligible_ids) > 0) {
-              # 2. Sample for screening
-              eligible_screened <- runif(length(eligible_ids)) < screening_coverage
-              screened_ids <- eligible_ids[eligible_screened]
+            # 7. First-time diagnoses only
+            new_diagnosed_mask <- !(diagnosed_ids %in% detected_IDs)
+            if (any(new_diagnosed_mask)) {
+              new_diag_ids <- diagnosed_ids[new_diagnosed_mask]
+              new_diag_states <- diagnosed_states[new_diagnosed_mask]
+              new_diag_indices <- diagnosed_indices[new_diagnosed_mask]
               
-              # 3. Update global screening registry
-              screened_registry <- rbind(screened_registry, data.table(
-                sim = sim,
-                age = age_in_loop,
-                ID = screened_ids
-              ))
-              
-              # 4. Apply screening cost
-              cost_log <- rbindlist(list(cost_log, data.table(
-                sim = sim,
-                age = age_in_loop,
-                ID = screened_ids,
-                #cost_type = screening_strategies[[strat]]$sim.name,
-                cost_type = strat,
-                cost = ScreenPrice
-              )), use.names = TRUE)
-              
-              # 5. Get health states of screened individuals
-              screened_states <- m_M[match(screened_ids, IDs), t]
-              state_indices <- match(screened_states, v_n)
-              
-              # 6. Simulate diagnosis based on state-dependent sensitivity
-              diagnose_probs <- screenSensi[state_indices]
-              diagnosed <- runif(length(diagnose_probs)) < diagnose_probs
-              
-              diagnosed_ids <- screened_ids[diagnosed]
-              diagnosed_states <- screened_states[diagnosed]
-              diagnosed_indices <- state_indices[diagnosed]
-              
-              # 7. First-time diagnoses only
-              new_diagnosed_mask <- !(diagnosed_ids %in% detected_IDs)
-              if (any(new_diagnosed_mask)) {
-                new_diag_ids <- diagnosed_ids[new_diagnosed_mask]
-                new_diag_states <- diagnosed_states[new_diagnosed_mask]
-                new_diag_indices <- diagnosed_indices[new_diagnosed_mask]
-                
-                followup_costs <- costCoeff_md[new_diag_indices]
-                
-                cost_log <- rbindlist(list(cost_log, data.table(
-                  sim = sim,
-                  age = age_in_loop,
-                  ID = new_diag_ids,
-                  cost_type = paste0("diagnosed_by_cyto_", new_diag_states),
-                  cost = followup_costs
-                )), use.names = TRUE)
-                
-                # 8. Update detected and follow-up registries
-                is_CIN2plus <- new_diag_states %in% c("CIN2", "CIN3", "FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
-                detected_IDs <- unique(c(detected_IDs, new_diag_ids[is_CIN2plus]))
-                
-                is_CIN1 <- new_diag_states == "CIN1"
-                CIN1_followup_IDs <- unique(c(CIN1_followup_IDs, new_diag_ids[is_CIN1]))
-              }
-            }
-            
-          } else {
-            cat("✘ No screening at age", age_in_loop, "\n")
-          }
-          
-          ### ------------------ CIN1 Follow-up Handling Block ----------------------
-          
-          if (length(CIN1_followup_IDs) > 0) {
-            current_states <- m_M[match(CIN1_followup_IDs, IDs), t]
-            
-            # 1. Still in CIN1 → follow-up cost
-            still_CIN1 <- current_states == "CIN1"
-            if (any(still_CIN1)) {
-              cost_log <- rbindlist(list(cost_log, data.table(
-                sim = sim,
-                age = age_in_loop,
-                ID = CIN1_followup_IDs[still_CIN1],
-                cost_type = "CIN1_followup",
-                cost = costCoeff_md[match("CIN1", v_n)]
-              )), use.names = TRUE)
-            }
-            
-            # 2. Regressed → remove from follow-up
-            regressed <- current_states %in% c("H", "HR.HPV.infection")
-            if (any(regressed)) {
-              CIN1_followup_IDs <- setdiff(CIN1_followup_IDs,
-                                           CIN1_followup_IDs[regressed])
-            }
-            
-            # 3. Progressed to CIN2+ → single-time treatment cost
-            progressed <- current_states %in% c("CIN2", "CIN3", "FIGO.I", 
-                                                "FIGO.II", "FIGO.III", "FIGO.IV")
-            if (any(progressed)) {
-              progressed_IDs <- CIN1_followup_IDs[progressed]
-              progressed_states <- current_states[progressed]
-              progressed_indices <- match(progressed_states, v_n)
+              followup_costs <- costCoeff_md[new_diag_indices]
               
               cost_log <- rbindlist(list(cost_log, data.table(
                 sim = sim,
                 age = age_in_loop,
-                ID = progressed_IDs,
-                cost_type = paste0("progressed_from_CIN1_", progressed_states),
-                cost = costCoeff_md[progressed_indices]
+                ID = new_diag_ids,
+                cost_type = paste0("diagnosed_by_cyto_", new_diag_states),
+                cost = followup_costs
               )), use.names = TRUE)
               
-              detected_IDs <- unique(c(detected_IDs, progressed_IDs))
-              CIN1_followup_IDs <- setdiff(CIN1_followup_IDs, progressed_IDs)
+              # 8. Update detected and follow-up registries
+              is_CIN2plus <- new_diag_states %in% c("CIN2", "CIN3", "FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
+              detected_IDs <- unique(c(detected_IDs, new_diag_ids[is_CIN2plus]))
+              
+              is_CIN1 <- new_diag_states == "CIN1"
+              CIN1_followup_IDs <- unique(c(CIN1_followup_IDs, new_diag_ids[is_CIN1]))
             }
           }
-          ## --------------- Cytology Screening Block End ----------------------
           
-          
-        }
-        #################### close loop for cycles ############################# 
-        ########################################################################
-        
-        
-        # Combine stored entries in a single data frame
-        symptomatics <- bind_rows(stored_list)
-        cat("=================================================\n")
-        cat("symprotamics dimensions: ", dim(symptomatics),"\n")
-        tc_disc <- m_C[,1:n_t] %*% v_dwc       # total (discounted) cost per individual
-        te_disc <- m_E[,1:n_t] %*% v_dwe       # total (discounted) QALYs per individual 
-        
-        tc_undisc <- m_C[,1:n_t] %*% rep(1, n_t)       # total (discounted) cost per individual
-        te_undisc <- m_E[,1:n_t] %*% rep(1, n_t)       # total (discounted) QALYs per individual 
-        
-        tc_hat_disc <- mean(tc_disc)        # average (discounted) cost 
-        te_hat_disc <- mean(te_disc)        # average (discounted) QALYs
-        tc_hat_undisc <- mean(tc_undisc)    # average (discounted) cost 
-        te_hat_undisc <- mean(te_undisc)    # average (discounted) QALYs
-        
-        # Create a matrix of transitions across states transitions from one state to the other:
-        if (TS_out == TRUE) {  
-          TS <- paste(m_M, cbind(m_M[, -1], NA), sep = "->")    
-          
-          TS <- matrix(TS, nrow = n_i)
-          rownames(TS) <- paste("Ind",   1:n_i, sep = " ")   # name the rows 
-          colnames(TS) <- paste0("cycle_", 1:(n_t), sep = "")   # name the columns 
         } else {
-          TS <- NULL
+          cat("✘ No screening at age", age_in_loop, "\n")
         }
         
-        if (TR_out == TRUE) {
-          TR <- t(apply(m_M, 2, 
-                        function(x) table(factor(x, levels = v_n, ordered = TRUE))))
-          #TR <- TR / n_i                                   # create a distribution 
-          # trace
+        ### ------------------ CIN1 Follow-up Handling Block ----------------------
+        
+        if (length(CIN1_followup_IDs) > 0) {
+          current_states <- m_M[match(CIN1_followup_IDs, IDs), t]
           
-          rownames(TR) <- paste("cycle", 1:(n_t), sep = "_") # name the rows 
-          colnames(TR) <- v_n                              # name the columns 
-        } else {
-          TR <- NULL
+          # 1. Still in CIN1 → follow-up cost
+          still_CIN1 <- current_states == "CIN1"
+          if (any(still_CIN1)) {
+            cost_log <- rbindlist(list(cost_log, data.table(
+              sim = sim,
+              age = age_in_loop,
+              ID = CIN1_followup_IDs[still_CIN1],
+              cost_type = "CIN1_followup",
+              cost = costCoeff_md[match("CIN1", v_n)]
+            )), use.names = TRUE)
+          }
+          
+          # 2. Regressed → remove from follow-up
+          regressed <- current_states %in% c("H", "HR.HPV.infection")
+          if (any(regressed)) {
+            CIN1_followup_IDs <- setdiff(CIN1_followup_IDs,
+                                         CIN1_followup_IDs[regressed])
+          }
+          
+          # 3. Progressed to CIN2+ → single-time treatment cost
+          progressed <- current_states %in% c("CIN2", "CIN3", "FIGO.I", 
+                                              "FIGO.II", "FIGO.III", "FIGO.IV")
+          if (any(progressed)) {
+            progressed_IDs <- CIN1_followup_IDs[progressed]
+            progressed_states <- current_states[progressed]
+            progressed_indices <- match(progressed_states, v_n)
+            
+            cost_log <- rbindlist(list(cost_log, data.table(
+              sim = sim,
+              age = age_in_loop,
+              ID = progressed_IDs,
+              cost_type = paste0("progressed_from_CIN1_", progressed_states),
+              cost = costCoeff_md[progressed_indices]
+            )), use.names = TRUE)
+            
+            detected_IDs <- unique(c(detected_IDs, progressed_IDs))
+            CIN1_followup_IDs <- setdiff(CIN1_followup_IDs, progressed_IDs)
+          }
         }
+        ## --------------- Cytology Screening Block End ----------------------
         
-        # If TS_out == TRUE we can then compute the number of new cases for each type
-        # of cancer state per time (cycle). A new case of cancer state X in time t
-        # is defined as an individual transition to this state X provided the
-        # individual was not in that state X a time t-1.
-        # NOTE that the TR output display individual transitions at each cycle t
-        # that are going to occur at t + 1. That is, "XX->YY" in cycle t meant that the
-        # corresponding individual is in state "XX" in t and is transiting to state
-        # "YY" in t + 1.
-        # A character with all transitions:
-        transitions <- 
-          TS %>% 
-          as_tibble() %>% 
-          pivot_longer(everything(), names_to = "column") %>% 
-          distinct(value) %>%
-          unique() %>% 
-          as.list() %>%
-          unlist()
         
-        if(TS_out == TRUE){
-          Tot_Trans_per_t <- 
-            t(apply(TS, 2, 
-                    function(x) 
-                      table(factor(x, levels 
-                                   = transitions, 
-                                   ordered = TRUE))))
-          # trace
-          rownames(Tot_Trans_per_t) <- paste0("cycle_", 1:(n_t), sep = "") # name the rows 
-        } else {
-          Tot_Trans_per_t <- NULL
-        }
+      }
+      #################### close loop for cycles ############################# 
+      ########################################################################
+      
+      
+      # Combine stored entries in a single data frame
+      symptomatics <- bind_rows(stored_list)
+      cat("=================================================\n")
+      cat("symprotamics dimensions: ", dim(symptomatics),"\n")
+      tc_disc <- m_C[,1:n_t] %*% v_dwc       # total (discounted) cost per individual
+      te_disc <- m_E[,1:n_t] %*% v_dwe       # total (discounted) QALYs per individual 
+      
+      tc_undisc <- m_C[,1:n_t] %*% rep(1, n_t)       # total (discounted) cost per individual
+      te_undisc <- m_E[,1:n_t] %*% rep(1, n_t)       # total (discounted) QALYs per individual 
+      
+      tc_hat_disc <- mean(tc_disc)        # average (discounted) cost 
+      te_hat_disc <- mean(te_disc)        # average (discounted) QALYs
+      tc_hat_undisc <- mean(tc_undisc)    # average (discounted) cost 
+      te_hat_undisc <- mean(te_undisc)    # average (discounted) QALYs
+      
+      # Create a matrix of transitions across states transitions from one state to the other:
+      if (TS_out == TRUE) {  
+        TS <- paste(m_M, cbind(m_M[, -1], NA), sep = "->")    
         
-        Tot_Trans_per_t <- Tot_Trans_per_t %>% as_tibble()
-        # New cases:
-        new_CIN1 <- new_cases_2(state1 = "HR.HPV.infection", state2 = "CIN1", 
+        TS <- matrix(TS, nrow = n_i)
+        rownames(TS) <- paste("Ind",   1:n_i, sep = " ")   # name the rows 
+        colnames(TS) <- paste0("cycle_", 1:(n_t), sep = "")   # name the columns 
+      } else {
+        TS <- NULL
+      }
+      
+      if (TR_out == TRUE) {
+        TR <- t(apply(m_M, 2, 
+                      function(x) table(factor(x, levels = v_n, ordered = TRUE))))
+        #TR <- TR / n_i                                   # create a distribution 
+        # trace
+        
+        rownames(TR) <- paste("cycle", 1:(n_t), sep = "_") # name the rows 
+        colnames(TR) <- v_n                              # name the columns 
+      } else {
+        TR <- NULL
+      }
+      
+      # If TS_out == TRUE we can then compute the number of new cases for each type
+      # of cancer state per time (cycle). A new case of cancer state X in time t
+      # is defined as an individual transition to this state X provided the
+      # individual was not in that state X a time t-1.
+      # NOTE that the TR output display individual transitions at each cycle t
+      # that are going to occur at t + 1. That is, "XX->YY" in cycle t meant that the
+      # corresponding individual is in state "XX" in t and is transiting to state
+      # "YY" in t + 1.
+      # A character with all transitions:
+      transitions <- 
+        TS %>% 
+        as_tibble() %>% 
+        pivot_longer(everything(), names_to = "column") %>% 
+        distinct(value) %>%
+        unique() %>% 
+        as.list() %>%
+        unlist()
+      
+      if(TS_out == TRUE){
+        Tot_Trans_per_t <- 
+          t(apply(TS, 2, 
+                  function(x) 
+                    table(factor(x, levels 
+                                 = transitions, 
+                                 ordered = TRUE))))
+        # trace
+        rownames(Tot_Trans_per_t) <- paste0("cycle_", 1:(n_t), sep = "") # name the rows 
+      } else {
+        Tot_Trans_per_t <- NULL
+      }
+      
+      Tot_Trans_per_t <- Tot_Trans_per_t %>% as_tibble()
+      # New cases:
+      new_CIN1 <- new_cases_2(state1 = "HR.HPV.infection", state2 = "CIN1", 
+                              Tot_Trans_per_t = Tot_Trans_per_t)
+      
+      new_CIN2 <- new_cases_2(state1 = "CIN1", state2 = "CIN2", 
+                              Tot_Trans_per_t = Tot_Trans_per_t)
+      
+      new_CIN3 <- new_cases_2(state1 = "CIN2", state2 = "CIN3", 
+                              Tot_Trans_per_t = Tot_Trans_per_t)
+      
+      new_Cancer <- new_cases_2(state1 = "CIN3", state2 = "FIGO.I", 
                                 Tot_Trans_per_t = Tot_Trans_per_t)
-        
-        new_CIN2 <- new_cases_2(state1 = "CIN1", state2 = "CIN2", 
-                                Tot_Trans_per_t = Tot_Trans_per_t)
-        
-        new_CIN3 <- new_cases_2(state1 = "CIN2", state2 = "CIN3", 
-                                Tot_Trans_per_t = Tot_Trans_per_t)
-        
-        new_Cancer <- new_cases_2(state1 = "CIN3", state2 = "FIGO.I", 
+      
+      new_CC_Death <- new_cases_2(state1 = c("H", "HR.HPV.infection", "CIN1", 
+                                             "CIN2","CIN3","FIGO.I", 
+                                             "FIGO.II", "FIGO.III", "FIGO.IV", 
+                                             "Survival"),
+                                  state2 = "CC_Death", 
                                   Tot_Trans_per_t = Tot_Trans_per_t)
-        
-        new_CC_Death <- new_cases_2(state1 = c("H", "HR.HPV.infection", "CIN1", 
-                                               "CIN2","CIN3","FIGO.I", 
-                                               "FIGO.II", "FIGO.III", "FIGO.IV", 
-                                               "Survival"),
-                                    state2 = "CC_Death", 
-                                    Tot_Trans_per_t = Tot_Trans_per_t)
-        
-        
-        # Before sending back, some cleaning regarding cycle `n_t+1` which is 
-        # computed but no needed as a result:
-        m_M <- m_M[ , 1:n_t]
-        m_C <- m_C[ , 1:n_t]
-        m_E <- m_E[ , 1:n_t]
-        new_CIN1 <- new_CIN1 %>% dplyr::slice(c(1:n_t))
-        new_CIN2 <- new_CIN2 %>% dplyr::slice(c(1:n_t))
-        new_CIN3 <- new_CIN3 %>% dplyr::slice(c(1:n_t))
-        new_Cancer <- new_Cancer %>% dplyr::slice(c(1:n_t))
-        new_CC_Death <- new_CC_Death %>% 
-          dplyr::select(CC_Death_per_t, age, cycle) %>%
-          dplyr::slice(c(1:n_t))
-        
-        # Removing no needed extra row from TR:
-        row_to_remove <- n_t + 1
-        TR <- TR[-row_to_remove, ]
-        
-        rm(row_to_remove)
-        
-        # Removing extra column no needed in TS
-        TS <- TS[, -(n_t + 1)]
-        
-        ### add age to TR:
-        TR <- as.data.frame(TR)
-        TR <- TR %>% mutate(age = row_number() + 9)
-        TR$sim <- sim
-        
-        #Remove large objects: 
-        #rm(m_M, m_C, m_E)
-        #rm(m_M, m_C, m_E, TS,tc_disc,tc_undisc,te_disc,te_undisc)
-        
-        # Computing new cancer cases pert cycle using diff() function:
-        CC_Death_by_diff <- c(0, TR %>% 
-                                select(CC_Death) %>% 
-                                as_vector() %>% 
-                                diff())
-        TR$CC_Death_by_diff <- CC_Death_by_diff 
-        TR$CC_Death_by_diff <- ifelse( TR$age==10, 0, TR$CC_Death_by_diff)
-        
-        CC_Death_by_diff <- TR %>% 
-          dplyr::select(sim, age, CC_Death_by_diff) %>% 
-          dplyr::as_tibble()
-        
-        #NEW CODE 26.06.25:
-        cost_log <- cost_log[!duplicated(cost_log[, .(sim, age, ID, cost_type)]), ]
-        
-        #cat("At sim number:", sim,  " reported strategy is ", strategy, "\n")
-        
-        # Store the results from the simulation in a list
-        results <- list(#strategy = strategy,
-          seed = seeds[sim],
-          #seed = seed,
-          #sim_numb = sim, 
-          #m_M = m_M, 
-          #m_C = m_C, 
-          #m_E = m_E, 
-          #tc_disc = tc_disc, 
-          #tc_undisc = tc_undisc,
-          #te_disc = te_disc,
-          #te_undisc = te_undisc,
-          tc_hat_disc = tc_hat_disc,
-          tc_hat_undisc = tc_hat_undisc,
-          te_hat_disc = te_hat_disc, 
-          te_hat_undisc = te_hat_undisc, 
-          #TS = TS,
-          TR = TR, 
-          #Tot_Trans_per_t = Tot_Trans_per_t, 
-          symptomatics = symptomatics,
-          new_CIN1 = new_CIN1,
-          new_CIN2 = new_CIN2,
-          new_CIN3 = new_CIN3,
-          new_Cancer = new_Cancer,
-          new_CC_Death = new_CC_Death,
-          CC_Death_by_diff = CC_Death_by_diff, 
-          screening_cost = cost_log) 
-        
-        results$seed <- seeds[sim]
-        #results$seed <- seed
-        #simulation_results[sim] <- list(results)
-        #simulation_results[sim] <- results
-        cat("At sim number:", sim,  " tc_hat_undisc is ", tc_hat_undisc, "\n")
-        rm(symptomatics)
-        #rm(TS) 
-        
-        ## Write to a log file to track worker outputs
-        #cat(sprintf("Simulation %d, Length: %d\n", sim, length(output)), 
-        #    file = "debug_log.txt", append = TRUE)
-        return(results)
-        #gc() #Force memory cleanup after each sim/batch 
-        
-      } # end of `foreach/dopar` loop
-    
-    #return(simulation_results)
-    cat("Lenght of simulation_results = ", length(simulation_results), "\n")
-    
-    stacked_results <- 
-      summarize_results_by_Strategy_v2(
-        #strategy = screening_strategies[[strat]]$sim.name,
-        strategy = strat,
-        results_list = simulation_results, 
-        numb_of_sims = numb_of_sims)
-    
-    #joined_batches_per_strategy[[strat]] <-  stacked_results
-    #return(simulation_results)
-    
+      
+      
+      # Before sending back, some cleaning regarding cycle `n_t+1` which is 
+      # computed but no needed as a result:
+      m_M <- m_M[ , 1:n_t]
+      m_C <- m_C[ , 1:n_t]
+      m_E <- m_E[ , 1:n_t]
+      new_CIN1 <- new_CIN1 %>% dplyr::slice(c(1:n_t))
+      new_CIN2 <- new_CIN2 %>% dplyr::slice(c(1:n_t))
+      new_CIN3 <- new_CIN3 %>% dplyr::slice(c(1:n_t))
+      new_Cancer <- new_Cancer %>% dplyr::slice(c(1:n_t))
+      new_CC_Death <- new_CC_Death %>% 
+        dplyr::select(CC_Death_per_t, age, cycle) %>%
+        dplyr::slice(c(1:n_t))
+      
+      # Removing no needed extra row from TR:
+      row_to_remove <- n_t + 1
+      TR <- TR[-row_to_remove, ]
+      
+      rm(row_to_remove)
+      
+      # Removing extra column no needed in TS
+      TS <- TS[, -(n_t + 1)]
+      
+      ### add age to TR:
+      TR <- as.data.frame(TR)
+      TR <- TR %>% mutate(age = row_number() + 9)
+      TR$sim <- sim
+      
+      #Remove large objects: 
+      #rm(m_M, m_C, m_E)
+      #rm(m_M, m_C, m_E, TS,tc_disc,tc_undisc,te_disc,te_undisc)
+      
+      # Computing new cancer cases pert cycle using diff() function:
+      CC_Death_by_diff <- c(0, TR %>% 
+                              select(CC_Death) %>% 
+                              as_vector() %>% 
+                              diff())
+      TR$CC_Death_by_diff <- CC_Death_by_diff 
+      TR$CC_Death_by_diff <- ifelse( TR$age==10, 0, TR$CC_Death_by_diff)
+      
+      CC_Death_by_diff <- TR %>% 
+        dplyr::select(sim, age, CC_Death_by_diff) %>% 
+        dplyr::as_tibble()
+      
+      #NEW CODE 26.06.25:
+      cost_log <- cost_log[!duplicated(cost_log[, .(sim, age, ID, cost_type)]), ]
+      
+      #cat("At sim number:", sim,  " reported strategy is ", strategy, "\n")
+      
+      # Store the results from the simulation in a list
+      results <- list(#strategy = strategy,
+        seed = seeds[sim],
+        #seed = seed,
+        #sim_numb = sim, 
+        #m_M = m_M, 
+        #m_C = m_C, 
+        #m_E = m_E, 
+        #tc_disc = tc_disc, 
+        #tc_undisc = tc_undisc,
+        #te_disc = te_disc,
+        #te_undisc = te_undisc,
+        tc_hat_disc = tc_hat_disc,
+        tc_hat_undisc = tc_hat_undisc,
+        te_hat_disc = te_hat_disc, 
+        te_hat_undisc = te_hat_undisc, 
+        #TS = TS,
+        TR = TR, 
+        #Tot_Trans_per_t = Tot_Trans_per_t, 
+        symptomatics = symptomatics,
+        new_CIN1 = new_CIN1,
+        new_CIN2 = new_CIN2,
+        new_CIN3 = new_CIN3,
+        new_Cancer = new_Cancer,
+        new_CC_Death = new_CC_Death,
+        CC_Death_by_diff = CC_Death_by_diff, 
+        screening_cost = cost_log) 
+      
+      results$seed <- seeds[sim]
+      #results$seed <- seed
+      #simulation_results[sim] <- list(results)
+      #simulation_results[sim] <- results
+      cat("At sim number:", sim,  " tc_hat_undisc is ", tc_hat_undisc, "\n")
+      rm(symptomatics)
+      #rm(TS) 
+      
+      ## Write to a log file to track worker outputs
+      #cat(sprintf("Simulation %d, Length: %d\n", sim, length(output)), 
+      #    file = "debug_log.txt", append = TRUE)
+      return(results)
+      #gc() #Force memory cleanup after each sim/batch 
+      
+    } # end of `foreach/dopar` loop
+  
+  #return(simulation_results)
+  cat("Lenght of simulation_results = ", length(simulation_results), "\n")
+  
+  stacked_results <- 
+    summarize_results_by_Strategy_v2(
+      #strategy = screening_strategies[[strat]]$sim.name,
+      strategy = strat,
+      results_list = simulation_results, 
+      numb_of_sims = numb_of_sims)
+  
+  #joined_batches_per_strategy[[strat]] <-  stacked_results
+  #return(simulation_results)
+  
   return(stacked_results)
   #return(joined_batches_per_strategy)
   
@@ -1475,24 +1484,37 @@ sim_result <- list()
 for (n_strat in 1:length(screening_strategies)) {
   #all_results[[strat]] <- MicroSim(strat = strat,
   strat <- screening_strategies[[n_strat]]$sim.name
-  cat ("The strategy is ", strat, "\n")
+  cat("#######################################################################\n")
+  cat("#######################################################################\n")
+  cat ("The Strategy is ", strat, "\n")
+  cat ("n_strat is ", n_strat, "\n")
+  cat("#######################################################################\n")
+  cat("#######################################################################\n")
   sim_result[[strat]] <- MicroSim(strat = strat, 
-                                   numb_of_sims = numb_of_sims, 
-                                   v_M_1 = v_M_1, n_i = n_i, n_t = n_t, v_n = v_n, 
-                                   d_c = d_c, d_e = d_e, TR_out = TRUE, TS_out = TRUE, 
-                                   Trt = FALSE, 
-                                   Pmatrix = Pmatrix,
-                                   master_seed = 123,
-                                   reproducible = TRUE, 
-                                   use_parallel = FALSE,
-                                   cost_vacc2, cost_vacc4, cost_vacc9,
-                                   #screening_strategies = screening_strategies,
-                                   screening_strategies = screening_strategy_1,
-                                   screening_coverage = screening_coverage,
-                                   vacc_coverage = vacc_coverage,
-                                   ScreenPrice = ScreenPrice,
-                                   costCoeff_md = costCoeff_md,
-                                   citoSpecif = citoSpecif 
+                                  numb_of_sims = numb_of_sims, 
+                                  v_M_1 = v_M_1,
+                                  n_i = n_i, 
+                                  n_t = n_t, 
+                                  v_n = v_n, 
+                                  d_c = d_c, 
+                                  d_e = d_e, 
+                                  TR_out = TRUE, 
+                                  TS_out = TRUE, 
+                                  Trt = FALSE, 
+                                  Pmatrix = Pmatrix,
+                                  master_seed = 123,
+                                  reproducible = TRUE, 
+                                  use_parallel = FALSE,
+                                  cost_vacc2, 
+                                  cost_vacc4, 
+                                  cost_vacc9,
+                                  ##screening_strategies = screening_strategies,
+                                  #screening_strategies = screening_strategy_1,
+                                  screening_coverage = screening_coverage,
+                                  vacc_coverage = vacc_coverage,
+                                  ScreenPrice = ScreenPrice,
+                                  costCoeff_md = costCoeff_md,
+                                  citoSpecif = citoSpecif 
   )
 }
 comp.time = Sys.time() - p
