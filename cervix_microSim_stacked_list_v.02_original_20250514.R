@@ -771,6 +771,10 @@ MicroSim <- function(strat=strat,
                                                 "data.table") ) %dopar%
     { 
       
+      current_sim <- sim  # Create an isolated snapshot
+      cat(">>> STARTING SIM:", sim, "\n")
+      
+      
       seed <- seeds[sim]
       
       cat("\n")
@@ -824,30 +828,14 @@ MicroSim <- function(strat=strat,
       my_age_prob_matrix_4 <- NULL
       my_age_prob_matrix_9 <- NULL
       
-      ## Cyto Screening days:
-      # cyto_screening_days <-
-      #   extract_screening_days(screening_strategies[[strat]]$sim.name) 
-      # 
-      # # Init detected IDs by screening
-      # detected_IDs <- integer(0)  # or character(0) depending on your ID format
-      # 
-      # ## For Cyto screening logic version 3:
-      # CIN1_followup_IDs <- character()   # Under CIN1 follow-up
-      # #CIN1_diagnosed_this_year <- character()  # Temp storage, cleared after each year
-      # 
-      # # === Per-simulation screening state ===
-      # detected_IDs <- character()               # IDs already diagnosed CIN2+
-      # CIN1_followup_IDs <- character()          # IDs under CIN1 follow-up
-      # #CIN2plus_treated_IDs <- character()       # IDs treated once for CIN2+
-      # screened_registry <- data.table(sim = integer(), age = integer(), ID = character())  # Uniqueness log
       
       # --- Initialize screening logic state per simulation ---
-      #cyto_screening_days <- extract_screening_days(screening_strategies[[strat]]$sim.name)
       cyto_screening_days <- extract_screening_days(strat)
       
       detected_IDs <- character()              # CIN2+ detections (screened or from CIN1 follow-up)
       CIN1_followup_IDs <- character()         # Under CIN1 follow-up
       screened_registry <- data.table(sim = integer(), age = integer(), ID = character())  # Per (sim, age) uniqueness
+      cost_log <- data.table()
       
       
       
@@ -879,7 +867,6 @@ MicroSim <- function(strat=strat,
           symptomatics <- bind_rows(symptomatics, new_entries)
         }
         ######################################################################## 
-        
         
         ### TEST 20250509:
         # Inside the loop
@@ -966,7 +953,6 @@ MicroSim <- function(strat=strat,
                                 time_iteration = t,
                                 cost_Vec = cost_Vec,    
                                 Trt) %>% round(., 4)            
-        #browser()
         
         m_E[, t + 1] <- # estimate QALYs per individual during cycle t + 1
           Effs( m_M[, t + 1], Trt, 
@@ -977,215 +963,87 @@ MicroSim <- function(strat=strat,
         #                "% done\n", sep = " "))      # progress of  the simulation
         
         
-        
-        
-        ### ------------------- Cytology Screening Block ----------------------
-        ### Version 2-E
-        #
-        #if (age_in_loop %in% cyto_screening_days) {
-        #  cat("✔ Performing cytology screening at age", age_in_loop, "\n")
-        #  
-        #  # 1. Determine eligible individuals: not previously detected & not screened at this sim/age
-        #  not_detected <- !IDs %in% detected_IDs
-        #  already_screened <- screened_registry[sim == !!sim & age == !!age_in_loop, ID]
-        #  eligible_ids <- setdiff(IDs[not_detected], already_screened)
-        #  
-        #  if (length(eligible_ids) > 0) {
-        #    # 2. Sample for screening
-        #    eligible_screened <- runif(length(eligible_ids)) < screening_coverage
-        #    screened_ids <- eligible_ids[eligible_screened]
-        #    
-        #    # 3. Update global screening registry
-        #    screened_registry <- rbind(screened_registry, data.table(
-        #      sim = sim,
-        #      age = age_in_loop,
-        #      ID = screened_ids
-        #    ))
-        #    
-        #    # 4. Apply screening cost
-        #    cost_log <- rbindlist(list(cost_log, data.table(
-        #      sim = sim,
-        #      age = age_in_loop,
-        #      ID = screened_ids,
-        #      #cost_type = screening_strategies[[strat]]$sim.name,
-        #      cost_type = strat,
-        #      cost = ScreenPrice
-        #    )), use.names = TRUE)
-        #    
-        #    # 5. Get health states of screened individuals
-        #    screened_states <- m_M[match(screened_ids, IDs), t]
-        #    state_indices <- match(screened_states, v_n)
-        #    
-        #    # 6. Simulate diagnosis based on state-dependent sensitivity
-        #    diagnose_probs <- screenSensi[state_indices]
-        #    diagnosed <- runif(length(diagnose_probs)) < diagnose_probs
-        #    
-        #    diagnosed_ids <- screened_ids[diagnosed]
-        #    diagnosed_states <- screened_states[diagnosed]
-        #    diagnosed_indices <- state_indices[diagnosed]
-        #    
-        #    # 7. First-time diagnoses only
-        #    new_diagnosed_mask <- !(diagnosed_ids %in% detected_IDs)
-        #    if (any(new_diagnosed_mask)) {
-        #      new_diag_ids <- diagnosed_ids[new_diagnosed_mask]
-        #      new_diag_states <- diagnosed_states[new_diagnosed_mask]
-        #      new_diag_indices <- diagnosed_indices[new_diagnosed_mask]
-        #      
-        #      followup_costs <- costCoeff_md[new_diag_indices]
-        #      
-        #      cost_log <- rbindlist(list(cost_log, data.table(
-        #        sim = sim,
-        #        age = age_in_loop,
-        #        ID = new_diag_ids,
-        #        cost_type = paste0("diagnosed_by_cyto_", new_diag_states),
-        #        cost = followup_costs
-        #      )), use.names = TRUE)
-        #      
-        #      # 8. Update detected and follow-up registries
-        #      is_CIN2plus <- new_diag_states %in% c("CIN2", "CIN3", "FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
-        #      detected_IDs <- unique(c(detected_IDs, new_diag_ids[is_CIN2plus]))
-        #      
-        #      is_CIN1 <- new_diag_states == "CIN1"
-        #      CIN1_followup_IDs <- unique(c(CIN1_followup_IDs, new_diag_ids[is_CIN1]))
-        #    }
-        #  }
-        #  
-        #} else {
-        #  # cat("✘ No screening at age", age_in_loop, "\n")
-        #}
-        #
-        #### ------------------ CIN1 Follow-up Handling Block ----------------------
-        #
-        #if (length(CIN1_followup_IDs) > 0) {
-        #  current_states <- m_M[match(CIN1_followup_IDs, IDs), t]
-        #  
-        #  # 1. Still in CIN1 → follow-up cost
-        #  still_CIN1 <- current_states == "CIN1"
-        #  if (any(still_CIN1)) {
-        #    cost_log <- rbindlist(list(cost_log, data.table(
-        #      sim = sim,
-        #      age = age_in_loop,
-        #      ID = CIN1_followup_IDs[still_CIN1],
-        #      cost_type = "CIN1_followup",
-        #      cost = costCoeff_md[match("CIN1", v_n)]
-        #    )), use.names = TRUE)
-        #  }
-        #  
-        #  # 2. Regressed → remove from follow-up
-        #  regressed <- current_states %in% c("H", "HR.HPV.infection")
-        #  if (any(regressed)) {
-        #    CIN1_followup_IDs <- setdiff(CIN1_followup_IDs,
-        #                                 CIN1_followup_IDs[regressed])
-        #  }
-        #  
-        #  # 3. Progressed to CIN2+ → single-time treatment cost
-        #  progressed <- current_states %in% c("CIN2", "CIN3", "FIGO.I", 
-        #                                      "FIGO.II", "FIGO.III", "FIGO.IV")
-        #  if (any(progressed)) {
-        #    progressed_IDs <- CIN1_followup_IDs[progressed]
-        #    progressed_states <- current_states[progressed]
-        #    progressed_indices <- match(progressed_states, v_n)
-        #    
-        #    cost_log <- rbindlist(list(cost_log, data.table(
-        #      sim = sim,
-        #      age = age_in_loop,
-        #      ID = progressed_IDs,
-        #      cost_type = paste0("progressed_from_CIN1_", progressed_states),
-        #      cost = costCoeff_md[progressed_indices]
-        #    )), use.names = TRUE)
-        #    
-        #    detected_IDs <- unique(c(detected_IDs, progressed_IDs))
-        #    CIN1_followup_IDs <- setdiff(CIN1_followup_IDs, progressed_IDs)
-        #  }
-        #}
-        ### --------------- Cytology Screening Block End ----------------------
-        
-        
-        ## ------------------- Cytology Screening Block (Safe Version) ----------------------
+        ## ------------------- Cytology Screening Block ----------------------
+        ## Version 2-E (FIXED)
         
         if (age_in_loop %in% cyto_screening_days) {
-          cat("✔ Performing cytology screening at age", age_in_loop, "\n")
+          cat("✔ Performing cytology screening at age", age_in_loop, "for sim", current_sim, "\n")
           
-          # 1. Determine eligible individuals: not previously detected
+          # 1. Determine eligible individuals: not previously detected & not screened at this sim/age
           not_detected <- !IDs %in% detected_IDs
           
-          # 2. Exclude already screened individuals (in this sim and age)
-          already_screened <- screened_registry[sim == !!sim & age == !!age_in_loop, ID]
+          already_screened <- screened_registry[
+            sim == current_sim & age == age_in_loop, 
+            ID
+          ]
+          
           eligible_ids <- setdiff(IDs[not_detected], already_screened)
           
           if (length(eligible_ids) > 0) {
-            # 3. Sample for screening
+            # 2. Sample for screening
             eligible_screened <- runif(length(eligible_ids)) < screening_coverage
             screened_ids <- eligible_ids[eligible_screened]
             
-            # 4. Remove any duplicates just in case (defensive programming)
-            newly_screened_ids <- setdiff(screened_ids, already_screened)
+            # 3. Update global screening registry
+            screened_registry <- rbind(screened_registry, data.table(
+              sim = current_sim,
+              age = age_in_loop,
+              ID = screened_ids
+            ))
             
-            if (length(newly_screened_ids) > 0) {
-              # 5. Update global screening registry
-              screened_registry <- rbind(screened_registry, data.table(
-                sim = sim,
-                age = age_in_loop,
-                ID = newly_screened_ids
-              ))
+            # 4. Apply screening cost
+            cost_log <- rbindlist(list(cost_log, data.table(
+              sim = current_sim,
+              age = age_in_loop,
+              ID = screened_ids,
+              cost_type = strat,
+              cost = ScreenPrice
+            )), use.names = TRUE)
+            
+            # 5. Get health states of screened individuals
+            screened_states <- m_M[match(screened_ids, IDs), t]
+            state_indices <- match(screened_states, v_n)
+            
+            # 6. Simulate diagnosis based on state-dependent sensitivity
+            diagnose_probs <- screenSensi[state_indices]
+            diagnosed <- runif(length(diagnose_probs)) < diagnose_probs
+            
+            diagnosed_ids <- screened_ids[diagnosed]
+            diagnosed_states <- screened_states[diagnosed]
+            diagnosed_indices <- state_indices[diagnosed]
+            
+            # 7. First-time diagnoses only
+            new_diagnosed_mask <- !(diagnosed_ids %in% detected_IDs)
+            if (any(new_diagnosed_mask)) {
+              new_diag_ids <- diagnosed_ids[new_diagnosed_mask]
+              new_diag_states <- diagnosed_states[new_diagnosed_mask]
+              new_diag_indices <- diagnosed_indices[new_diagnosed_mask]
               
-              # 6. Apply screening cost (only once per sim-age-ID)
+              followup_costs <- costCoeff_md[new_diag_indices]
+              
               cost_log <- rbindlist(list(cost_log, data.table(
-                sim = sim,
+                sim = current_sim,
                 age = age_in_loop,
-                ID = newly_screened_ids,
-                cost_type = strat,
-                cost = ScreenPrice
+                ID = new_diag_ids,
+                cost_type = paste0("diagnosed_by_cyto_", new_diag_states),
+                cost = followup_costs
               )), use.names = TRUE)
               
-              # 7. Get health states of screened individuals
-              screened_states <- m_M[match(newly_screened_ids, IDs), t]
-              state_indices <- match(screened_states, v_n)
+              # 8. Update detected and follow-up registries
+              is_CIN2plus <- new_diag_states %in% c("CIN2", "CIN3", "FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
+              detected_IDs <- unique(c(detected_IDs, new_diag_ids[is_CIN2plus]))
               
-              # 8. Simulate diagnosis based on state-dependent sensitivity
-              diagnose_probs <- screenSensi[state_indices]
-              diagnosed <- runif(length(diagnose_probs)) < diagnose_probs
-              
-              diagnosed_ids <- newly_screened_ids[diagnosed]
-              diagnosed_states <- screened_states[diagnosed]
-              diagnosed_indices <- state_indices[diagnosed]
-              
-              # 9. First-time diagnoses only
-              new_diagnosed_mask <- !(diagnosed_ids %in% detected_IDs)
-              if (any(new_diagnosed_mask)) {
-                new_diag_ids <- diagnosed_ids[new_diagnosed_mask]
-                new_diag_states <- diagnosed_states[new_diagnosed_mask]
-                new_diag_indices <- diagnosed_indices[new_diagnosed_mask]
-                
-                followup_costs <- costCoeff_md[new_diag_indices]
-                
-                # 10. Log diagnosis and follow-up cost
-                cost_log <- rbindlist(list(cost_log, data.table(
-                  sim = sim,
-                  age = age_in_loop,
-                  ID = new_diag_ids,
-                  cost_type = paste0("diagnosed_by_cyto_", new_diag_states),
-                  cost = followup_costs
-                )), use.names = TRUE)
-                
-                # 11. Update detected and follow-up registries
-                is_CIN2plus <- new_diag_states %in% c("CIN2", "CIN3", "FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
-                detected_IDs <- unique(c(detected_IDs, new_diag_ids[is_CIN2plus]))
-                
-                is_CIN1 <- new_diag_states == "CIN1"
-                CIN1_followup_IDs <- unique(c(CIN1_followup_IDs, new_diag_ids[is_CIN1]))
-              }
+              is_CIN1 <- new_diag_states == "CIN1"
+              CIN1_followup_IDs <- unique(c(CIN1_followup_IDs, new_diag_ids[is_CIN1]))
             }
           }
+          
         } else {
-          # No screening at this age
           # cat("✘ No screening at age", age_in_loop, "\n")
         }
-        ## ---------------- Cytology Screening Block End --------------------
         
         
-        
-        
+        #cat("SIM:", sim, "AGE:", age_in_loop, "N in registry:", nrow(screened_registry), "\n")
         
         
       }
@@ -1535,6 +1393,7 @@ screening_strategies <- Parameters_strategy(Coverage = screening_coverage,
                                             cobertura_vacuna = vacc_coverage)
 #Test:
 screening_strategy_1 <- screening_strategies[1]
+screening_strategies <- screening_strategy_1
 # Init Storage for Costs Output
 cost_log <- 
   data.table(sim = integer(), 
