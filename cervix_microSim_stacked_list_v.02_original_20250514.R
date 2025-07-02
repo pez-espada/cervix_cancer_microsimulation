@@ -957,12 +957,13 @@ MicroSim <- function(strat=strat,
         m_E[, t + 1] <- # estimate QALYs per individual during cycle t + 1
           Effs( m_M[, t + 1], Trt, 
                 utilityCoefs = utilityCoefs)                   
-        ######################################################################    
-        ######################################################################    
+        ########################################################################    
+        ########################################################################    
         #cat('\r', paste(round(t/n_t * 100),          # display the 
         #                "% done\n", sep = " "))      # progress of  the simulation
         
         
+        ########################################################################    
         ## ------------------- Cytology Screening Block ----------------------
         ## Version 2-E (FIXED)
         
@@ -1035,8 +1036,45 @@ MicroSim <- function(strat=strat,
               
               is_CIN1 <- new_diag_states == "CIN1"
               CIN1_followup_IDs <- unique(c(CIN1_followup_IDs, new_diag_ids[is_CIN1]))
+              
+              # 9. Recovered individuals:
+              # recovered women <- sample(detected individuals, prob = screenProbs[j]):
+              # From the revovered set of individuals: 
+              # - the ones recovered from CINX -> Healthy, H.
+              # - the ones recovered from FIGOX -> Survival
+              # 
+              # Recovery logic
+              recovery_probs <- screenProbs[diagnosed_indices]  # Probability of recovery per diagnosed state
+              recovery_mask <- runif(length(diagnosed_ids)) < recovery_probs
+              
+              if (any(recovery_mask)) {
+                recovered_ids <- diagnosed_ids[recovery_mask]
+                recovered_states <- diagnosed_states[recovery_mask]
+                recovered_rows <- match(recovered_ids, IDs)
+                
+                to_survival <- recovered_states %in% c("FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
+                to_H        <- recovered_states %in% c("CIN1", "CIN2", "CIN3")
+                
+                # Apply updates to health state matrix
+                m_M[recovered_rows[to_survival], t] <- "Survival"
+                m_M[recovered_rows[to_H], t] <- "H"
+                
+                # --- New: Log recoveries in cost_log with zero cost ---
+                recovery_cost <- 0  # or assign if relevant
+                
+                cost_log <- rbindlist(list(cost_log, data.table(
+                  sim = current_sim,
+                  age = age_in_loop,
+                  ID = recovered_ids,
+                  cost_type = paste0("recovery_from_", recovered_states),
+                  cost = recovery_cost)),
+                  use.names = TRUE)
+              }
+              
+              
             }
-          }
+            
+          } # end of length(eligible_ids) > 0
           
         } else {
           # cat("✘ No screening at age", age_in_loop, "\n")
@@ -1045,10 +1083,11 @@ MicroSim <- function(strat=strat,
         
         #cat("SIM:", sim, "AGE:", age_in_loop, "N in registry:", nrow(screened_registry), "\n")
         
-        
+         
       }
       #################### close loop for cycles ############################# 
       ########################################################################
+      
       # reset cyto_screen_days
       cyto_screening_days <- NULL
       
@@ -1391,9 +1430,9 @@ citoSpecif <- 0
 
 screening_strategies <- Parameters_strategy(Coverage = screening_coverage, 
                                             cobertura_vacuna = vacc_coverage)
-#Test:
-screening_strategy_1 <- screening_strategies[1]
-screening_strategies <- screening_strategy_1
+##Test:
+#screening_strategy_1 <- screening_strategies[1]
+#screening_strategies <- screening_strategy_1
 # Init Storage for Costs Output
 cost_log <- 
   data.table(sim = integer(), 
@@ -1404,8 +1443,8 @@ cost_log <-
 
 #screening_strategies <- c("STRATEGY A", "STRATEGY B", "STRATEGY C")
 numb_screening_strat <- screening_strategies %>% length()
-# TEST:
-numb_screening_strat <- screening_strategy_1 %>% length()
+## TEST:
+#numb_screening_strat <- screening_strategy_1 %>% length()
 
 sim_result <- list()
 source("./R/sumarize_results_by_Strategy_Func.R")
