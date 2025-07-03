@@ -966,7 +966,6 @@ MicroSim <- function(strat=strat,
         ########################################################################    
         ## ------------------- Cytology Screening Block ----------------------
         ## Version 2-E (FIXED)
-        
         if (age_in_loop %in% cyto_screening_days) {
           cat("✔ Performing cytology screening at age", age_in_loop, "for sim", current_sim, "\n")
           
@@ -1079,9 +1078,70 @@ MicroSim <- function(strat=strat,
         } else {
           # cat("✘ No screening at age", age_in_loop, "\n")
         }
+        ############# Cytology Screening Block End #############################
         
         
-        #cat("SIM:", sim, "AGE:", age_in_loop, "N in registry:", nrow(screened_registry), "\n")
+        # ---- UPDATE m_C MATRIX WITH CURRENT COST_LOG ENTRIES ----
+        #########################################################################
+        ### Update m_C with costs from cost_log
+        #if (nrow(cost_log) > 0) { # costs exists
+        #  # Convert ID and age to matrix indices
+        #  cost_log[, row_i := as.integer(ID)]         # row index from ID
+        #  cost_log[, col_t := age - 9]                # column index (time step t)
+        #  
+        #  # Safety: filter valid matrix indices (optional)
+        #  cost_log <- cost_log[row_i >= 1 & row_i <= nrow(m_C) &
+        #                         col_t >= 1 & col_t <= ncol(m_C)]
+        #  
+        #  # Accumulate cost into m_C
+        #  for (i in seq_len(nrow(cost_log))) {
+        #    m_C[cost_log$row_i[i], cost_log$col_t[i]] <- 
+        #      m_C[cost_log$row_i[i], cost_log$col_t[i]] + cost_log$cost[i]
+        #  }
+        #}
+        #########################################################################
+        # Assuming current_sim is the simulation number you're running
+        # and cost_log contains all costs for that simulation
+        
+        #########################################################################
+        #if (nrow(cost_log) > 0) {
+        #  # Add columns for matrix indices:
+        #  cost_log[, row_i := as.integer(ID)]        # individual row index in m_C
+        #  cost_log[, col_t := age - 9]               # column index in m_C (time step)
+        #  
+        #  # Optional: filter only valid indices within m_C bounds
+        #  cost_log <- cost_log[row_i >= 1 & row_i <= nrow(m_C) &
+        #                         col_t >= 1 & col_t <= ncol(m_C)]
+        #  
+        #  # Aggregate costs by (row_i, col_t) to avoid duplicate adds
+        #  agg_costs <- cost_log[, .(total_cost = sum(cost)), by = .(row_i, col_t)]
+        #  
+        #  # Add the costs into the m_C matrix
+        #  for (i in seq_len(nrow(agg_costs))) {
+        #    m_C[agg_costs$row_i[i], agg_costs$col_t[i]] <- 
+        #      m_C[agg_costs$row_i[i], agg_costs$col_t[i]] + agg_costs$total_cost[i]
+        #  }
+        #}
+        ########################################################################
+        
+        if (nrow(cost_log) > 0) {
+          temp_cost_log <- copy(cost_log)
+          temp_cost_log[, row_i := as.integer(ID)]
+          temp_cost_log[, col_t := age - 9]
+          
+          # Filter invalid indices
+          temp_cost_log <- temp_cost_log[row_i >= 1 & row_i <= nrow(m_C) &
+                                           col_t >= 1 & col_t <= ncol(m_C)]
+          
+          agg_costs <- temp_cost_log[, .(total_cost = sum(cost)), by = .(row_i, col_t)]
+          
+          for (i in seq_len(nrow(agg_costs))) {
+            m_C[agg_costs$row_i[i], agg_costs$col_t[i]] <- 
+              m_C[agg_costs$row_i[i], agg_costs$col_t[i]] + agg_costs$total_cost[i]
+          }
+        }
+        
+        
         
          
       }
@@ -1237,8 +1297,8 @@ MicroSim <- function(strat=strat,
         seed = seeds[sim],
         #seed = seed,
         #sim_numb = sim, 
-        #m_M = m_M, 
-        #m_C = m_C, 
+        m_M = m_M, 
+        m_C = m_C, 
         #m_E = m_E, 
         #tc_disc = tc_disc, 
         #tc_undisc = tc_undisc,
@@ -1400,7 +1460,7 @@ vacc_lbl <-
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 #numb_of_sims = 3
-numb_of_sims = 4
+numb_of_sims = 1
 #numb_of_sims = 20
 
 # Initialize individual IDs
@@ -1430,9 +1490,9 @@ citoSpecif <- 0
 
 screening_strategies <- Parameters_strategy(Coverage = screening_coverage, 
                                             cobertura_vacuna = vacc_coverage)
-##Test:
-#screening_strategy_1 <- screening_strategies[1]
-#screening_strategies <- screening_strategy_1
+#Test:
+screening_strategy_2 <- screening_strategies[2]
+screening_strategies <- screening_strategy_2
 # Init Storage for Costs Output
 cost_log <- 
   data.table(sim = integer(), 
