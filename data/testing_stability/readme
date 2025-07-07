@@ -1,0 +1,5 @@
+
+Here I'll test statbility of a single script on the cluster running the same several times, both from a script using 'sbatch' and from a RStudio session.
+
+The sufix "RND_seed" means simulation performed with randomized seed, other wise it is carried with a fixed seed as describve in the script.
+
