@@ -471,13 +471,16 @@ return(u_it)
 
 ensure_library("dplyr", "tidyverse", "purrr", "data.table")
 # Function to process each column version 3:
-figoSymProb <- c(0.11, 0.23, 0.66, 0.9) 
-screenProbs <- c(0, 0, 1, 1, 1, 0.9688, 0.9066, 0.7064, 0.3986, 0, 0, 0)
-symptom_prob_vec <- figoSymProb
-survival_prob_vec <- screenProbs[6:9]
-states_to_check <- c("FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
-
-stored_list <- vector("list", n_t)
+#figoSymProb <- c(0.11, 0.23, 0.66, 0.9) 
+##screenProbs <- c(0, 0, 1, 1, 1, 0.9688, 0.9066, 0.7064, 0.3986, 0, 0, 0)
+### FOR TESTING 
+#screenProbs <- c(0, 0, .5, .5, .5, 0.9688, 0.9066, 0.7064, 0.3986, 0, 0, 0)
+#screenProbs <- c(0, 0, 0, 0, 0, 0.9688, 0.9066, 0.7064, 0.3986, 0, 0, 0)
+#symptom_prob_vec <- figoSymProb
+#survival_prob_vec <- screenProbs[6:9]
+#states_to_check <- c("FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
+#
+#stored_list <- vector("list", n_t)
 
 # Initialize a global vector to store all diagnosed individuals
 #global_diagnosed <- integer()
@@ -962,7 +965,8 @@ MicroSim <- function(strat=strat,
         #cat('\r', paste(round(t/n_t * 100),          # display the 
         #                "% done\n", sep = " "))      # progress of  the simulation
         
-        
+       
+         
         ########################################################################    
         ## ------------------- Cytology Screening Block ----------------------
         ## Version 2-E (FIXED)
@@ -1079,74 +1083,106 @@ MicroSim <- function(strat=strat,
           # cat("✘ No screening at age", age_in_loop, "\n")
         }
         ############# Cytology Screening Block End #############################
-        
-        
-        # ---- UPDATE m_C MATRIX WITH CURRENT COST_LOG ENTRIES ----
-        #########################################################################
-        ### Update m_C with costs from cost_log
-        #if (nrow(cost_log) > 0) { # costs exists
-        #  # Convert ID and age to matrix indices
-        #  cost_log[, row_i := as.integer(ID)]         # row index from ID
-        #  cost_log[, col_t := age - 9]                # column index (time step t)
-        #  
-        #  # Safety: filter valid matrix indices (optional)
-        #  cost_log <- cost_log[row_i >= 1 & row_i <= nrow(m_C) &
-        #                         col_t >= 1 & col_t <= ncol(m_C)]
-        #  
-        #  # Accumulate cost into m_C
-        #  for (i in seq_len(nrow(cost_log))) {
-        #    m_C[cost_log$row_i[i], cost_log$col_t[i]] <- 
-        #      m_C[cost_log$row_i[i], cost_log$col_t[i]] + cost_log$cost[i]
-        #  }
-        #}
-        #########################################################################
-        # Assuming current_sim is the simulation number you're running
-        # and cost_log contains all costs for that simulation
-        
-        #########################################################################
-        #if (nrow(cost_log) > 0) {
-        #  # Add columns for matrix indices:
-        #  cost_log[, row_i := as.integer(ID)]        # individual row index in m_C
-        #  cost_log[, col_t := age - 9]               # column index in m_C (time step)
-        #  
-        #  # Optional: filter only valid indices within m_C bounds
-        #  cost_log <- cost_log[row_i >= 1 & row_i <= nrow(m_C) &
-        #                         col_t >= 1 & col_t <= ncol(m_C)]
-        #  
-        #  # Aggregate costs by (row_i, col_t) to avoid duplicate adds
-        #  agg_costs <- cost_log[, .(total_cost = sum(cost)), by = .(row_i, col_t)]
-        #  
-        #  # Add the costs into the m_C matrix
-        #  for (i in seq_len(nrow(agg_costs))) {
-        #    m_C[agg_costs$row_i[i], agg_costs$col_t[i]] <- 
-        #      m_C[agg_costs$row_i[i], agg_costs$col_t[i]] + agg_costs$total_cost[i]
-        #  }
-        #}
-        ########################################################################
-        
-        if (nrow(cost_log) > 0) {
-          temp_cost_log <- copy(cost_log)
-          temp_cost_log[, row_i := as.integer(ID)]
-          temp_cost_log[, col_t := age - 9]
+       
+         
+        ######################################################################## 
+        ## ----------------- CIN1 Follow-Up Block ------------------
+        if (length(CIN1_followup_IDs) > 0) {
           
-          # Filter invalid indices
-          temp_cost_log <- temp_cost_log[row_i >= 1 & row_i <= nrow(m_C) &
-                                           col_t >= 1 & col_t <= ncol(m_C)]
+          # Current states of individuals in follow-up
+          current_states <- m_M[match(CIN1_followup_IDs, IDs), t]
           
-          agg_costs <- temp_cost_log[, .(total_cost = sum(cost)), by = .(row_i, col_t)]
+          # 1. Still in CIN1 → apply follow-up cost
+          still_CIN1 <- current_states == "CIN1"
+          if (any(still_CIN1)) {
+            cost_log <- rbindlist(list(cost_log, data.table(
+              sim = current_sim,
+              age = age_in_loop,
+              ID = CIN1_followup_IDs[still_CIN1],
+              cost_type = "CIN1_followup",
+              cost = costCoeff_md[match("CIN1", v_n)]
+            )), use.names = TRUE)
+          }
           
-          for (i in seq_len(nrow(agg_costs))) {
-            m_C[agg_costs$row_i[i], agg_costs$col_t[i]] <- 
-              m_C[agg_costs$row_i[i], agg_costs$col_t[i]] + agg_costs$total_cost[i]
+          # 2. Regressed → remove from follow-up
+          regressed <- current_states %in% c("H", "HPV.infection")
+          if (any(regressed)) {
+            CIN1_followup_IDs <- setdiff(CIN1_followup_IDs,
+                                         CIN1_followup_IDs[regressed])
+          }
+          
+          # 3. Progressed to CIN2+ → single-time treatment cost and move to detected
+          progressed <- current_states %in% c("CIN2", "CIN3", "FIGO.I", 
+                                              "FIGO.II", "FIGO.III", "FIGO.IV")
+          if (any(progressed)) {
+            progressed_IDs <- CIN1_followup_IDs[progressed]
+            progressed_states <- current_states[progressed]
+            progressed_indices <- match(progressed_states, v_n)
+            
+            cost_log <- rbindlist(list(cost_log, data.table(
+              sim = current_sim,
+              age = age_in_loop,
+              ID = progressed_IDs,
+              cost_type = paste0("progressed_from_CIN1_", progressed_states),
+              cost = costCoeff_md[progressed_indices]
+            )), use.names = TRUE)
+            
+            detected_IDs <- unique(c(detected_IDs, progressed_IDs))
+            CIN1_followup_IDs <- setdiff(CIN1_followup_IDs, progressed_IDs)
           }
         }
+        ## ------------- End of CIN1 Follow-Up Block ------------------
+        ######################################################################## 
         
         
-        
-         
       }
       #################### close loop for cycles ############################# 
       ########################################################################
+      
+      
+      # ---- UPDATE m_C MATRIX WITH CURRENT COST_LOG ENTRIES ----
+      ########################################################################
+      # data.table version (pick only one):
+      if (nrow(cost_log) > 0) {
+        temp_cost_log <- copy(cost_log)
+        temp_cost_log[, row_i := as.integer(ID)]
+        temp_cost_log[, col_t := age - 9]
+        
+        # Filter invalid indices
+        temp_cost_log <- temp_cost_log[row_i >= 1 & row_i <= nrow(m_C) &
+                                         col_t >= 1 & col_t <= ncol(m_C)]
+        
+        agg_costs <- temp_cost_log[, .(total_cost = sum(cost)), by = .(row_i, col_t)]
+        
+        for (i in seq_len(nrow(agg_costs))) {
+          m_C[agg_costs$row_i[i], agg_costs$col_t[i]] <- 
+            m_C[agg_costs$row_i[i], agg_costs$col_t[i]] + agg_costs$total_cost[i]
+        }
+      }
+      ########################################################################
+      #########################################################################
+      ## dplyr version (pick only one):
+      #if (nrow(cost_log) > 0) {
+      # cost_log_df <- as.data.frame(cost_log)
+      # 
+      # row_i <- as.integer(cost_log_df$ID)
+      # col_t <- cost_log_df$age - 9
+      # 
+      # valid_idx <- row_i >= 1 & row_i <= nrow(m_C) &
+      #   col_t >= 1 & col_t <= ncol(m_C)
+      # 
+      # agg_df <- tibble(row = row_i[valid_idx],
+      #                  col = col_t[valid_idx],
+      #                  cost = cost_log_df$cost[valid_idx]) %>%
+      #   group_by(row, col) %>%
+      #   summarise(cost = sum(cost), .groups = "drop")
+      # 
+      # for (i in seq_len(nrow(agg_df))) {
+      #   m_C[agg_df$row[i], agg_df$col[i]] <-
+      #     m_C[agg_df$row[i], agg_df$col[i]] + agg_df$cost[i]
+      # }
+      #}
+      #########################################################################
       
       # reset cyto_screen_days
       cyto_screening_days <- NULL
@@ -1459,8 +1495,8 @@ vacc_lbl <-
 ##  START SIMULATION
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
-#numb_of_sims = 3
-numb_of_sims = 1
+numb_of_sims = 3
+#numb_of_sims = 1
 #numb_of_sims = 20
 
 # Initialize individual IDs
@@ -1490,9 +1526,25 @@ citoSpecif <- 0
 
 screening_strategies <- Parameters_strategy(Coverage = screening_coverage, 
                                             cobertura_vacuna = vacc_coverage)
-#Test:
-screening_strategy_2 <- screening_strategies[2]
-screening_strategies <- screening_strategy_2
+##Test:
+#screening_strategy_2 <- screening_strategies[2]
+#screening_strategies <- screening_strategy_2
+
+figoSymProb <- c(0.11, 0.23, 0.66, 0.9) 
+
+# prob of recovery during cytology screening:
+#screenProbs <- c(0, 0, 1, 1, 1, 0.9688, 0.9066, 0.7064, 0.3986, 0, 0, 0)
+### FOR TESTING 
+screenProbs <- c(0, 0, .5, .5, .5, 0.9688, 0.9066, 0.7064, 0.3986, 0, 0, 0)
+#screenProbs <- c(0, 0, 0, 0, 0, 0.9688, 0.9066, 0.7064, 0.3986, 0, 0, 0)
+symptom_prob_vec <- figoSymProb
+survival_prob_vec <- screenProbs[6:9]
+states_to_check <- c("FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
+
+stored_list <- vector("list", n_t)
+
+
+
 # Init Storage for Costs Output
 cost_log <- 
   data.table(sim = integer(), 
@@ -1501,10 +1553,7 @@ cost_log <-
              cost_type = character(),
              cost = numeric())
 
-#screening_strategies <- c("STRATEGY A", "STRATEGY B", "STRATEGY C")
 numb_screening_strat <- screening_strategies %>% length()
-## TEST:
-#numb_screening_strat <- screening_strategy_1 %>% length()
 
 sim_result <- list()
 source("./R/sumarize_results_by_Strategy_Func.R")
