@@ -1,4 +1,4 @@
-## ADDING MARKOV RESULTS FOR COMPARATION AND VALIDATION OF MICROSIM:
+## ADDING MARKOV RESULTS TO COMPARE AND VALIDATE MICROSIM:
 # Load corresponding Markov results for validation:
 load(file = "data/markov_results/results_only_cyto_Strategies_only_cyto_L_20250526.rda")
 markov_cyto_result_df <- df; rm(df)
@@ -49,17 +49,20 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
   sim_result[[strategy_name]]$markov_CN1_incidences <- 
     markov_cyto_result_df %>%
     dplyr::filter(sim.name == strategy_name) %>%
-    dplyr::select(matches("^n CIN1 "))
+    #dplyr::select(matches("^n CIN1 "))
+    dplyr::select(matches("^CIN1_Incidence "))
   
   sim_result[[strategy_name]]$markov_CN2_incidences <- 
     markov_cyto_result_df %>%
     dplyr::filter(sim.name == strategy_name) %>%
-    dplyr::select(matches("^n CIN2 "))
+    #dplyr::select(matches("^n CIN2 "))
+    dplyr::select(matches("^CIN2_Incidence "))
   
   sim_result[[strategy_name]]$markov_CN3_incidences <- 
     markov_cyto_result_df %>%
     dplyr::filter(sim.name == strategy_name) %>%
-    dplyr::select(matches("^n CIN3 "))
+    #dplyr::select(matches("^n CIN3 "))
+    dplyr::select(matches("^CIN3_Incidence "))
  
   sim_result[[strategy_name]]$markov_CC_incidences <- 
     markov_cyto_result_df %>%
