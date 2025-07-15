@@ -135,7 +135,7 @@ my_Probs9 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs9)
 my_Probs9 <- my_Probs9 %>% as.data.frame() #convert back to data.frame (no needed?)
 ################################################################################
 ## ----Model Parameters
-n_i <- 10^4               # number of simulated individuals
+n_i <- 10^6               # number of simulated individuals
 #n_t <- 3                  # time horizon, 3 cycles (it starts from 1)
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 ################################################################################
@@ -1065,7 +1065,9 @@ MicroSim <- function(strat=strat,
               age = age_in_loop + 1,
               ID = progressed_IDs,
               cost_type = paste0("progressed_from_CIN1_", progressed_states),
-              cost = costCoeff_md[progressed_indices]
+              # NOTE: this is a test to compare with the Markov results
+              #cost = costCoeff_md[progressed_indices]
+              cost = 0
             )), use.names = TRUE)
             
             detected_IDs <- unique(c(detected_IDs, progressed_IDs))
@@ -1095,7 +1097,7 @@ MicroSim <- function(strat=strat,
         
         
         
-        ## Comparison table
+        ## Comparison table (KEEP THIS COMMENTED WHEN RUNNING)
         #cost_comparison <- map_dfr(names(sim_result), function(strat) {
         #  micro_costs <- sim_result[[strat]]$tc_hat_undisc$tc_hat_undisc
         #  markov_cost <- sim_result[[strat]]$markov_cost_undi
@@ -1513,10 +1515,10 @@ screening_strategies <- screening_strategy_2
 figoSymProb <- c(0.11, 0.23, 0.66, 0.9) 
 
 # prob of recovery during cytology screening:
-#screenProbs <- c(0, 0, 1, 1, 1, 0.9688, 0.9066, 0.7064, 0.3986, 0, 0, 0)
+screenProbs <- c(0, 0, 1, 1, 1, 0.9688, 0.9066, 0.7064, 0.3986, 0, 0, 0)
 ### FOR TESTING 
 #screenProbs <- c(0, 0, .5, .5, .5, 0.9688, 0.9066, 0.7064, 0.3986, 0, 0, 0)
-screenProbs <- c(0, 0, 0, 0, 0, 0.9688, 0.9066, 0.7064, 0.3986, 0, 0, 0)
+#screenProbs <- c(0, 0, 0, 0, 0, 0.9688, 0.9066, 0.7064, 0.3986, 0, 0, 0)
 symptom_prob_vec <- figoSymProb
 survival_prob_vec <- screenProbs[6:9]
 states_to_check <- c("FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
@@ -1795,20 +1797,23 @@ if (is.na(slurm_job_id) || slurm_job_id == "") {
 # Extract first vaccine coverage value for filename
 vacc_tag <- sprintf("%.1f", vacc_coverage[1])  # Format as 0.8, 0.0, etc.
 
-## Define directory and static filename components
+# Define directory and static filename components
 #output_dir <- "data/TESTING_20250429"
-##base_filename <- "stacked_sims_20x10E6x75_vacc2_0.8_NEW_TRANSITIONS_PARA_20250506_sim_"
+output_dir <- "data/cyto_screening/"
+#base_filename <- "stacked_sims_20x10E6x75_vacc2_0.8_NEW_TRANSITIONS_PARA_20250506_sim_"
 #base_filename <- paste0("stacked_sims_20x10E6x75_vacc2_", vacc_tag,
 #                        "_update_WITH_select_floorswitch_NEW_TRANSITIONS_PARA_20250522_A_sim_")
-#
-### Construct full path
-##output_file <- file.path(output_dir, paste0(base_filename, unique_tag, ".rds"))
-#
-#output_file <- file.path(output_dir, paste0(base_filename, slurm_job_id, ".rds"))
-#
-#
-#cat("Saving simulation result to:", output_file, "\n")
-#saveRDS(object = sim_result, file = output_file)
+base_filename <- paste0("cyto_screening_sims_20x10E6x75_coverage_", screening_coverage,
+                        "_recovery_CIN123_", screenProbs[3])
+
+## Construct full path
+#output_file <- file.path(output_dir, paste0(base_filename, unique_tag, ".rds"))
+
+output_file <- file.path(output_dir, paste0(base_filename, slurm_job_id, ".rds"))
+
+
+cat("Saving simulation result to:", output_file, "\n")
+saveRDS(object = sim_result, file = output_file)
 
 
 ################################################################################
