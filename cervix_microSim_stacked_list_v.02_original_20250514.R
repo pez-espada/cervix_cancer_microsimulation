@@ -244,7 +244,8 @@ Probs <- function(M_it, my_Probs) {
   n_s <- length(v_n)
   n_i <- dim(M_it)[1]
   m_P_it <- matrix(NA, n_s, n_i) 
-  ID <-M_it$ID 
+  ID <- M_it$ID 
+  #ID <- as.integer(ID) # fix for parallelization
   M_it<-M_it$health_state 
   rownames(m_P_it) <- v_n
   
@@ -523,6 +524,7 @@ diagnose_column <- function(col, time_step) {
 update_column <- function(col, new_entries, next_col) {
   if (nrow(new_entries) > 0) {
     diagnosed_ids <- new_entries$ID
+    #new_entries$ID <- as.integer(new_entries$ID) # fix for parallelization
     recovered_ids <- new_entries$ID[new_entries$RecoveredFromState]
     
     # Update the states in the next column for recovered individuals
@@ -700,7 +702,9 @@ MicroSim <- function(strat=strat,
                         "my_age_prob_matrix_func","diagnose_column", 
                         "update_column", "states_to_check", 
                         "symptom_prob_vec", "survival_prob_vec", #"global_diagnosed", 
-                        "cost_Vec", "new_cases_2"))
+                        "cost_Vec", "new_cases_2",
+                        "extract_screening_days", "IDs", "screenSensi",
+                        "screenProbs"))
     
     registerDoParallel(cl)
   } else {
@@ -1030,9 +1034,9 @@ MicroSim <- function(strat=strat,
                 to_survival <- recovered_states %in% c("FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
                 to_H        <- recovered_states %in% c("CIN1", "CIN2", "CIN3")
                 
-                m_M[recovered_rows[to_survival], t]     <- "Survival"
+                #m_M[recovered_rows[to_survival], t]     <- "Survival"
                 m_M[recovered_rows[to_survival], t + 1] <- "Survival"
-                m_M[recovered_rows[to_H],        t]     <- "H"
+                #m_M[recovered_rows[to_H],        t]     <- "H"
                 m_M[recovered_rows[to_H],        t + 1] <- "H"
                 
                 cost_log <- rbindlist(list(cost_log, data.table(
@@ -1477,8 +1481,8 @@ vacc_lbl <-
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 #numb_of_sims = 3
-#numb_of_sims = 4
-numb_of_sims = 1
+numb_of_sims =  4
+#numb_of_sims = 1
 #numb_of_sims = 20
 
 # Initialize individual IDs
@@ -1508,9 +1512,9 @@ citoSpecif <- 0
 
 screening_strategies <- Parameters_strategy(Coverage = screening_coverage, 
                                             cobertura_vacuna = vacc_coverage)
-#Test:
-screening_strategy_2 <- screening_strategies[2]
-screening_strategies <- screening_strategy_2
+  ##Test:
+#screening_strategy_2 <- screening_strategies[2]
+#screening_strategies <- screening_strategy_2
 
 figoSymProb <- c(0.11, 0.23, 0.66, 0.9) 
 
@@ -1563,7 +1567,8 @@ for (n_strat in 1:length(screening_strategies)) {
                              Pmatrix = Pmatrix,
                              master_seed = 123,
                              reproducible = TRUE, 
-                             use_parallel = FALSE,
+                             #use_parallel = FALSE,
+                             use_parallel = TRUE,
                              cost_vacc2, 
                              cost_vacc4, 
                              cost_vacc9,
@@ -1794,26 +1799,26 @@ if (is.na(slurm_job_id) || slurm_job_id == "") {
 }
 
 
-# Extract first vaccine coverage value for filename
-vacc_tag <- sprintf("%.1f", vacc_coverage[1])  # Format as 0.8, 0.0, etc.
+## Extract first vaccine coverage value for filename
+#vacc_tag <- sprintf("%.1f", vacc_coverage[1])  # Format as 0.8, 0.0, etc.
 
-# Define directory and static filename components
-#output_dir <- "data/TESTING_20250429"
-output_dir <- "data/cyto_screening/"
-#base_filename <- "stacked_sims_20x10E6x75_vacc2_0.8_NEW_TRANSITIONS_PARA_20250506_sim_"
-#base_filename <- paste0("stacked_sims_20x10E6x75_vacc2_", vacc_tag,
-#                        "_update_WITH_select_floorswitch_NEW_TRANSITIONS_PARA_20250522_A_sim_")
-base_filename <- paste0("cyto_screening_sims_20x10E6x75_coverage_", screening_coverage,
-                        "_recovery_CIN123_", screenProbs[3])
-
-## Construct full path
-#output_file <- file.path(output_dir, paste0(base_filename, unique_tag, ".rds"))
-
-output_file <- file.path(output_dir, paste0(base_filename, slurm_job_id, ".rds"))
-
-
-cat("Saving simulation result to:", output_file, "\n")
-saveRDS(object = sim_result, file = output_file)
+## Define directory and static filename components
+##output_dir <- "data/TESTING_20250429"
+#output_dir <- "data/cyto_screening/"
+##base_filename <- "stacked_sims_20x10E6x75_vacc2_0.8_NEW_TRANSITIONS_PARA_20250506_sim_"
+##base_filename <- paste0("stacked_sims_20x10E6x75_vacc2_", vacc_tag,
+##                        "_update_WITH_select_floorswitch_NEW_TRANSITIONS_PARA_20250522_A_sim_")
+#base_filename <- paste0("cyto_screening_sims_20x10E6x75_coverage_", screening_coverage,
+#                        "_recovery_CIN123_", screenProbs[3])
+#
+### Construct full path
+##output_file <- file.path(output_dir, paste0(base_filename, unique_tag, ".rds"))
+#
+#output_file <- file.path(output_dir, paste0(base_filename, slurm_job_id, ".rds"))
+#
+#
+#cat("Saving simulation result to:", output_file, "\n")
+#saveRDS(object = sim_result, file = output_file)
 
 
 ################################################################################
