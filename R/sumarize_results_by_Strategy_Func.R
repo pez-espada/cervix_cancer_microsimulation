@@ -56,6 +56,12 @@ summarize_results_by_Strategy <- function(strategy, results_list, numb_of_sims) 
     result[[Strategy_name]][[name_level_of_sim]] <- bind_rows(lapply(seq_along(sim), function(i) {
       df <- as.data.frame(sim[[i]][[name_level_of_sim]])  # Extraemos el data frame de cada lista
       
+      # new fix 20250716
+      # Force ID to be integer *if it exists*
+      if ("ID" %in% names(df)) {
+        df$ID <- as.integer(df$ID)
+      }
+      
       # Remove pre-existing "sim" column if it exists (Carlos' mod):
       
       #if ("sim.1" %in% colnames(df)) {
