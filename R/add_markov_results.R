@@ -1,6 +1,8 @@
 ## ADDING MARKOV RESULTS TO COMPARE AND VALIDATE MICROSIM:
 # Load corresponding Markov results for validation:
-load(file = "data/markov_results/results_only_cyto_Strategies_only_cyto_L_20250526.rda")
+#load(file = "data/markov_results/results_only_cyto_Strategies_only_cyto_L_20250526.rda")
+#load(file = "data/markov_results/markov_results_only_cyto_Strategies_only_cyto_20250715.rda") # markov results for validation 20x10E6x75 recov=1
+load(file = "data/markov_results/markov_results_only_cyto_Strategies_only_cyto_20250715_rec_0.5.rda") # markov results for validation 20x10E6x75 recov=1
 markov_cyto_result_df <- df; rm(df)
 
 #markov_cyto_result_df %>% t() %>% View()
