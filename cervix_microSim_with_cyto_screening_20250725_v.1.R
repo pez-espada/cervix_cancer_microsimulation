@@ -77,19 +77,6 @@ adjust_infection_probs <- function(my_Probs, infection_reduction = 0.7) {
 my_Probs2 <- adjust_infection_probs(my_Probs, infection_reduction = 0.7)
 
 
-## Obtaining 'my_Probs2' from 'my_Probs' programatically (Sandra's code):
-#infection_reduction <- 0.7 # due to vaccination
-#my_Probs <- my_Probs %>% as.data.frame()
-#my_Probs2 <- my_Probs
-#my_Probs2$state <- names(my_Probs2[2:length(my_Probs2)])
-#my_Probs2[my_Probs2$state == "Well", "HR.HPV.infection"  ] <- 
-#  my_Probs2[my_Probs2$state=="Well", "HR.HPV.infection"  ]*(1 - infection_reduction)
-#my_Probs2[my_Probs2$state == "Well", "Well" ] <- 
-#  1-(my_Probs2[my_Probs2$state == "Well", "HR.HPV.infection"] + my_Probs2[my_Probs2$state == "Well", "Other.Death"])
-#my_Probs2$state <- NULL
-##Test 'adjust_infection_probs()' function:
-#my_Probs_adjusted <- adjust_infection_probs(my_Probs, infection_reduction = 0.7)
-#identical(my_Probs_adjusted, my_Probs2) # if TRUE then they're identical
 
 # vaccination 2 associated immunity transition matrix
 my_Probs2_nat_immunity <- readRDS(file = "./data/probs3.rds") 
@@ -190,19 +177,8 @@ cost_vacc9 <- 0
 ################################################################################
 ## ---- FUNCTIONS -----                                                       ##  
 ### For extracting the probabilities of transitions given the transition matrix:
-########### Probably the following function is not needed ######################
-#' Extract transition probability from Transition Matrix
-#'
-#' @param P 
-#' @param state1 
-#' @param state2 
-#'
-#' @return a numeric scalar corresponding to the asked probability of transition
-#' @export
-#'
-#' @examples
-#' trans_prb(P = my_Probs, state1 = "Well", state2 = "HR.HPV.infection") 
-#' trans_prb(P = my_Probs, state1 = "CIN1", state2 = "CIN2") 
+### This is mad for clarity and to avoid confusion with the original Probs() function
+## This function extracts the transition probability from the transition matrix 
 trans_prb <- function(P, state1, state2) {
 transition_prob<-P[state1,state2]
 return(transition_prob)
@@ -957,151 +933,8 @@ MicroSim <- function(strat=strat,
         #cat('\r', paste(round(t/n_t * 100),          # display the 
         #                "% done\n", sep = " "))      # progress of  the simulation
         
-        # # # ########################################################################    
-        # # # ## ------------------- Cytology Screening Block ----------------------
-        # # # ## Version 2-F (Fixed Follow-up Timing)
-        # # # ## Version 2-G (Now they have similar costs, check with commented code
-        # # # at the end of CIN1 follow-up )
-        # # # ## Version 2-I 
-        # # Add newly diagnosed CIN1 cases from previous cycle to follow-up list
-        # if (exists("newly_diagnosed_CIN1_IDs") && length(newly_diagnosed_CIN1_IDs) > 0) {
-        #   CIN1_followup_IDs <- unique(c(CIN1_followup_IDs, newly_diagnosed_CIN1_IDs))
-        #   newly_diagnosed_CIN1_IDs <- NULL  # reset for this cycle
-        # } else {
-        #   newly_diagnosed_CIN1_IDs <- NULL
-        # }
-        # 
-        # # ------------------- Cytology Screening Block ----------------------
-        # if (age_in_loop %in% cyto_screening_days) {
-        #   cat(" Performing cytology screening at age", age_in_loop, "for sim", current_sim, "\n")
-        #   
-        #   not_detected <- !IDs %in% detected_IDs
-        #   already_screened <- screened_registry[sim == current_sim & age == age_in_loop, ID]
-        #   eligible_ids <- setdiff(IDs[not_detected], already_screened)
-        #   
-        #   if (length(eligible_ids) > 0) {
-        #     eligible_screened <- runif(length(eligible_ids)) < screening_coverage
-        #     screened_ids <- eligible_ids[eligible_screened]
-        #     
-        #     screened_registry <- rbind(screened_registry, data.table(
-        #       sim = current_sim,
-        #       age = age_in_loop,
-        #       ID = screened_ids
-        #     ))
-        #     
-        #     cost_log <- rbindlist(list(cost_log, data.table(
-        #       sim = current_sim,
-        #       age = age_in_loop,
-        #       ID = screened_ids,
-        #       cost_type = strat,
-        #       cost = ScreenPrice
-        #     )), use.names = TRUE)
-        #     
-        #     screened_states <- m_M[match(screened_ids, IDs), t]
-        #     state_indices <- match(screened_states, v_n)
-        #     diagnose_probs <- screenSensi[state_indices]
-        #     diagnosed <- runif(length(diagnose_probs)) < diagnose_probs
-        #     
-        #     diagnosed_ids <- screened_ids[diagnosed]
-        #     diagnosed_states <- screened_states[diagnosed]
-        #     diagnosed_indices <- state_indices[diagnosed]
-        #     
-        #     if (length(diagnosed_ids) > 0) {
-        #       # Log diagnosis cost at current cycle
-        #       followup_costs <- costCoeff_md[diagnosed_indices]
-        #       cost_log <- rbindlist(list(cost_log, data.table(
-        #         sim = current_sim,
-        #         age = age_in_loop,
-        #         ID = diagnosed_ids,
-        #         cost_type = paste0("diagnosed_by_cyto_", diagnosed_states),
-        #         cost = followup_costs
-        #       )), use.names = TRUE)
-        #       
-        #       # Track CIN1 diagnosed IDs but DO NOT add to follow-up yet — defer to next cycle
-        #       CIN1_diagnosed <- diagnosed_states == "CIN1"
-        #       newly_diagnosed_CIN1_IDs <- diagnosed_ids[CIN1_diagnosed]
-        #       
-        #       # CIN2+ detected — update detected list immediately
-        #       CIN2plus_mask <- diagnosed_states %in% c("CIN2", "CIN3", "FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
-        #       CIN2plus_new <- diagnosed_ids[CIN2plus_mask & !(diagnosed_ids %in% detected_IDs)]
-        #       detected_IDs <- unique(c(detected_IDs, CIN2plus_new))
-        #       
-        #       # Recovery logic unchanged
-        #       recovery_probs <- screenProbs[diagnosed_indices]
-        #       recovery_mask <- runif(length(diagnosed_ids)) < recovery_probs
-        #       
-        #       if (any(recovery_mask)) {
-        #         recovered_ids <- diagnosed_ids[recovery_mask]
-        #         recovered_states <- diagnosed_states[recovery_mask]
-        #         recovered_rows <- match(recovered_ids, IDs)
-        #         
-        #         to_survival <- recovered_states %in% c("FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
-        #         to_H        <- recovered_states %in% c("CIN1", "CIN2", "CIN3")
-        #         
-        #         #m_M[recovered_rows[to_survival], t]     <- "Survival"
-        #         m_M[recovered_rows[to_survival], t + 1] <- "Survival"
-        #         #m_M[recovered_rows[to_H],        t]     <- "H"
-        #         m_M[recovered_rows[to_H],        t + 1] <- "H"
-        #         
-        #         cost_log <- rbindlist(list(cost_log, data.table(
-        #           sim = current_sim,
-        #           age = age_in_loop,
-        #           ID = recovered_ids,
-        #           cost_type = paste0("recovery_from_", recovered_states),
-        #           cost = 0
-        #         )), use.names = TRUE)
-        #       }
-        #     }
-        #   }
-        # }
-        # 
-        # # ----------------- CIN1 Follow-Up Block ------------------
-        # if (length(CIN1_followup_IDs) > 0) {
-        #   followup_rows <- match(CIN1_followup_IDs, IDs)
-        #   current_states <- m_M[followup_rows, t + 1]  # state *after* transition
-        #   
-        #   # 1. Progressed to CIN2+ (must go first!)
-        #   progressed <- current_states %in% c("CIN2", "CIN3", "FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
-        #   if (any(progressed)) {
-        #     progressed_IDs <- CIN1_followup_IDs[progressed]
-        #     progressed_states <- current_states[progressed]
-        #     progressed_indices <- match(progressed_states, v_n)
-        #     
-        #     cost_log <- rbindlist(list(cost_log, data.table(
-        #       sim = current_sim,
-        #       # Log progression cost at cycle of progression (t + 1)
-        #       age = age_in_loop + 1,
-        #       ID = progressed_IDs,
-        #       cost_type = paste0("progressed_from_CIN1_", progressed_states),
-        #       # NOTE: this is a test to compare with the Markov results
-        #       #cost = costCoeff_md[progressed_indices]
-        #       cost = 0
-        #     )), use.names = TRUE)
-        #     
-        #     detected_IDs <- unique(c(detected_IDs, progressed_IDs))
-        #     CIN1_followup_IDs <- setdiff(CIN1_followup_IDs, progressed_IDs)
-        #   }
-        #   
-        #   # 2. Regressed to healthy or infection
-        #   regressed <- current_states %in% c("H", "HPV.infection")
-        #   if (any(regressed)) {
-        #     CIN1_followup_IDs <- setdiff(CIN1_followup_IDs, CIN1_followup_IDs[regressed])
-        #   }
-        #   
-        #   # 3. Still CIN1 — incur follow-up cost this cycle (t)
-        #   still_CIN1 <- current_states == "CIN1"
-        #   if (any(still_CIN1)) {
-        #     cost_log <- rbindlist(list(cost_log, data.table(
-        #       sim = current_sim,
-        #       age = age_in_loop,
-        #       ID = CIN1_followup_IDs[still_CIN1],
-        #       cost_type = "CIN1_followup",
-        #       cost = costCoeff_md[match("CIN1", v_n)]
-        #     )), use.names = TRUE)
-        #   }
-        # }
-        
-        
+        ########################################################################    
+        ## ------------------- Cytology Screening Block ----------------------
         # --------------------------------------------------------------------
         # ------------------- Cytology Screening Block -----------------------
         # Version: with deferred CIN1 follow-up (from: 20250514_MODDED_20250714_TEMP)
@@ -1261,23 +1094,23 @@ MicroSim <- function(strat=strat,
         
         
         
-        # Comparison table (KEEP THIS COMMENTED WHEN RUNNING)
-        cost_comparison <- map_dfr(names(sim_result), function(strat) {
-          micro_costs <- sim_result[[strat]]$tc_hat_undisc$tc_hat_undisc
-          markov_cost <- sim_result[[strat]]$markov_cost_undi
-          
-          tibble(
-            strategy = strat,
-            mean_microsim_cost = mean(micro_costs),
-            sd_microsim_cost = sd(micro_costs),
-            markov_cost = markov_cost,
-            difference = mean(micro_costs) - markov_cost,
-            percent_diff = 100 * (mean(micro_costs) - markov_cost) / markov_cost
-          )
-        })
-        
-        print(cost_comparison %>% arrange(desc(abs(percent_diff))))
-        # End of comparison table         
+        ## Comparison table (KEEP THIS COMMENTED WHEN RUNNING)
+        #cost_comparison <- map_dfr(names(sim_result), function(strat) {
+        #  micro_costs <- sim_result[[strat]]$tc_hat_undisc$tc_hat_undisc
+        #  markov_cost <- sim_result[[strat]]$markov_cost_undi
+        #  
+        #  tibble(
+        #    strategy = strat,
+        #    mean_microsim_cost = mean(micro_costs),
+        #    sd_microsim_cost = sd(micro_costs),
+        #    markov_cost = markov_cost,
+        #    difference = mean(micro_costs) - markov_cost,
+        #    percent_diff = 100 * (mean(micro_costs) - markov_cost) / markov_cost
+        #  )
+        #})
+        #
+        #print(cost_comparison %>% arrange(desc(abs(percent_diff))))
+        ## End of comparison table         
         
       }
       #################### close loop for cycles ############################# 
@@ -2761,3 +2594,174 @@ df <- df %>% summarise(across(everything(), sum, na.rm = TRUE))
 cat("\n")
 cat("I HAVE REACHED THE END OF THE SCRIPT FINE.\n")
 cat("WITH n_i = ", n_i,  " , numb_of_sims = ", numb_of_sims, "\n")
+
+
+#################################################################################
+#################################################################################
+
+
+
+
+
+#################################################################################
+#################################################################################
+## For comparing microsim's cytology screening results against Markov's:
+#library(dplyr)
+#library(tibble)
+#library(purrr)
+#library(tidyr)
+#library(openxlsx)
+#
+## This function works for a single strategy
+#build_comparison_table <- function(sim_result, strategy, include_errors = TRUE) {
+#  sim <- sim_result[[strategy]]
+#  
+#  # Microsim incidence/prevalence
+#  ms_cin1  <- sim$mean_incidence_CIN1_per_age_interval %>% rename(age_group = 1, microsim = 2)
+#  ms_cin2  <- sim$mean_incidence_CIN2_per_age_interval %>% rename(age_group = 1, microsim = 2)
+#  ms_cin3  <- sim$mean_incidence_CIN3_per_age_interval %>% rename(age_group = 1, microsim = 2)
+#  ms_cancer <- sim$mean_CC_incidence %>% rename(age_group = 1, microsim = 2)
+#  ms_prev  <- sim$mean_HPV_prevalence_per_age_interval %>% rename(age_group = 1, microsim = 2)
+#  
+#  # Markov incidence/prevalence — transform wide to long
+#  mk_cin1  <- pivot_longer(sim$markov_CN1_incidences, everything(), names_to = "age_group", values_to = "markov")
+#  mk_cin2  <- pivot_longer(sim$markov_CN2_incidences, everything(), names_to = "age_group", values_to = "markov")
+#  mk_cin3  <- pivot_longer(sim$markov_CN3_incidences, everything(), names_to = "age_group", values_to = "markov")
+#  mk_cancer <- pivot_longer(sim$markov_CC_incidences, everything(), names_to = "age_group", values_to = "markov")
+#  mk_prev  <- pivot_longer(sim$markov_HPV_prevalences, everything(), names_to = "age_group", values_to = "markov")
+#  
+#  # Clean age group labels
+#  fix_age_label <- function(df, pattern) {
+#    df %>% mutate(age_group = gsub(pattern, "", age_group))
+#  }
+#  
+#  mk_cin1 <- fix_age_label(mk_cin1, "CIN1_Incidence ")
+#  mk_cin2 <- fix_age_label(mk_cin2, "CIN2_Incidence ")
+#  mk_cin3 <- fix_age_label(mk_cin3, "CIN3_Incidence ")
+#  mk_cancer <- fix_age_label(mk_cancer, "CC_Incidence ")
+#  mk_prev <- fix_age_label(mk_prev, "HPVPrevalence ")
+#  
+#  # Join each pair
+#  join_and_label <- function(micro, markov, type) {
+#    full_join(micro, markov, by = "age_group") %>%
+#      mutate(type = type)
+#  }
+#  
+#  tbl <- bind_rows(
+#    join_and_label(ms_cin1, mk_cin1, "CIN1 incidence"),
+#    join_and_label(ms_cin2, mk_cin2, "CIN2 incidence"),
+#    join_and_label(ms_cin3, mk_cin3, "CIN3 incidence"),
+#    join_and_label(ms_cancer, mk_cancer, "Cancer incidence"),
+#    join_and_label(ms_prev, mk_prev, "HPV prevalence")
+#  ) %>%
+#    mutate(strategy = strategy) %>%
+#    relocate(strategy, type, age_group)
+#  
+#  # Add errors
+#  if (include_errors) {
+#    tbl <- tbl %>%
+#      mutate(
+#        abs_diff = microsim - markov,
+#        pct_diff = 100 * abs_diff / ifelse(markov == 0, NA, markov)
+#      )
+#  }
+#  
+#  tbl
+#}
+#
+## Now loop over all strategies and build the full table
+#all_strategies <- setdiff(names(sim_result), "runtime")
+#
+#comparison_table_all <- map_dfr(
+#  all_strategies,
+#  ~build_comparison_table(sim_result, .x, include_errors = TRUE)
+#)
+#
+## Save to Excel
+#wb <- createWorkbook()
+#addWorksheet(wb, "Microsim vs Markov")
+#writeData(wb, "Microsim vs Markov", comparison_table_all)
+#saveWorkbook(wb, "comparison_incidence_prevalence.xlsx", overwrite = TRUE)
+#
+#message("✅ Comparison table saved to 'comparison_incidence_prevalence.xlsx'")
+#
+## Now for comparing costs and QALYs:
+#library(dplyr)
+#library(purrr)
+#library(openxlsx)
+#
+## Build cost + QALY comparison
+#cost_qaly_comparison <- map_dfr(names(sim_result), function(strat) {
+#  micro_costs <- sim_result[[strat]]$tc_hat_undisc$tc_hat_undisc
+#  markov_cost <- sim_result[[strat]]$markov_cost_undi
+#  
+#  micro_qalys <- sim_result[[strat]]$te_hat_undisc$te_hat_undisc
+#  markov_qaly <- sim_result[[strat]]$markov_qaly_undisc
+#  
+#  tibble(
+#    strategy = strat,
+#    mean_microsim_cost = mean(micro_costs),
+#    sd_microsim_cost = sd(micro_costs),
+#    markov_cost = markov_cost,
+#    cost_difference = mean(micro_costs) - markov_cost,
+#    cost_percent_diff = 100 * cost_difference / markov_cost,
+#    
+#    mean_microsim_qaly = mean(micro_qalys),
+#    sd_microsim_qaly = sd(micro_qalys),
+#    markov_qaly = markov_qaly,
+#    qaly_difference = mean(micro_qalys) - markov_qaly,
+#    qaly_percent_diff = 100 * qaly_difference / markov_qaly
+#  )
+#})
+#
+## Save to Excel
+#wb <- createWorkbook()
+#addWorksheet(wb, "Cost_QALY_Comparison")
+#writeData(wb, "Cost_QALY_Comparison", cost_qaly_comparison)
+#saveWorkbook(wb, "comparison_costs_qalys.xlsx", overwrite = TRUE)
+#
+#message("✅ Saved to 'comparison_costs_qalys.xlsx'")
+## End of the script library(dplyr)
+#library(purrr)
+#library(openxlsx)
+#
+## Build cost + QALY comparison
+#cost_qaly_comparison <- map_dfr(names(sim_result), function(strat) {
+#  micro_costs <- sim_result[[strat]]$tc_hat_undisc$tc_hat_undisc
+#  markov_cost <- sim_result[[strat]]$markov_cost_undi
+#  
+#  micro_qalys <- sim_result[[strat]]$te_hat_undisc$te_hat_undisc
+#  markov_qaly <- sim_result[[strat]]$markov_qaly_undisc
+#  
+#  tibble(
+#    strategy = strat,
+#    mean_microsim_cost = mean(micro_costs),
+#    sd_microsim_cost = sd(micro_costs),
+#    markov_cost = markov_cost,
+#    cost_difference = mean(micro_costs) - markov_cost,
+#    cost_percent_diff = 100 * cost_difference / markov_cost,
+#    
+#    mean_microsim_qaly = mean(micro_qalys),
+#    sd_microsim_qaly = sd(micro_qalys),
+#    markov_qaly = markov_qaly,
+#    qaly_difference = mean(micro_qalys) - markov_qaly,
+#    qaly_percent_diff = 100 * qaly_difference / markov_qaly
+#  )
+#})
+#
+## Save to Excel
+#wb <- createWorkbook()
+#addWorksheet(wb, "Cost_QALY_Comparison")
+#writeData(wb, "Cost_QALY_Comparison", cost_qaly_comparison)
+#saveWorkbook(wb, "comparison_costs_qalys.xlsx", overwrite = TRUE)
+#
+#message("✅ Saved to 'comparison_costs_qalys.xlsx'")
+## End of the script
+
+
+
+
+
+
+
+

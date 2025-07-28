@@ -1115,6 +1115,7 @@ MicroSim <- function(strat=strat,
         # --------------------------------------------------------------------
         
         # Defer CIN1 diagnosed IDs from previous cycle
+        # Si en el ciclo anterior se detectaron nuevos CIN1, se incorporan al seguimiento
         if (exists("newly_diagnosed_CIN1_IDs") && length(newly_diagnosed_CIN1_IDs) > 0) {
           CIN1_followup_IDs <- unique(c(CIN1_followup_IDs, newly_diagnosed_CIN1_IDs))
           newly_diagnosed_CIN1_IDs <- NULL
@@ -1122,9 +1123,11 @@ MicroSim <- function(strat=strat,
           newly_diagnosed_CIN1_IDs <- NULL
         }
         
+        # Si la edad actual corresponde a un día de cribado:
         if (age_in_loop %in% cyto_screening_days) {
           cat("🧪 Performing cytology screening at age", age_in_loop, "for sim", current_sim, "\n")
           
+          # Excluimos IDs ya detectados o ya cribados en esta edad y simulación:
           not_detected <- !IDs %in% detected_IDs
           already_screened <- screened_registry[sim == current_sim & age == age_in_loop, ID]
           eligible_ids <- setdiff(IDs[not_detected], already_screened)
@@ -1134,12 +1137,14 @@ MicroSim <- function(strat=strat,
             screened_ids <- eligible_ids[eligible_screened]
             
             # Log screening
+            # Registramos que han sido cribados en esta edad/simulación:
             screened_registry <- rbind(screened_registry, data.table(
               sim = current_sim,
               age = age_in_loop,
               ID = screened_ids
             ))
             
+            # Registramos el coste del cribado:
             cost_log <- rbindlist(list(cost_log, data.table(
               sim = current_sim,
               age = age_in_loop,
@@ -1149,6 +1154,8 @@ MicroSim <- function(strat=strat,
             )), use.names = TRUE)
             
             # Screening results
+            # Obtenemos el estado de salud actual y 
+            # lo diagnosticamos con cierta sensibilidad/probabilidad:
             screened_states <- m_M[match(screened_ids, IDs), t]
             state_indices <- match(screened_states, v_n)
             diagnose_probs <- screenSensi[state_indices]
@@ -1159,7 +1166,8 @@ MicroSim <- function(strat=strat,
             diagnosed_indices <- state_indices[diagnosed]
             
             if (length(diagnosed_ids) > 0) {
-              # Log diagnosis cost
+              # log diagnosis cost at current cycle
+              # Registramos el coste del diagnóstico por citología
               followup_costs <- costCoeff_md[diagnosed_indices]
               cost_log <- rbindlist(list(cost_log, data.table(
                 sim = current_sim,
@@ -1170,10 +1178,14 @@ MicroSim <- function(strat=strat,
               )), use.names = TRUE)
               
               # Defer CIN1 diagnosed to next cycle
+              # Track CIN1 diagnosed IDs but DO NOT add to follow-up yet — defer to next cycle
+              # Guardamos los CIN1 diagnosticados para iniciar seguimiento en el próximo ciclo
+              # (esto se hace para evitar que se inicien seguimientos en el mismo ciclo)
               CIN1_diagnosed <- diagnosed_states == "CIN1"
               newly_diagnosed_CIN1_IDs <- diagnosed_ids[CIN1_diagnosed]
               
               # CIN2+ detected — track immediately
+              # Para individuos con lesiones CIN2+ o cáncer FIGO, registramos detección inmediata
               CIN2plus_mask <- diagnosed_states %in% c("CIN2", "CIN3", "FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
               CIN2plus_new <- diagnosed_ids[CIN2plus_mask & !(diagnosed_ids %in% detected_IDs)]
               detected_IDs <- unique(c(detected_IDs, CIN2plus_new))
@@ -1188,16 +1200,27 @@ MicroSim <- function(strat=strat,
                 recovered_rows <- match(recovered_ids, IDs)
                 
                 # Apply recovery in next state
+                # Los cánceres FIGO recuperan a estado de "Survival"
                 to_survival <- recovered_states %in% c("FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
+                # CIN1,2,3 regresan a estado "H"
                 to_H        <- recovered_states %in% c("CIN1", "CIN2", "CIN3")
                 
+                # Para los individuos que se han recuperado tras diagnóstico y cuya patología era FIGO.X,
+                # asignamos el estado "Survival" en el siguiente ciclo (t + 1)
+                # NOTA: No recuperan inmediatamente; la recuperación se aplica al ciclo siguiente.
                 if (any(to_survival)) {
                   m_M[recovered_rows[to_survival], t + 1] <- "Survival"
                 }
+                
+                # Para los individuos recuperados que tenían CIN1, CIN2 o CIN3, se les asigna el estado "H" (sano)
+                # también en el siguiente ciclo. Esto simula la recuperación natural tras el diagnóstico.
                 if (any(to_H)) {
                   m_M[recovered_rows[to_H], t + 1] <- "H"
                 }
                 
+                # Registramos la recuperación (sin coste) 
+                # en el log para análisis posterior
+                # Note: age is incremented by 1 because recovery occurs after state transition
                 cost_log <- rbindlist(list(cost_log, data.table(
                   sim = current_sim,
                   age = age_in_loop + 1,
@@ -1220,6 +1243,7 @@ MicroSim <- function(strat=strat,
           followup_rows <- match(CIN1_followup_IDs, IDs)
           
           # Step 1: Follow-up for still CIN1 and not already detected
+          # (Seguimiento si siguen siendo CIN1 y no están ya detectados)
           current_states <- m_M[followup_rows, t]
           still_CIN1 <- current_states == "CIN1"
           still_CIN1_IDs <- CIN1_followup_IDs[still_CIN1]
@@ -1235,21 +1259,25 @@ MicroSim <- function(strat=strat,
             )), use.names = TRUE)
           }
           
-          # Step 2: Progression to CIN2+
+          # Step 2: Progression to CIN2+ at t + 1
+          # Check if any CIN1 cases progressed to CIN2+ or cancer
+          # Detectamos progresión a CIN2+ en el estado del próximo ciclo
           next_states <- m_M[followup_rows, t + 1]
           progressed <- next_states %in% c("CIN2", "CIN3", "FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
           
           if (any(progressed)) {
             progressed_IDs <- CIN1_followup_IDs[progressed]
-            progressed_IDs <- setdiff(progressed_IDs, detected_IDs)  # Only new
+            # Only new progressions (not already treated)
+            progressed_IDs <- setdiff(progressed_IDs, detected_IDs) # Evitar duplicados
             
             if (length(progressed_IDs) > 0) {
               progressed_states <- next_states[match(progressed_IDs, CIN1_followup_IDs)]
               progressed_indices <- match(progressed_states, v_n)
               
+              # Coste de tratamiento tras progresión desde CIN1
               cost_log <- rbindlist(list(cost_log, data.table(
                 sim = current_sim,
-                age = age_in_loop + 1,
+                age = age_in_loop + 1, # tratamiento se registra en el ciclo siguiente
                 ID = progressed_IDs,
                 cost_type = paste0("progressed_from_CIN1_", progressed_states),
                 cost = costCoeff_md[progressed_indices]
@@ -1260,7 +1288,8 @@ MicroSim <- function(strat=strat,
             }
           }
           
-          # Step 3: Regressed → Stop follow-up
+          # Step 3: Regressed -> Stop follow-up
+          # Regresión natural — si vuelven a "H" o "HPV.infection", se detiene el seguimiento
           regressed <- next_states %in% c("H", "HPV.infection")
           if (any(regressed)) {
             regressed_IDs <- CIN1_followup_IDs[regressed]
@@ -1303,17 +1332,27 @@ MicroSim <- function(strat=strat,
       # ---- UPDATE m_C MATRIX WITH CURRENT COST_LOG ENTRIES ----
       ########################################################################
       # data.table version (pick only one):
+      # Versión usando data.table para eficiencia.
+      # Este bloque se ejecuta después de terminar el loop (n_t),
+      # y agrega a la matriz m_C los costes acumulados durante el ciclo.
       if (nrow(cost_log) > 0) {
+        # Asignamos los índices de fila y columna para m_C:
+        # - row_i: fila correspondiente al ID del individuo (convertido a entero)
+        # - col_t: columna correspondiente al ciclo temporal (edad - 9)
+        #          asumiendo que la edad mínima es 9 y corresponde a la columna 1
         temp_cost_log <- copy(cost_log)
         temp_cost_log[, row_i := as.integer(ID)]
         temp_cost_log[, col_t := age - 9]
         
         # Filter invalid indices
+        # Filtramos los índices que están fuera de los límites de m_C
         temp_cost_log <- temp_cost_log[row_i >= 1 & row_i <= nrow(m_C) &
                                          col_t >= 1 & col_t <= ncol(m_C)]
         
+        # Aggregate costs by row_i and col_t
         agg_costs <- temp_cost_log[, .(total_cost = sum(cost)), by = .(row_i, col_t)]
         
+        # Update m_C with aggregated costs:
         for (i in seq_len(nrow(agg_costs))) {
           m_C[agg_costs$row_i[i], agg_costs$col_t[i]] <- 
             m_C[agg_costs$row_i[i], agg_costs$col_t[i]] + agg_costs$total_cost[i]
@@ -1656,8 +1695,8 @@ vacc_lbl <-
 ##  START SIMULATION
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
-#numb_of_sims = 3
-numb_of_sims =  4
+numb_of_sims = 3
+#numb_of_sims =  4
 #numb_of_sims = 1
 #numb_of_sims = 20
 
