@@ -13,7 +13,7 @@
 # the old script was called 
 # "cervix_microSim_stacked_list_v.02_original_20250514_FOR_SUBMISSION_B.R"
 ################################################################################
-#rm(list = ls())
+rm(list = ls())
 library(tidyverse)
 #library(future)
 
@@ -1486,7 +1486,7 @@ IDs <- 1:n_i
 # Screening Strategies:
 source(file = "R/params_only_cyto_AMontoliu.R") # load Parameters_strategies()
 screening_coverage = 0.8; vacc_coverage = 0
-ScreenPrice.md = ScreenPrice = 27.86
+ScreenPrice_md = ScreenPrice = 27.86
 # Direct medical costs of monitoring and treatment in each state:
 costCoeff_md <- c(0, 39.54, 288.91, 1552.27, 1552.27, 5759.81,
                    12903.63, 23032.41, 35323.14, 0, 0, 0)
@@ -1522,8 +1522,6 @@ states_to_check <- c("FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
 
 stored_list <- vector("list", n_t)
 
-
-
 # Init Storage for Costs Output
 cost_log <- 
   data.table(sim = integer(), 
@@ -1531,6 +1529,20 @@ cost_log <-
              ID = integer(), 
              cost_type = character(),
              cost = numeric())
+
+##
+# DNA (HPV) screening parameters:
+dnaScCost_md <- 35.86 # Direct medical costs of DNA screening
+papScTriagePrice_md <- 10.7 # Direct medical costs of Pap triage/screening
+cotestCost_md <- 39.54 # Direct medical costs of cotesting (DOUBLE CHECK THIS)
+AutodnaScCost_md <- 25.7 # Direct medical costs of HPV self-sampling (autopresa)
+# DNA screening sensitivity for each state:
+dnaScSensi <- c(0, 0.95, 0, 0.824, 0.98, 1.00, 1.00, 1.00, 1.00, 0, 0, 0) 
+# Proportion of VPH+ ind who are not of the strain 16 or 18:
+propNo1618 <- c(0, 0.79, 0.57, 0.45, 0.45, 0.36, 0.36, 0.36, 0.36, 0, 0, 0)
+# Cost of colposcopic examination for HPV 16/18 individuals:
+costColpo1618 <- 146.45
+##
 
 numb_screening_strat <- screening_strategies %>% length()
 

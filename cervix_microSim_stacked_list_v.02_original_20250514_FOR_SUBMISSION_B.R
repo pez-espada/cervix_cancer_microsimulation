@@ -138,7 +138,7 @@ my_Probs9 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs9)
 my_Probs9 <- my_Probs9 %>% as.data.frame() #convert back to data.frame (no needed?)
 ################################################################################
 ## ----Model Parameters
-n_i <- 10^6               # number of simulated individuals
+n_i <- 10^5               # number of simulated individuals
 #n_t <- 3                  # time horizon, 3 cycles (it starts from 1)
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 ################################################################################
@@ -1260,23 +1260,23 @@ MicroSim <- function(strat=strat,
         
         
         
-        # Comparison table (KEEP THIS COMMENTED WHEN RUNNING)
-        cost_comparison <- map_dfr(names(sim_result), function(strat) {
-          micro_costs <- sim_result[[strat]]$tc_hat_undisc$tc_hat_undisc
-          markov_cost <- sim_result[[strat]]$markov_cost_undi
-          
-          tibble(
-            strategy = strat,
-            mean_microsim_cost = mean(micro_costs),
-            sd_microsim_cost = sd(micro_costs),
-            markov_cost = markov_cost,
-            difference = mean(micro_costs) - markov_cost,
-            percent_diff = 100 * (mean(micro_costs) - markov_cost) / markov_cost
-          )
-        })
-        
-        print(cost_comparison %>% arrange(desc(abs(percent_diff))))
-        # End of comparison table         
+        ## Comparison table (KEEP THIS COMMENTED WHEN RUNNING)
+        #cost_comparison <- map_dfr(names(sim_result), function(strat) {
+        #  micro_costs <- sim_result[[strat]]$tc_hat_undisc$tc_hat_undisc
+        #  markov_cost <- sim_result[[strat]]$markov_cost_undi
+        #  
+        #  tibble(
+        #    strategy = strat,
+        #    mean_microsim_cost = mean(micro_costs),
+        #    sd_microsim_cost = sd(micro_costs),
+        #    markov_cost = markov_cost,
+        #    difference = mean(micro_costs) - markov_cost,
+        #    percent_diff = 100 * (mean(micro_costs) - markov_cost) / markov_cost
+        #  )
+        #})
+        #
+        #print(cost_comparison %>% arrange(desc(abs(percent_diff))))
+        ## End of comparison table         
         
       }
       #################### close loop for cycles ############################# 
@@ -1560,7 +1560,8 @@ is_slurm <- function() {
 # Paramters:
 # vaccination coverage for vacc 2, 4 and 9:
 
-vacc_coverage <- c(0.0, 0.0, 0.0) 
+#vacc_coverage <- c(0.0, 0.0, 0.0) 
+vacc_coverage <- c(0.6, 0.0, 0.0) 
 
 # natural immunity associated with vacc 2, 4, and 9:
 nat_immunity_linked_to_vacc <- c(0.0, 0.0, 0.0)
@@ -1651,7 +1652,7 @@ IDs <- 1:n_i
 
 # Screening Strategies:
 source(file = "R/params_only_cyto_AMontoliu.R") # load Parameters_strategies()
-screening_coverage = 0.8; vacc_coverage = 0
+screening_coverage = 0.8; #vacc_coverage = 0.6
 ScreenPrice.md = ScreenPrice = 27.86
 # Direct medical costs of monitoring and treatment in each state:
 costCoeff_md <- c(0, 39.54, 288.91, 1552.27, 1552.27, 5759.81,
@@ -1726,8 +1727,8 @@ for (n_strat in 1:length(screening_strategies)) {
                              Pmatrix = Pmatrix,
                              master_seed = 123,
                              reproducible = TRUE, 
-                             #use_parallel = FALSE,
-                             use_parallel = TRUE,
+                             use_parallel = FALSE,
+                             #use_parallel = TRUE,
                              cost_vacc2, 
                              cost_vacc4, 
                              cost_vacc9,
@@ -1967,7 +1968,7 @@ output_dir <- "data/cyto_screening/"
 #base_filename <- "stacked_sims_20x10E6x75_vacc2_0.8_NEW_TRANSITIONS_PARA_20250506_sim_"
 #base_filename <- paste0("stacked_sims_20x10E6x75_vacc2_", vacc_tag,
 #                        "_update_WITH_select_floorswitch_NEW_TRANSITIONS_PARA_20250522_A_sim_")
-base_filename <- paste0("cyto_screening_sims_20x10E6x75_PAR_coverage_", screening_coverage,
+base_filename <- paste0("cyto_screening_sims_20x10E5x75_SEQ_vaccCoverage_", vacc_coverage[1],"_scrCoverage_", screening_coverage,
                         "_recovery_CIN123_", screenProbs[3], "_SlurmID_")
 
 ## Construct full path
