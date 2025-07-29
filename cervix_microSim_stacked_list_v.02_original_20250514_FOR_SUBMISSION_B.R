@@ -1679,9 +1679,9 @@ screening_strategies <- Parameters_strategy(Coverage = screening_coverage,
 figoSymProb <- c(0.11, 0.23, 0.66, 0.9) 
 
 # prob of recovery during cytology screening:
-#screenProbs <- c(0, 0, 1, 1, 1, 0.9688, 0.9066, 0.7064, 0.3986, 0, 0, 0)
+screenProbs <- c(0, 0, 1, 1, 1, 0.9688, 0.9066, 0.7064, 0.3986, 0, 0, 0)
 ### FOR TESTING 
-screenProbs <- c(0, 0, .5, .5, .5, 0.9688, 0.9066, 0.7064, 0.3986, 0, 0, 0)
+#screenProbs <- c(0, 0, .5, .5, .5, 0.9688, 0.9066, 0.7064, 0.3986, 0, 0, 0)
 #screenProbs <- c(0, 0, 0, 0, 0, 0.9688, 0.9066, 0.7064, 0.3986, 0, 0, 0)
 symptom_prob_vec <- figoSymProb
 survival_prob_vec <- screenProbs[6:9]
