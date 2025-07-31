@@ -2,7 +2,9 @@
 # Load corresponding Markov results for validation:
 #load(file = "data/markov_results/results_only_cyto_Strategies_only_cyto_L_20250526.rda")
 #load(file = "data/markov_results/markov_results_only_cyto_Strategies_only_cyto_20250715.rda") # markov results for validation 20x10E6x75 recov=1
-load(file = "data/markov_results/markov_results_only_cyto_Strategies_only_cyto_20250715_rec_0.5.rda") # markov results for validation 20x10E6x75 recov=1
+#load(file = "data/markov_results/markov_results_only_cyto_Strategies_only_cyto_20250715_rec_0.5.rda") # markov results for validation 20x10E6x75 recov=1
+load(file = "data/markov_results/results_only_cyto_Strategies_only_cyto_20250715_VAC_0.6_20x10E5x75.rda") # markov results for validation 20x10E5x75 recov=1, vacc=0.6
+#load(file = "data/markov_results/results_only_cyto_Strategies_only_cyto_20250715_rec_0.5_VACC_0.6_20x10E5x75.rda") # markov results for validation 20x10E5x75 recov=0.5, vacc=0.6
 markov_cyto_result_df <- df; rm(df)
 
 #markov_cyto_result_df %>% t() %>% View()

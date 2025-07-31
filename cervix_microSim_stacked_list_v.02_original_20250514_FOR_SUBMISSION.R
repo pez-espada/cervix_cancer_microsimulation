@@ -2638,3 +2638,4 @@ df <- df %>% summarise(across(everything(), sum, na.rm = TRUE))
 cat("\n")
 cat("I HAVE REACHED THE END OF THE SCRIPT FINE.\n")
 cat("WITH n_i = ", n_i,  " , numb_of_sims = ", numb_of_sims, "\n")
+c

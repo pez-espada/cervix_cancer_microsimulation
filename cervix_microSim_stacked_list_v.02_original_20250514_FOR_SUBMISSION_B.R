@@ -12,7 +12,7 @@
 # and is ready for moving to he HPV screening implementation
 # the old script was called ""
 ################################################################################
-#rm(list = ls())
+rm(list = ls())
 library(tidyverse)
 #library(future)
 
@@ -832,7 +832,7 @@ MicroSim <- function(strat=strat,
       cost_log <- data.table()
       
       
-      
+      # initialize the transition matrix for the current simulation 
       ########################################################################
       #################### run over all the cycles ########################### 
       # Loop runs over all the cycles of the simulation. It updates the
@@ -1652,7 +1652,7 @@ IDs <- 1:n_i
 
 # Screening Strategies:
 source(file = "R/params_only_cyto_AMontoliu.R") # load Parameters_strategies()
-screening_coverage = 0.8; #vacc_coverage = 0.6
+screening_coverage = 0.8 #; vacc_coverage = 0.6
 ScreenPrice.md = ScreenPrice = 27.86
 # Direct medical costs of monitoring and treatment in each state:
 costCoeff_md <- c(0, 39.54, 288.91, 1552.27, 1552.27, 5759.81,
