@@ -127,6 +127,7 @@ my_Probs9 <- my_Probs9 %>% as.data.frame() #convert back to data.frame (no neede
 ################################################################################
 ## ----Model Parameters
 n_i <- 10^6               # number of simulated individuals
+n_i <- 10^4               # number of simulated individuals
 #n_t <- 3                  # time horizon, 3 cycles (it starts from 1)
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 ################################################################################
@@ -808,6 +809,11 @@ MicroSim <- function(strat=strat,
       cost_log <- data.table()
       
       
+      # --- Initialize "rounds" ---
+      rounds_per_ID <- setNames(rep(0, length(IDs)), IDs)   # contador de rondas
+      screening_ages_per_ID <- vector("list", length(IDs))  # historial de edades
+      names(screening_ages_per_ID) <- IDs 
+      cyto_screening_ages <- integer(0) # edades globales de cribado (para log)
       
       ########################################################################
       #################### run over all the cycles ########################### 
@@ -931,14 +937,22 @@ MicroSim <- function(strat=strat,
         ########################################################################    
         #cat('\r', paste(round(t/n_t * 100),          # display the 
         #                "% done\n", sep = " "))      # progress of  the simulation
+       
         
-        ########################################################################    
+        
+        
+         
+        ########################################################################
         ## ------------------- Cytology Screening Block ----------------------
         # --------------------------------------------------------------------
         # ------------------- Cytology Screening Block -----------------------
         # Version: with deferred CIN1 follow-up (from: 20250514_MODDED_20250714_TEMP)
         # --------------------------------------------------------------------
-        # -------------------------------------------------------------------- 
+        # Version: with rounds counting and per-simulation logging
+        # --------------------------------------------------------------------
+        
+        
+        
         # Defer CIN1 diagnosed IDs from previous cycle
         if (exists("newly_diagnosed_CIN1_IDs") && length(newly_diagnosed_CIN1_IDs) > 0) {
           CIN1_followup_IDs <- unique(c(CIN1_followup_IDs, newly_diagnosed_CIN1_IDs))
@@ -946,28 +960,41 @@ MicroSim <- function(strat=strat,
         } else {
           newly_diagnosed_CIN1_IDs <- NULL
         }
-        
-        # Check if cytology screening is scheduled for this age 
+
+        # Check if cytology screening is scheduled for this age in this strategy
         if (age_in_loop %in% cyto_screening_days) {
           cat(" Performing cytology screening at age", age_in_loop, "for sim", current_sim, "\n")
-          
+          # Store the age at which screening is performed:
+          # Create a variable to store the age at which screening is performed
+          cyto_screening_ages <- c(cyto_screening_ages, age_in_loop)
+          # print cyto_screening_ages with cat and a short comment to see on screen
+          cat("Cytology screening ages so far:", unique(cyto_screening_ages), "\n")
+
+
           # 1. Eligibility: not already detected and not screened at this sim/age
           not_detected <- !IDs %in% detected_IDs
           already_screened <- screened_registry[sim == current_sim & age == age_in_loop, ID]
           eligible_ids <- setdiff(IDs[not_detected], already_screened)
-          
+
           if (length(eligible_ids) > 0) {
             # 2. Screening sampling
             eligible_screened <- runif(length(eligible_ids)) < screening_coverage
             screened_ids <- eligible_ids[eligible_screened]
             
+            
+            # 2.5 Update rounds counter & ages per ID
+            rounds_per_ID[as.character(screened_ids)] <- rounds_per_ID[as.character(screened_ids)] + 1
+            for (id in screened_ids) {
+              screening_ages_per_ID[[as.character(id)]] <- c(screening_ages_per_ID[[as.character(id)]], age_in_loop)
+            }
+
             # 3. Register screening and apply cost
             screened_registry <- rbind(screened_registry, data.table(
               sim = current_sim,
               age = age_in_loop,
               ID = screened_ids
             ))
-            
+
             cost_log <- rbindlist(list(cost_log, data.table(
               sim = current_sim,
               age = age_in_loop,
@@ -976,17 +1003,17 @@ MicroSim <- function(strat=strat,
               cost_type = strat,
               cost = ScreenPrice
             )), use.names = TRUE)
-            
+
             # 4. Check health states and apply sensitivity
             screened_states <- m_M[match(screened_ids, IDs), t]
             state_indices <- match(screened_states, v_n)
             diagnose_probs <- screenSensi[state_indices]
             diagnosed <- runif(length(diagnose_probs)) < diagnose_probs
-            
+
             diagnosed_ids <- screened_ids[diagnosed]
             diagnosed_states <- screened_states[diagnosed]
             diagnosed_indices <- state_indices[diagnosed]
-            
+
             if (length(diagnosed_ids) > 0) {
               # 5. Apply follow-up cost
               followup_costs <- costCoeff_md[diagnosed_indices]
@@ -998,7 +1025,7 @@ MicroSim <- function(strat=strat,
                 cost_type = paste0("diagnosed_by_cyto_", diagnosed_states),
                 cost = followup_costs
               )), use.names = TRUE)
-              
+
               # 6. Process CIN1 separately (send to follow-up)
               #CIN1_diagnosed <- diagnosed_states == "CIN1"
               #if (any(CIN1_diagnosed)) {
@@ -1006,30 +1033,30 @@ MicroSim <- function(strat=strat,
               #}
               CIN1_diagnosed <- diagnosed_states == "CIN1"
               newly_diagnosed_CIN1_IDs <- diagnosed_ids[CIN1_diagnosed]
-              
+
               # 7. Detect CIN2+ only once
               CIN2plus_mask <- diagnosed_states %in% c("CIN2", "CIN3", "FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
               CIN2plus_new <- diagnosed_ids[CIN2plus_mask & !(diagnosed_ids %in% detected_IDs)]
               detected_IDs <- unique(c(detected_IDs, CIN2plus_new))
-              
+
               # 8. Apply recovery logic
               recovery_probs <- screenProbs[diagnosed_indices]
               recovery_mask <- runif(length(diagnosed_ids)) < recovery_probs
-              
+
               if (any(recovery_mask)) {
                 recovered_ids <- diagnosed_ids[recovery_mask]
                 recovered_states <- diagnosed_states[recovery_mask]
                 recovered_rows <- match(recovered_ids, IDs)
-                
+
                 to_survival <- recovered_states %in% c("FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
                 to_H        <- recovered_states %in% c("CIN1", "CIN2", "CIN3")
-                
+
                 # Apply health state updates
                 #m_M[recovered_rows[to_survival], t]     <- "Survival"
                 m_M[recovered_rows[to_survival], t + 1] <- "Survival"
                 #m_M[recovered_rows[to_H],        t]     <- "H"
                 m_M[recovered_rows[to_H],        t + 1] <- "H"
-                
+
                 # Zero-cost logging
                 cost_log <- rbindlist(list(cost_log, data.table(
                   sim = current_sim,
@@ -1043,13 +1070,13 @@ MicroSim <- function(strat=strat,
             }
           }
         }
-        
-        
-        # ----------------- CIN1 Follow-Up Block ------------------        
+
+
+        # ----------------- CIN1 Follow-Up Block ------------------
         if (length(CIN1_followup_IDs) > 0) {
           followup_rows <- match(CIN1_followup_IDs, IDs)
           current_states <- m_M[followup_rows, t + 1]
-          
+
           # 1. Still in CIN1: incur cost
           still_CIN1 <- current_states == "CIN1"
           if (any(still_CIN1)) {
@@ -1062,20 +1089,20 @@ MicroSim <- function(strat=strat,
               cost = costCoeff_md[match("CIN1", v_n)]
             )), use.names = TRUE)
           }
-          
+
           # 2. Regressed to normal or infection
           regressed <- current_states %in% c("H", "HPV.infection")
           if (any(regressed)) {
             CIN1_followup_IDs <- setdiff(CIN1_followup_IDs, CIN1_followup_IDs[regressed])
           }
-          
+
           # 3. Progressed to CIN2+ → treat once and stop follow-up
           progressed <- current_states %in% c("CIN2", "CIN3", "FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
           if (any(progressed)) {
             progressed_IDs <- CIN1_followup_IDs[progressed]
             progressed_states <- current_states[progressed]
             progressed_indices <- match(progressed_states, v_n)
-            
+
             cost_log <- rbindlist(list(cost_log, data.table(
               sim = current_sim,
               age = age_in_loop,
@@ -1084,11 +1111,37 @@ MicroSim <- function(strat=strat,
               cost_type = paste0("progressed_from_CIN1_", progressed_states),
               cost = costCoeff_md[progressed_indices]
             )), use.names = TRUE)
-            
+
             detected_IDs <- unique(c(detected_IDs, progressed_IDs))
             CIN1_followup_IDs <- setdiff(CIN1_followup_IDs, progressed_IDs)
           }
         }
+        
+        # -------------------------------------------------------------------- 
+        # -------------------------------------------------------------------- 
+        
+        
+        # --- Al final del loop de edades de esta simulación ---
+        # Guardar resumen de rondas para este sim
+        rounds_log <- data.table(
+          strategy = strat,                 # etiqueta de la estrategia actual
+          sim = current_sim,                # número de simulación
+          ID = IDs,                         # individuo
+          rounds = as.integer(rounds_per_ID),     # número de rondas
+          screening_ages = I(screening_ages_per_ID) # lista de edades
+        )
+        
+        # Acumular resultados de todas las simulaciones
+        if (!exists("all_rounds")) {
+          all_rounds <- rounds_log
+        } else {
+          all_rounds <- rbindlist(list(all_rounds, rounds_log), use.names = TRUE, fill = TRUE)
+        }
+        # --- End of rounds logging --- 
+        
+        
+        
+        
         
         
         
@@ -1331,7 +1384,8 @@ MicroSim <- function(strat=strat,
         new_Cancer = new_Cancer,
         new_CC_Death = new_CC_Death,
         CC_Death_by_diff = CC_Death_by_diff, 
-        screening_cost = cost_log) 
+        screening_cost = cost_log,
+        rounds = all_rounds) 
       
       results$seed <- seeds[sim]
       #results$seed <- seed
@@ -1473,9 +1527,9 @@ vacc_lbl <-
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 numb_of_sims = 3
-#numb_of_sims =  4
+numb_of_sims =  4
 #numb_of_sims = 1
-numb_of_sims = 20
+#numb_of_sims = 20
 
 # Initialize individual IDs
 IDs <- 1:n_i
@@ -1483,10 +1537,10 @@ IDs <- 1:n_i
 #strategy <- "vacc_2_coverage_0.0"
 
 # Screening Strategies:
-## Load the parameters for cytological screening strategies:
-#source(file = "R/params_only_cyto_AMontoliu.R") 
-# Load the parameters for HPV screening strategies:
-source(file = "R/params_only_HPV_AMontoliu.R")
+# Load the parameters for cytological screening strategies:
+source(file = "R/params_only_cyto_AMontoliu.R") 
+## Load the parameters for HPV screening strategies:
+#source(file = "R/params_only_HPV_AMontoliu.R")
 
 
 
@@ -1537,19 +1591,19 @@ cost_log <-
              cost_type = character(),
              cost = numeric())
 
-################################################################################
-# DNA (HPV) screening parameters:
-dnaScCost_md <- 35.86 # Direct medical costs of DNA screening
-papScTriagePrice_md <- 10.7 # Direct medical costs of Pap triage/screening
-cotestCost_md <- 39.54 # Direct medical costs of cotesting (DOUBLE CHECK THIS)
-AutodnaScCost_md <- 25.7 # Direct medical costs of HPV self-sampling (autopresa)
-# DNA screening sensitivity for each state:
-dnaScSensi <- c(0, 0.95, 0, 0.824, 0.98, 1.00, 1.00, 1.00, 1.00, 0, 0, 0) 
-# Proportion of VPH+ ind who are not of the strain 16 or 18:
-propNo1618 <- c(0, 0.79, 0.57, 0.45, 0.45, 0.36, 0.36, 0.36, 0.36, 0, 0, 0)
-# Cost of colposcopic examination for HPV 16/18 individuals:
-costColpo1618 <- 146.45
-################################################################################
+#################################################################################
+## DNA (HPV) screening parameters:
+#dnaScCost_md <- 35.86 # Direct medical costs of DNA screening
+#papScTriagePrice_md <- 10.7 # Direct medical costs of Pap triage/screening
+#cotestCost_md <- 39.54 # Direct medical costs of cotesting (DOUBLE CHECK THIS)
+#AutodnaScCost_md <- 25.7 # Direct medical costs of HPV self-sampling (autopresa)
+## DNA screening sensitivity for each state:
+#dnaScSensi <- c(0, 0.95, 0, 0.824, 0.98, 1.00, 1.00, 1.00, 1.00, 0, 0, 0) 
+## Proportion of VPH+ ind who are not of the strain 16 or 18:
+#propNo1618 <- c(0, 0.79, 0.57, 0.45, 0.45, 0.36, 0.36, 0.36, 0.36, 0, 0, 0)
+## Cost of colposcopic examination for HPV 16/18 individuals:
+#costColpo1618 <- 146.45
+#################################################################################
 
 numb_screening_strat <- screening_strategies %>% length()
 
@@ -1579,8 +1633,8 @@ for (n_strat in 1:length(screening_strategies)) {
                              Pmatrix = Pmatrix,
                              master_seed = 123,
                              reproducible = TRUE, 
-                             #use_parallel = FALSE,
-                             use_parallel = TRUE,
+                             use_parallel = FALSE,
+                             #use_parallel = TRUE,
                              cost_vacc2, 
                              cost_vacc4, 
                              cost_vacc9,
@@ -1811,26 +1865,26 @@ if (is.na(slurm_job_id) || slurm_job_id == "") {
 }
 
 
-## Extract first vaccine coverage value for filename
-#vacc_tag <- sprintf("%.1f", vacc_coverage[1])  # Format as 0.8, 0.0, etc.
-
-# Define directory and static filename components
-#output_dir <- "data/TESTING_20250429/"
-output_dir <- "data/cyto_screening/"
-#base_filename <- "stacked_sims_20x10E6x75_vacc2_0.8_NEW_TRANSITIONS_PARA_20250506_sim_"
-#base_filename <- paste0("stacked_sims_20x10E6x75_vacc2_", vacc_tag,
-#                        "_update_WITH_select_floorswitch_NEW_TRANSITIONS_PARA_20250522_A_sim_")
-base_filename <- paste0("cyto_screening_sims_20x10E6x75_PAR_coverage_", screening_coverage,
-                        "_recovery_CIN123_", screenProbs[3], "_SlurmID_")
-
-## Construct full path
-#output_file <- file.path(output_dir, paste0(base_filename, unique_tag, ".rds"))
-
-output_file <- file.path(output_dir, paste0(base_filename, slurm_job_id, ".rds"))
-
-
-cat("Saving simulation result to:", output_file, "\n")
-saveRDS(object = sim_result, file = output_file)
+### Extract first vaccine coverage value for filename
+##vacc_tag <- sprintf("%.1f", vacc_coverage[1])  # Format as 0.8, 0.0, etc.
+#
+## Define directory and static filename components
+##output_dir <- "data/TESTING_20250429/"
+#output_dir <- "data/cyto_screening/"
+##base_filename <- "stacked_sims_20x10E6x75_vacc2_0.8_NEW_TRANSITIONS_PARA_20250506_sim_"
+##base_filename <- paste0("stacked_sims_20x10E6x75_vacc2_", vacc_tag,
+##                        "_update_WITH_select_floorswitch_NEW_TRANSITIONS_PARA_20250522_A_sim_")
+#base_filename <- paste0("cyto_screening_sims_20x10E6x75_PAR_coverage_", screening_coverage,
+#                        "_recovery_CIN123_", screenProbs[3], "_SlurmID_")
+#
+### Construct full path
+##output_file <- file.path(output_dir, paste0(base_filename, unique_tag, ".rds"))
+#
+#output_file <- file.path(output_dir, paste0(base_filename, slurm_job_id, ".rds"))
+#
+#
+#cat("Saving simulation result to:", output_file, "\n")
+#saveRDS(object = sim_result, file = output_file)
 
 
 ################################################################################
