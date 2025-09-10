@@ -126,7 +126,7 @@ my_Probs9 <- my_Probs_cleaning_Func(Probs_matrix = my_Probs9)
 my_Probs9 <- my_Probs9 %>% as.data.frame() #convert back to data.frame (no needed?)
 ################################################################################
 ## ----Model Parameters
-n_i <- 10^6               # number of simulated individuals
+n_i <- 10^4               # number of simulated individuals
 #n_t <- 3                  # time horizon, 3 cycles (it starts from 1)
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 ################################################################################
@@ -1475,7 +1475,7 @@ p = Sys.time()
 numb_of_sims = 3
 #numb_of_sims =  4
 #numb_of_sims = 1
-numb_of_sims = 20
+#numb_of_sims = 20
 
 # Initialize individual IDs
 IDs <- 1:n_i
@@ -1489,8 +1489,8 @@ IDs <- 1:n_i
 source(file = "R/params_only_HPV_AMontoliu.R")
 
 
-
 screening_coverage = 0.8
+
 screening_strategies <- Parameters_strategy(Coverage = screening_coverage, 
                                             cobertura_vacuna = vacc_coverage)
 
@@ -1579,8 +1579,8 @@ for (n_strat in 1:length(screening_strategies)) {
                              Pmatrix = Pmatrix,
                              master_seed = 123,
                              reproducible = TRUE, 
-                             #use_parallel = FALSE,
-                             use_parallel = TRUE,
+                             use_parallel = FALSE,
+                             #use_parallel = TRUE,
                              cost_vacc2, 
                              cost_vacc4, 
                              cost_vacc9,
@@ -1811,26 +1811,27 @@ if (is.na(slurm_job_id) || slurm_job_id == "") {
 }
 
 
-## Extract first vaccine coverage value for filename
-#vacc_tag <- sprintf("%.1f", vacc_coverage[1])  # Format as 0.8, 0.0, etc.
-
-# Define directory and static filename components
-#output_dir <- "data/TESTING_20250429/"
-output_dir <- "data/cyto_screening/"
-#base_filename <- "stacked_sims_20x10E6x75_vacc2_0.8_NEW_TRANSITIONS_PARA_20250506_sim_"
-#base_filename <- paste0("stacked_sims_20x10E6x75_vacc2_", vacc_tag,
-#                        "_update_WITH_select_floorswitch_NEW_TRANSITIONS_PARA_20250522_A_sim_")
-base_filename <- paste0("cyto_screening_sims_20x10E6x75_PAR_coverage_", screening_coverage,
-                        "_recovery_CIN123_", screenProbs[3], "_SlurmID_")
-
-## Construct full path
-#output_file <- file.path(output_dir, paste0(base_filename, unique_tag, ".rds"))
-
-output_file <- file.path(output_dir, paste0(base_filename, slurm_job_id, ".rds"))
-
-
-cat("Saving simulation result to:", output_file, "\n")
-saveRDS(object = sim_result, file = output_file)
+### Extract first vaccine coverage value for filename
+##vacc_tag <- sprintf("%.1f", vacc_coverage[1])  # Format as 0.8, 0.0, etc.
+#
+## Define directory and static filename components
+##output_dir <- "data/TESTING_20250429/"
+#output_dir <- "data/cyto_screening/"
+##base_filename <- "stacked_sims_20x10E6x75_vacc2_0.8_NEW_TRANSITIONS_PARA_20250506_sim_"
+##base_filename <- paste0("stacked_sims_20x10E6x75_vacc2_", vacc_tag,
+##                        "_update_WITH_select_floorswitch_NEW_TRANSITIONS_PARA_20250522_A_sim_")
+##base_filename <- paste0("cyto_screening_sims_20x10E6x75_PAR_coverage_", screening_coverage,
+#base_filename <- paste0("HPV_screening_sims_3x10E4x75_SEQ_coverage_", screening_coverage,
+#                        "_recovery_CIN123_", screenProbs[3], "_SlurmID_")
+#
+### Construct full path
+##output_file <- file.path(output_dir, paste0(base_filename, unique_tag, ".rds"))
+#
+#output_file <- file.path(output_dir, paste0(base_filename, slurm_job_id, ".rds"))
+#
+#
+#cat("Saving simulation result to:", output_file, "\n")
+#saveRDS(object = sim_result, file = output_file)
 
 
 ################################################################################
@@ -2621,163 +2622,175 @@ cat("WITH n_i = ", n_i,  " , numb_of_sims = ", numb_of_sims, "\n")
 
 
 
+# load the sim_result object from the RDS file:
+sim_result <- readRDS("data/cyto_screening/cyto_screening_sims_20x10E5x75_SEQ_vaccCoverage_0.6_scrCoverage_0.8_recovery_CIN123_0.5_SlurmID_66747.rds")
 
-#################################################################################
-#################################################################################
-## For comparing microsim's cytology screening results against Markov's:
-#library(dplyr)
-#library(tibble)
-#library(purrr)
-#library(tidyr)
-#library(openxlsx)
-#
-## This function works for a single strategy
-#build_comparison_table <- function(sim_result, strategy, include_errors = TRUE) {
-#  sim <- sim_result[[strategy]]
-#  
-#  # Microsim incidence/prevalence
-#  ms_cin1  <- sim$mean_incidence_CIN1_per_age_interval %>% rename(age_group = 1, microsim = 2)
-#  ms_cin2  <- sim$mean_incidence_CIN2_per_age_interval %>% rename(age_group = 1, microsim = 2)
-#  ms_cin3  <- sim$mean_incidence_CIN3_per_age_interval %>% rename(age_group = 1, microsim = 2)
-#  ms_cancer <- sim$mean_CC_incidence %>% rename(age_group = 1, microsim = 2)
-#  ms_prev  <- sim$mean_HPV_prevalence_per_age_interval %>% rename(age_group = 1, microsim = 2)
-#  
-#  # Markov incidence/prevalence — transform wide to long
-#  mk_cin1  <- pivot_longer(sim$markov_CN1_incidences, everything(), names_to = "age_group", values_to = "markov")
-#  mk_cin2  <- pivot_longer(sim$markov_CN2_incidences, everything(), names_to = "age_group", values_to = "markov")
-#  mk_cin3  <- pivot_longer(sim$markov_CN3_incidences, everything(), names_to = "age_group", values_to = "markov")
-#  mk_cancer <- pivot_longer(sim$markov_CC_incidences, everything(), names_to = "age_group", values_to = "markov")
-#  mk_prev  <- pivot_longer(sim$markov_HPV_prevalences, everything(), names_to = "age_group", values_to = "markov")
-#  
-#  # Clean age group labels
-#  fix_age_label <- function(df, pattern) {
-#    df %>% mutate(age_group = gsub(pattern, "", age_group))
-#  }
-#  
-#  mk_cin1 <- fix_age_label(mk_cin1, "CIN1_Incidence ")
-#  mk_cin2 <- fix_age_label(mk_cin2, "CIN2_Incidence ")
-#  mk_cin3 <- fix_age_label(mk_cin3, "CIN3_Incidence ")
-#  mk_cancer <- fix_age_label(mk_cancer, "CC_Incidence ")
-#  mk_prev <- fix_age_label(mk_prev, "HPVPrevalence ")
-#  
-#  # Join each pair
-#  join_and_label <- function(micro, markov, type) {
-#    full_join(micro, markov, by = "age_group") %>%
-#      mutate(type = type)
-#  }
-#  
-#  tbl <- bind_rows(
-#    join_and_label(ms_cin1, mk_cin1, "CIN1 incidence"),
-#    join_and_label(ms_cin2, mk_cin2, "CIN2 incidence"),
-#    join_and_label(ms_cin3, mk_cin3, "CIN3 incidence"),
-#    join_and_label(ms_cancer, mk_cancer, "Cancer incidence"),
-#    join_and_label(ms_prev, mk_prev, "HPV prevalence")
-#  ) %>%
-#    mutate(strategy = strategy) %>%
-#    relocate(strategy, type, age_group)
-#  
-#  # Add errors
-#  if (include_errors) {
-#    tbl <- tbl %>%
-#      mutate(
-#        abs_diff = microsim - markov,
-#        pct_diff = 100 * abs_diff / ifelse(markov == 0, NA, markov)
-#      )
-#  }
-#  
-#  tbl
-#}
-#
-## Now loop over all strategies and build the full table
-#all_strategies <- setdiff(names(sim_result), "runtime")
-#
-#comparison_table_all <- map_dfr(
-#  all_strategies,
-#  ~build_comparison_table(sim_result, .x, include_errors = TRUE)
-#)
-#
-## Save to Excel
-#wb <- createWorkbook()
-#addWorksheet(wb, "Microsim vs Markov")
-#writeData(wb, "Microsim vs Markov", comparison_table_all)
-##saveWorkbook(wb, "comparison_incidence_prevalence.xlsx", overwrite = TRUE)
+
+
+################################################################################
+################################################################################
+# For comparing microsim's cytology screening results against Markov's:
+library(dplyr)
+library(tibble)
+library(purrr)
+library(tidyr)
+library(openxlsx)
+
+# This function works for a single strategy
+build_comparison_table <- function(sim_result, strategy, include_errors = TRUE) {
+  sim <- sim_result[[strategy]]
+  
+  # Microsim incidence/prevalence
+  ms_cin1  <- sim$mean_incidence_CIN1_per_age_interval %>% rename(age_group = 1, microsim = 2)
+  ms_cin2  <- sim$mean_incidence_CIN2_per_age_interval %>% rename(age_group = 1, microsim = 2)
+  ms_cin3  <- sim$mean_incidence_CIN3_per_age_interval %>% rename(age_group = 1, microsim = 2)
+  ms_cancer <- sim$mean_CC_incidence %>% rename(age_group = 1, microsim = 2)
+  ms_prev  <- sim$mean_HPV_prevalence_per_age_interval %>% rename(age_group = 1, microsim = 2)
+  
+  # Markov incidence/prevalence — transform wide to long
+  mk_cin1  <- pivot_longer(sim$markov_CN1_incidences, everything(), names_to = "age_group", values_to = "markov")
+  mk_cin2  <- pivot_longer(sim$markov_CN2_incidences, everything(), names_to = "age_group", values_to = "markov")
+  mk_cin3  <- pivot_longer(sim$markov_CN3_incidences, everything(), names_to = "age_group", values_to = "markov")
+  mk_cancer <- pivot_longer(sim$markov_CC_incidences, everything(), names_to = "age_group", values_to = "markov")
+  mk_prev  <- pivot_longer(sim$markov_HPV_prevalences, everything(), names_to = "age_group", values_to = "markov")
+  
+  # Clean age group labels
+  fix_age_label <- function(df, pattern) {
+    df %>% mutate(age_group = gsub(pattern, "", age_group))
+  }
+  
+  mk_cin1 <- fix_age_label(mk_cin1, "CIN1_Incidence ")
+  mk_cin2 <- fix_age_label(mk_cin2, "CIN2_Incidence ")
+  mk_cin3 <- fix_age_label(mk_cin3, "CIN3_Incidence ")
+  mk_cancer <- fix_age_label(mk_cancer, "CC_Incidence ")
+  mk_prev <- fix_age_label(mk_prev, "HPVPrevalence ")
+  
+  # Join each pair
+  join_and_label <- function(micro, markov, type) {
+    full_join(micro, markov, by = "age_group") %>%
+      mutate(type = type)
+  }
+  
+  tbl <- bind_rows(
+    join_and_label(ms_cin1, mk_cin1, "CIN1 incidence"),
+    join_and_label(ms_cin2, mk_cin2, "CIN2 incidence"),
+    join_and_label(ms_cin3, mk_cin3, "CIN3 incidence"),
+    join_and_label(ms_cancer, mk_cancer, "Cancer incidence"),
+    join_and_label(ms_prev, mk_prev, "HPV prevalence")
+  ) %>%
+    mutate(strategy = strategy) %>%
+    relocate(strategy, type, age_group)
+  
+  # Add errors
+  if (include_errors) {
+    tbl <- tbl %>%
+      mutate(
+        abs_diff = microsim - markov,
+        pct_diff = 100 * abs_diff / ifelse(markov == 0, NA, markov)
+      )
+  }
+  
+  tbl
+}
+
+# Now loop over all strategies and build the full table
+all_strategies <- setdiff(names(sim_result), "runtime")
+
+comparison_table_all <- map_dfr(
+  all_strategies,
+  ~build_comparison_table(sim_result, .x, include_errors = TRUE)
+)
+
+# Save to Excel
+wb <- createWorkbook()
+addWorksheet(wb, "Microsim vs Markov")
+writeData(wb, "Microsim vs Markov", comparison_table_all)
+#saveWorkbook(wb, "comparison_incidence_prevalence.xlsx", overwrite = TRUE)
 #saveWorkbook(wb, "comparison_incidence_prevalence_20x10E5x75_vacc_0.6_cytoScreeningCoverage_0.8_cytoScreeningRecov_1.0.xlsx", overwrite = TRUE)
-#
-#message("✅ Comparison table saved to 'comparison_incidence_prevalence.xlsx'")
-#
-## Now for comparing costs and QALYs:
-#library(dplyr)
-#library(purrr)
-#library(openxlsx)
-#
-## Build cost + QALY comparison
-#cost_qaly_comparison <- map_dfr(names(sim_result), function(strat) {
-#  micro_costs <- sim_result[[strat]]$tc_hat_undisc$tc_hat_undisc
-#  markov_cost <- sim_result[[strat]]$markov_cost_undi
-#  
-#  micro_qalys <- sim_result[[strat]]$te_hat_undisc$te_hat_undisc
-#  markov_qaly <- sim_result[[strat]]$markov_qaly_undisc
-#  
-#  tibble(
-#    strategy = strat,
-#    mean_microsim_cost = mean(micro_costs),
-#    sd_microsim_cost = sd(micro_costs),
-#    markov_cost = markov_cost,
-#    cost_difference = mean(micro_costs) - markov_cost,
-#    cost_percent_diff = 100 * cost_difference / markov_cost,
-#    
-#    mean_microsim_qaly = mean(micro_qalys),
-#    sd_microsim_qaly = sd(micro_qalys),
-#    markov_qaly = markov_qaly,
-#    qaly_difference = mean(micro_qalys) - markov_qaly,
-#    qaly_percent_diff = 100 * qaly_difference / markov_qaly
-#  )
-#})
-#
-## Save to Excel
-#wb <- createWorkbook()
-#addWorksheet(wb, "Cost_QALY_Comparison")
-#writeData(wb, "Cost_QALY_Comparison", cost_qaly_comparison)
-#saveWorkbook(wb, "comparison_costs_qalys.xlsx", overwrite = TRUE)
-#
-#message("✅ Saved to 'comparison_costs_qalys.xlsx'")
-## End of the script library(dplyr)
-#library(purrr)
-#library(openxlsx)
-#
-## Build cost + QALY comparison
-#cost_qaly_comparison <- map_dfr(names(sim_result), function(strat) {
-#  micro_costs <- sim_result[[strat]]$tc_hat_undisc$tc_hat_undisc
-#  markov_cost <- sim_result[[strat]]$markov_cost_undi
-#  
-#  micro_qalys <- sim_result[[strat]]$te_hat_undisc$te_hat_undisc
-#  markov_qaly <- sim_result[[strat]]$markov_qaly_undisc
-#  
-#  tibble(
-#    strategy = strat,
-#    mean_microsim_cost = mean(micro_costs),
-#    sd_microsim_cost = sd(micro_costs),
-#    markov_cost = markov_cost,
-#    cost_difference = mean(micro_costs) - markov_cost,
-#    cost_percent_diff = 100 * cost_difference / markov_cost,
-#    
-#    mean_microsim_qaly = mean(micro_qalys),
-#    sd_microsim_qaly = sd(micro_qalys),
-#    markov_qaly = markov_qaly,
-#    qaly_difference = mean(micro_qalys) - markov_qaly,
-#    qaly_percent_diff = 100 * qaly_difference / markov_qaly
-#  )
-#})
-#
-## Save to Excel
-#wb <- createWorkbook()
-#addWorksheet(wb, "Cost_QALY_Comparison")
-#writeData(wb, "Cost_QALY_Comparison", cost_qaly_comparison)
-#saveWorkbook(wb, "comparison_costs_qalys_20x10E5x75_vacc_0.6_cytoScreeningCoverage_0.8_cytoScreeningRecov_1.0.xlsx", overwrite = TRUE)
-#
-#message("Saved to 'comparison_costs_qalys_0x10E5x75_vacc_0.6_cytoScreeningCoverage_0.8_cytoScreeningRecov_1.0.xlsx'")
-#
+saveWorkbook(wb, "data/cyto_screening/comparison_incidence_prevalence_20x10E5x75_vacc_0.6_cytoScreeningCoverage_0.8_cytoScreeningRecov_0.5_20250908.xlsx", overwrite = TRUE)
+
+message("✅ Comparison table saved to 'comparison_incidence_prevalence.xlsx'")
 ## End of the script
+
+################################################################################
+# Now for comparing costs and QALYs:
+library(dplyr)
+library(purrr)
+library(openxlsx)
+
+# Build cost + QALY comparison
+cost_qaly_comparison <- map_dfr(names(sim_result), function(strat) {
+  micro_costs <- sim_result[[strat]]$tc_hat_undisc$tc_hat_undisc
+  markov_cost <- sim_result[[strat]]$markov_cost_undi
+  
+  micro_qalys <- sim_result[[strat]]$te_hat_undisc$te_hat_undisc
+  markov_qaly <- sim_result[[strat]]$markov_qaly_undisc
+  
+  tibble(
+    strategy = strat,
+    mean_microsim_cost = mean(micro_costs),
+    sd_microsim_cost = sd(micro_costs),
+    markov_cost = markov_cost,
+    cost_difference = mean(micro_costs) - markov_cost,
+    cost_percent_diff = 100 * cost_difference / markov_cost,
+    
+    mean_microsim_qaly = mean(micro_qalys),
+    sd_microsim_qaly = sd(micro_qalys),
+    markov_qaly = markov_qaly,
+    qaly_difference = mean(micro_qalys) - markov_qaly,
+    qaly_percent_diff = 100 * qaly_difference / markov_qaly
+  )
+})
+
+# Save to Excel
+wb <- createWorkbook()
+addWorksheet(wb, "Cost_QALY_Comparison")
+writeData(wb, "Cost_QALY_Comparison", cost_qaly_comparison)
+#saveWorkbook(wb, "comparison_costs_qalys.xlsx", overwrite = TRUE)
+saveWorkbook(wb, "data/cyto_screening/comparison_costs_qalys_20x10E5x75_vacc_0.6_cytoScreeningCoverage_0.8_cytoScreeningRecov_0.5_020250909.xlsx", overwrite = TRUE)
+
+message("✅ Saved to 'comparison_costs_qalys.xlsx'")
+## End of the script 
+
+################################################################################
+library(dplyr)
+library(purrr)
+library(openxlsx)
+
+# Build cost + QALY comparison
+cost_qaly_comparison <- map_dfr(names(sim_result), function(strat) {
+  micro_costs <- sim_result[[strat]]$tc_hat_undisc$tc_hat_undisc
+  markov_cost <- sim_result[[strat]]$markov_cost_undi
+  
+  micro_qalys <- sim_result[[strat]]$te_hat_undisc$te_hat_undisc
+  markov_qaly <- sim_result[[strat]]$markov_qaly_undisc
+  
+  tibble(
+    strategy = strat,
+    mean_microsim_cost = mean(micro_costs),
+    sd_microsim_cost = sd(micro_costs),
+    markov_cost = markov_cost,
+    cost_difference = mean(micro_costs) - markov_cost,
+    cost_percent_diff = 100 * cost_difference / markov_cost,
+    
+    mean_microsim_qaly = mean(micro_qalys),
+    sd_microsim_qaly = sd(micro_qalys),
+    markov_qaly = markov_qaly,
+    qaly_difference = mean(micro_qalys) - markov_qaly,
+    qaly_percent_diff = 100 * qaly_difference / markov_qaly
+  )
+})
+
+# Save to Excel
+wb <- createWorkbook()
+addWorksheet(wb, "Cost_QALY_Comparison")
+writeData(wb, "Cost_QALY_Comparison", cost_qaly_comparison)
+#saveWorkbook(wb, "comparison_costs_qalys_20x10E5x75_vacc_0.6_cytoScreeningCoverage_0.8_cytoScreeningRecov_1.0.xlsx", overwrite = TRUE)
+saveWorkbook(wb, "data/cyto_screening/comparison_costs_qalys_20x10E5x75_vacc_0.6_cytoScreeningCoverage_0.8_cytoScreeningRecov_0.5_20250909.xlsx", overwrite = TRUE)
+
+message("Saved to 'comparison_costs_qalys_0x10E5x75_vacc_0.6_cytoScreeningCoverage_0.8_cytoScreeningRecov_1.0.xlsx'")
+
+# End of the script
 
 
 
