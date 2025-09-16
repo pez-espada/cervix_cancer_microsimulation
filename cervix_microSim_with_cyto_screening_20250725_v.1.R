@@ -128,6 +128,7 @@ my_Probs9 <- my_Probs9 %>% as.data.frame() #convert back to data.frame (no neede
 ## ----Model Parameters
 n_i <- 10^6               # number of simulated individuals
 n_i <- 10^4               # number of simulated individuals
+n_i <- 10^3               # number of simulated individuals
 #n_t <- 3                  # time horizon, 3 cycles (it starts from 1)
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 ################################################################################
@@ -814,6 +815,7 @@ MicroSim <- function(strat=strat,
       screening_ages_per_ID <- vector("list", length(IDs))  # historial de edades
       names(screening_ages_per_ID) <- IDs 
       cyto_screening_ages <- integer(0) # edades globales de cribado (para log)
+      my_round_cyto <- 0
       
       ########################################################################
       #################### run over all the cycles ########################### 
@@ -950,9 +952,7 @@ MicroSim <- function(strat=strat,
         # --------------------------------------------------------------------
         # Version: with rounds counting and per-simulation logging
         # --------------------------------------------------------------------
-        
-        
-        
+        ######################################################################## 
         # Defer CIN1 diagnosed IDs from previous cycle
         if (exists("newly_diagnosed_CIN1_IDs") && length(newly_diagnosed_CIN1_IDs) > 0) {
           CIN1_followup_IDs <- unique(c(CIN1_followup_IDs, newly_diagnosed_CIN1_IDs))
@@ -964,6 +964,8 @@ MicroSim <- function(strat=strat,
         # Check if cytology screening is scheduled for this age in this strategy
         if (age_in_loop %in% cyto_screening_days) {
           cat(" Performing cytology screening at age", age_in_loop, "for sim", current_sim, "\n")
+          # For logging purposes, calculate the round number:
+          my_round_cyto <- my_round_cyto + 1
           # Store the age at which screening is performed:
           # Create a variable to store the age at which screening is performed
           cyto_screening_ages <- c(cyto_screening_ages, age_in_loop)
@@ -1385,12 +1387,11 @@ MicroSim <- function(strat=strat,
         new_CC_Death = new_CC_Death,
         CC_Death_by_diff = CC_Death_by_diff, 
         screening_cost = cost_log,
-        rounds = all_rounds) 
+        rounds = all_rounds,
+        my_round_cyto = my_round_cyto) 
       
       results$seed <- seeds[sim]
       #results$seed <- seed
-      #simulation_results[sim] <- list(results)
-      #simulation_results[sim] <- results
       cat("At sim number:", sim,  " tc_hat_undisc is ", tc_hat_undisc, "\n")
       rm(symptomatics)
       #rm(TS) 
@@ -1402,22 +1403,14 @@ MicroSim <- function(strat=strat,
       #gc() #Force memory cleanup after each sim/batch 
       
     } # end of `foreach/dopar` loop
+  ## collapse to vector
+  #my_round_cyto_vec <- sapply(simulation_results, function(x) x$my_round_cyto)
+  #
+  ## attach vector to your object
+  #simulation_results$my_round_cyto <- my_round_cyto_vec
+  
   
   return(simulation_results)
-  #cat("Lenght of simulation_results = ", length(simulation_results), "\n")
-  #
-  #stacked_results <- 
-  #  summarize_results_by_Strategy_v2(
-  #    #strategy = screening_strategies[[strat]]$sim.name,
-  #    strategy = strat,
-  #    results_list = simulation_results, 
-  #    numb_of_sims = numb_of_sims)
-  
-  #joined_batches_per_strategy[[strat]] <-  stacked_results
-  #return(simulation_results)
-  
-  return(stacked_results)
-  #return(joined_batches_per_strategy)
   
 } # end of MicroSim function
 ################################################################################
@@ -1527,7 +1520,7 @@ vacc_lbl <-
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 numb_of_sims = 3
-numb_of_sims =  4
+#numb_of_sims =  4
 #numb_of_sims = 1
 #numb_of_sims = 20
 
@@ -1541,7 +1534,6 @@ IDs <- 1:n_i
 source(file = "R/params_only_cyto_AMontoliu.R") 
 ## Load the parameters for HPV screening strategies:
 #source(file = "R/params_only_HPV_AMontoliu.R")
-
 
 
 screening_coverage = 0.8
