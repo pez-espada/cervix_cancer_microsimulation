@@ -1099,7 +1099,8 @@ MicroSim <- function(strat=strat,
           }
 
           # 3. Progressed to CIN2+ → treat once and stop follow-up
-          progressed <- current_states %in% c("CIN2", "CIN3", "FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
+          progressed <- 
+            current_states %in% c("CIN2", "CIN3", "FIGO.I", "FIGO.II", "FIGO.III", "FIGO.IV")
           if (any(progressed)) {
             progressed_IDs <- CIN1_followup_IDs[progressed]
             progressed_states <- current_states[progressed]
@@ -1140,10 +1141,6 @@ MicroSim <- function(strat=strat,
           all_rounds <- rbindlist(list(all_rounds, rounds_log), use.names = TRUE, fill = TRUE)
         }
         # --- End of rounds logging --- 
-        
-        
-        
-        
         
         
         
@@ -1394,7 +1391,7 @@ MicroSim <- function(strat=strat,
       #results$seed <- seed
       cat("At sim number:", sim,  " tc_hat_undisc is ", tc_hat_undisc, "\n")
       rm(symptomatics)
-      #rm(TS) 
+      rm(TS) # to save memory
       
       ## Write to a log file to track worker outputs
       #cat(sprintf("Simulation %d, Length: %d\n", sim, length(output)), 
@@ -1651,7 +1648,7 @@ for (n_strat in 1:length(screening_strategies)) {
   # Save
   sim_result[[strat]] <- stacked_results 
   #sim_result[[strat]] <- stacked_results[[strat]] 
-}
+} # End of loop for strategies
 
 comp.time = Sys.time() - p
 comp.time %>% print()
@@ -1940,12 +1937,6 @@ sim_result_0_old_trans <-
 # load  Markov vaccination computation strategies:
 #load(file = "data/markov_vacc_vectors.RData")
 load(file = "data/markov_vacc_CORRECTED_vectors.RData")
-
-## Use this only to pots-process some of the previous results:
-
-#sim_result <- sim_result_0
-#sim_result <- sim_natural_history
-#sim_result <- sim_result_0_old_trans
 
 
 cat("I have written out the results\n")
@@ -2565,14 +2556,14 @@ difference_plot <- function(markov_vector, microsim_tbl,
 #)
 
 
-# Create plots for each measure
-plot_CN1_incidences <- plot_comparison(combined_data, "CN1_incidences")
-plot_CN2_incidences <- plot_comparison(combined_data, "CN2_incidences")
-plot_CN3_incidences <- plot_comparison(combined_data, "CN3_incidences")
-plot_CC_incidences <- plot_comparison(combined_data, "CC_incidences")
-plot_HPV_prevalences <- plot_comparison(combined_data, "HPV_prevalences")
-plot_CC_mortality <- plot_comparison(combined_data, "CC_mortality")
-#plot_CC_by_diff_mortality <- plot_comparison(combined_data, "CC_by_diff_mortality")
+## Create plots for each measure
+#plot_CN1_incidences <- plot_comparison(combined_data, "CN1_incidences")
+#plot_CN2_incidences <- plot_comparison(combined_data, "CN2_incidences")
+#plot_CN3_incidences <- plot_comparison(combined_data, "CN3_incidences")
+#plot_CC_incidences <- plot_comparison(combined_data, "CC_incidences")
+#plot_HPV_prevalences <- plot_comparison(combined_data, "HPV_prevalences")
+#plot_CC_mortality <- plot_comparison(combined_data, "CC_mortality")
+##plot_CC_by_diff_mortality <- plot_comparison(combined_data, "CC_by_diff_mortality")
 
 
 ## Display plots
@@ -2593,20 +2584,20 @@ plot_CC_mortality <- plot_comparison(combined_data, "CC_mortality")
 #print(plot_mean_new_CC)
 
 
-##### Combining plots in a single image:
-library("patchwork") # disable to run as job script with sbatch:
-combined_plot <- (plot_CN1_incidences | plot_CN2_incidences | plot_CN3_incidences) /
-  #(plot_CC_incidences | plot_HPV_prevalences | plot_CC_mortality)
-  (plot_CC_incidences | plot_HPV_prevalences | plot_mean_Diagnosed_FIGO)# plot_CC_mortality)
-
-##combined_plot2 <- (plot_mean_new_CIN1 | plot_mean_new_CIN2 | plot_mean_new_CIN3) |
-combined_plot3 <- (plot_comparison_new_CIN1 | plot_comparison_new_CIN2) /
-  (plot_comparison_new_CIN3 | plot_comparison_new_Cancer) 
-# View it
-print(combined_plot)
-print(combined_plot3)
-
-#ggsave("figures/combined_plots_incidence_vacc_80.pdf", combined_plot, width = 15, height = 10, dpi = 300)
+###### Combining plots in a single image:
+#library("patchwork") # disable to run as job script with sbatch:
+#combined_plot <- (plot_CN1_incidences | plot_CN2_incidences | plot_CN3_incidences) /
+#  #(plot_CC_incidences | plot_HPV_prevalences | plot_CC_mortality)
+#  (plot_CC_incidences | plot_HPV_prevalences | plot_mean_Diagnosed_FIGO)# plot_CC_mortality)
+#
+###combined_plot2 <- (plot_mean_new_CIN1 | plot_mean_new_CIN2 | plot_mean_new_CIN3) |
+#combined_plot3 <- (plot_comparison_new_CIN1 | plot_comparison_new_CIN2) /
+#  (plot_comparison_new_CIN3 | plot_comparison_new_Cancer) 
+## View it
+#print(combined_plot)
+#print(combined_plot3)
+#
+##ggsave("figures/combined_plots_incidence_vacc_80.pdf", combined_plot, width = 15, height = 10, dpi = 300)
 
 #################################################################################
 #### Check visually for patterns in the difference of microSims and Markov sims:

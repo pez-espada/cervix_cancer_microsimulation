@@ -659,9 +659,25 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
   sim_result[[strategy_name]] <- 
     remove_columns_from_list(complex_list = sim_result[[strategy_name]], 
                              ... = "sim.1", "row_names")
+  
+  
   ##############################################################################
   
 } # endfor strategy_name
+
+## Further Cleaning
+remove_symptomatics <- function(sim_result, drop = TRUE) {
+  if (drop) {
+    sim_result <- lapply(sim_result, function(strategy) {
+      strategy[setdiff(names(strategy), "symptomatics")]
+    })
+  }
+  sim_result
+}
+
+
+# removing symptomatics object:
+sim_result <- remove_symptomatics(sim_result, drop = TRUE)
 
 ################################################################################
 ################################################################################

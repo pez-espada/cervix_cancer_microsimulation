@@ -48,8 +48,8 @@ summarize_results_by_Strategy <- function(strategy, results_list, numb_of_sims) 
   #    return(df)
   #  }))
   
-  # TESTING
-  lapply(results_list, function(x) "symptomatics" %in% names(x))
+  ## TESTING
+  #lapply(results_list, function(x) "symptomatics" %in% names(x))
   
   
   for (name_level_of_sim in names_sim) {
