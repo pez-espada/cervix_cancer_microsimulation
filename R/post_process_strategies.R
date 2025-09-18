@@ -490,7 +490,7 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
   
   ##############################################################################
   # Mean diagnosed of Cancer averaged by age intervals (FIGO.I-.IV) and by sims
-  mean_Diagnosed_Func  <- function (sim_stacked_result, my_Probs) {
+  mean_Diagnosed_Per_Symp_Func  <- function (sim_stacked_result, my_Probs) {
     age_intervals <- my_Probs %>% 
       dplyr::select(Lower, Larger) %>% 
       unique() %>% 
@@ -545,8 +545,8 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
   }
   ##############################################################################
   
-  sim_result[[strategy_name]]$mean_Diagnosed <-
-    mean_Diagnosed_Func(sim_stacked_result =
+  sim_result[[strategy_name]]$mean_Diagnosed_per_Symp  <-
+    mean_Diagnosed_Per_Symp_Func(sim_stacked_result =
                           sim_result[[strategy_name]], my_Probs = my_Probs)  
   ##############################################################################
 
