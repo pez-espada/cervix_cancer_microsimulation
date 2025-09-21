@@ -1167,6 +1167,12 @@ MicroSim <- function(strat=strat,
       #################### close loop for cycles ############################# 
       ########################################################################
       
+      # Store rounds summary for this simulation
+      # return as a tibble (or data.frame)
+      dplyr::tibble(
+        sim = sim,
+        my_round_cyto = my_round_cyto
+      )
       
       # ---- UPDATE m_C MATRIX WITH CURRENT COST_LOG ENTRIES ----
       ########################################################################
@@ -1353,8 +1359,38 @@ MicroSim <- function(strat=strat,
       #NEW CODE 26.06.25:
       cost_log <- cost_log[!duplicated(cost_log[, .(sim, age, ID, cost_type)]), ]
       
-      #cost_log <- unique(cost_log, by = c("sim", "age", "ID", "cost_type"))
+      # NEW CODE 19.09.25: 
+      # Make a cost_log_by_sim data.table with the total cost per simulation
+      # Convert to data.table
+      cost_log_dt <- as.data.table(cost_log)
       
+      # Summarize: total cost per simulation
+      cost_log_by_sim <- cost_log_dt[, .(total_cost = sum(cost, na.rm = TRUE)), by = sim] 
+      
+      ## Cleaning my_round_cyto
+      #my_round_cyto <- my_round_cyto %>% 
+      #  dplyr::select(c(sim, `sim[[i]][[name_level_of_sim]]`)) %>% 
+      #  rename(cyto_screening_rounds = `sim[[i]][[name_level_of_sim]]`)
+        
+      ## Compute mean recovered by DiagnosedState from Symptomatics
+      ## i.e., those who were diagnosed by symptoms and then recovered:
+      #recovered_means_from_symp <- symptomatics %>%
+      #  filter(RecoveredFromState) %>%                 # keep only recovered
+      #  group_by(sim, DiagnosedState) %>%              # group by sim and stage
+      #  summarise(recovered = n(), .groups = "drop") %>%
+      #  group_by(DiagnosedState) %>%                   # across all sims
+      #  summarise(mean_recovered = mean(recovered)) %>%
+      #  bind_rows(
+      #    symptomatics %>%
+      #      filter(RecoveredFromState) %>%
+      #      group_by(sim) %>%
+      #      summarise(recovered = n(), .groups = "drop") %>%
+      #      summarise(mean_recovered = mean(recovered)) %>%
+      #      mutate(DiagnosedState = "TOTAL") %>%
+      #      select(DiagnosedState, mean_recovered)
+      #  )
+      
+       
       #cat("At sim number:", sim,  " reported strategy is ", strategy, "\n")
       
       # Store the results from the simulation in a list
@@ -1377,14 +1413,16 @@ MicroSim <- function(strat=strat,
         TR = TR, 
         #Tot_Trans_per_t = Tot_Trans_per_t, 
         symptomatics = symptomatics,
+        #recovered_means_from_symp = recovered_means_from_symp,
         new_CIN1 = new_CIN1,
         new_CIN2 = new_CIN2,
         new_CIN3 = new_CIN3,
         new_Cancer = new_Cancer,
         new_CC_Death = new_CC_Death,
-        CC_Death_by_diff = CC_Death_by_diff, 
-        screening_cost = cost_log,
-        rounds = all_rounds,
+        #CC_Death_by_diff = CC_Death_by_diff, 
+        #screening_cost = cost_log,
+        total_cyto_screening_cost_per_sim = cost_log_by_sim,
+        #rounds = all_rounds,
         my_round_cyto = my_round_cyto) 
       
       results$seed <- seeds[sim]
@@ -1397,6 +1435,12 @@ MicroSim <- function(strat=strat,
       #cat(sprintf("Simulation %d, Length: %d\n", sim, length(output)), 
       #    file = "debug_log.txt", append = TRUE)
       return(results)
+      
+      
+      # results$my_round_cyto %>% 
+      #   dplyr::select(c(sim, `sim[[i]][[name_level_of_sim]]`)) %>% 
+      #   rename(cyto_screening_rounds = `sim[[i]][[name_level_of_sim]]`)
+      
       #gc() #Force memory cleanup after each sim/batch 
       
     } # end of `foreach/dopar` loop
@@ -1406,7 +1450,7 @@ MicroSim <- function(strat=strat,
   ## attach vector to your object
   #simulation_results$my_round_cyto <- my_round_cyto_vec
   
-  
+ 
   return(simulation_results)
   
 } # end of MicroSim function
@@ -1644,6 +1688,29 @@ for (n_strat in 1:length(screening_strategies)) {
   stacked_results <- summarize_results_by_Strategy(strategy = strat,
                                                    results_list = sim_raw_result, 
                                                    numb_of_sims = numb_of_sims)
+  
+  
+  # Compute mean recovered by DiagnosedState from Symptomatics
+  # i.e., those who were diagnosed by symptoms and then recovered:
+  symptomatics <- stacked_results[[strat]]$symptomatics
+  
+  recovered_means_from_Symp <- symptomatics %>%
+    filter(RecoveredFromState) %>%                 # keep only recovered
+    group_by(sim, DiagnosedState) %>%              # group by sim and stage
+    summarise(recovered = n(), .groups = "drop") %>%
+    group_by(DiagnosedState) %>%                   # across all sims
+    summarise(mean_recovered = mean(recovered)) %>%
+    bind_rows(
+      symptomatics %>%
+        filter(RecoveredFromState) %>%
+        group_by(sim) %>%
+        summarise(recovered = n(), .groups = "drop") %>%
+        summarise(mean_recovered = mean(recovered)) %>%
+        mutate(DiagnosedState = "TOTAL") %>%
+        select(DiagnosedState, mean_recovered)
+    )
+  rm(symptomatics)
+  stacked_results[[strat]]$recovered_means_from_Symp <- recovered_means_from_Symp
   
   # Save
   sim_result[[strat]] <- stacked_results 

@@ -190,7 +190,7 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
   
   ##############################################################################
   # Computing Cervix Cancer incidence:
-  mean_CC_incidence_func <- function(sim_stalked_result, my_Probs) {
+  mean_CC_incidence_per_age_interval_func <- function(sim_stalked_result, my_Probs) {
     
     age_intervals <- my_Probs %>% 
       dplyr::select(Lower, Larger) %>% 
@@ -228,8 +228,8 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
   }
   ##############################################################################
   
-   sim_result[[strategy_name]]$mean_CC_incidence <-
-    mean_CC_incidence_func(sim_stalked_result = sim_result[[strategy_name]],
+   sim_result[[strategy_name]]$mean_CC_incidence_per_age_interval <-
+    mean_CC_incidence_per_age_interval_func(sim_stalked_result = sim_result[[strategy_name]],
                            my_Probs = my_Probs)  
   
   ############################################################################## 
@@ -291,71 +291,74 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
   }
   ##############################################################################
   
-  sim_result[[strategy_name]]$CC_mean_mortality <-
+  # modify objetc's name by a sensible one
+  #sim_result[[strategy_name]]$CC_mean_mortality <-
+  sim_result[[strategy_name]]$mean_CC_mortality_per_age_interval <-
     mean_CC_mortality_func(sim_stalked_result = sim_result[[strategy_name]],
                            my_Probs = my_Probs)  
   
 
   
-  ##############################################################################
-  # A.2 Cancer-related Deaths (per differences) per age
-  mean_CC_mortality_by_diff_func <- function(sim_stalked_result, my_Probs) {
-    
-    age_intervals <- my_Probs %>% 
-      dplyr::select(Lower, Larger) %>% 
-      unique() %>% 
-      arrange(Lower)
-    
-    # Create a vector of the breaks for the intervals
-    breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
-    
-    # Create labels for the intervals
-    labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
-    
-    # Define the age range you want to keep
-    age_range <- min(age_intervals$Lower):max(age_intervals$Larger) 
-    
-    # Left join sim_result[[1]]$TR with sim_result[[1]]$new_CC_Death by age
-    #df <- sim_result[[1]]$TR %>%
-    df <- sim_stalked_result$TR %>%
-      left_join(sim_stalked_result$CC_Death_by_diff %>%
-                  dplyr::select(sim, age, CC_Death_by_diff), 
-                by = c("sim", "age", "CC_Death_by_diff"), 
-                relationship = "many-to-many") %>%
-      
-      # Filter for ages in the desired range
-      dplyr::filter(age %in% age_range) %>%
-      
-      # Fill missing CC_Death_per_t with zeros (for cases where the age doesn't exist)
-      dplyr::mutate(CC_Death_by_diff_per_t = coalesce(CC_Death_by_diff, 0)) %>%
-      
-      # Compute total_alive
-      dplyr::mutate(total_alive = H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
-                      FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
-      
-      # Compute CC_mortality based on CC_Death_per_t and total_alive
-      dplyr::mutate(CC_by_diff_mortality = (CC_Death_by_diff_per_t / total_alive) * 10^5) %>%
-      
-      # Compute age intervals and average CC_mortality by age intervals
-      dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>%
-      dplyr::group_by(age_interval) %>%
-      dplyr::summarise(CC_by_diff_mean_mortality = mean(CC_by_diff_mortality, na.rm = TRUE)) %>%
-      dplyr::ungroup()
-    
-    return(df)
-    #sim_stalked_result[[1]]$CC_by_diff_mean_mortality <- df
-    #return(sim_stalked_result)
-  }
-  ##############################################################################
-  
-  sim_result[[strategy_name]]$CC_by_diff_mean_mortality <-
-    mean_CC_mortality_by_diff_func(sim_stalked_result = sim_result[[strategy_name]],
-                                   my_Probs = my_Probs)  
+  ###############################################################################
+  ## A.2 Cancer-related Deaths (per differences) per age
+  #mean_CC_mortality_by_diff_func <- function(sim_stalked_result, my_Probs) {
+  #  
+  #  age_intervals <- my_Probs %>% 
+  #    dplyr::select(Lower, Larger) %>% 
+  #    unique() %>% 
+  #    arrange(Lower)
+  #  
+  #  # Create a vector of the breaks for the intervals
+  #  breaks <- c(age_intervals$Lower, max(age_intervals$Larger) + 1)
+  #  
+  #  # Create labels for the intervals
+  #  labels <- paste(age_intervals$Lower, age_intervals$Larger, sep = "-")
+  #  
+  #  # Define the age range you want to keep
+  #  age_range <- min(age_intervals$Lower):max(age_intervals$Larger) 
+  #  
+  #  # Left join sim_result[[1]]$TR with sim_result[[1]]$new_CC_Death by age
+  #  #df <- sim_result[[1]]$TR %>%
+  #  df <- sim_stalked_result$TR %>%
+  #    left_join(sim_stalked_result$CC_Death_by_diff %>%
+  #                dplyr::select(sim, age, CC_Death_by_diff), 
+  #              by = c("sim", "age", "CC_Death_by_diff"), 
+  #              relationship = "many-to-many") %>%
+  #    
+  #    # Filter for ages in the desired range
+  #    dplyr::filter(age %in% age_range) %>%
+  #    
+  #    # Fill missing CC_Death_per_t with zeros (for cases where the age doesn't exist)
+  #    dplyr::mutate(CC_Death_by_diff_per_t = coalesce(CC_Death_by_diff, 0)) %>%
+  #    
+  #    # Compute total_alive
+  #    dplyr::mutate(total_alive = H + HR.HPV.infection + CIN1 + CIN2 + CIN3 +
+  #                    FIGO.I + FIGO.II + FIGO.III + FIGO.IV + Survival) %>%
+  #    
+  #    # Compute CC_mortality based on CC_Death_per_t and total_alive
+  #    dplyr::mutate(CC_by_diff_mortality = (CC_Death_by_diff_per_t / total_alive) * 10^5) %>%
+  #    
+  #    # Compute age intervals and average CC_mortality by age intervals
+  #    dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>%
+  #    dplyr::group_by(age_interval) %>%
+  #    dplyr::summarise(CC_by_diff_mean_mortality = mean(CC_by_diff_mortality, na.rm = TRUE)) %>%
+  #    dplyr::ungroup()
+  #  
+  #  return(df)
+  #  #sim_stalked_result[[1]]$CC_by_diff_mean_mortality <- df
+  #  #return(sim_stalked_result)
+  #}
+  ###############################################################################
+ 
+  # Switch off this computation (20250918): 
+  #sim_result[[strategy_name]]$CC_by_diff_mean_mortality <-
+  #  mean_CC_mortality_by_diff_func(sim_stalked_result = sim_result[[strategy_name]],
+  #                                 my_Probs = my_Probs)  
   
   
   ##############################################################################
   # B. Cancer-unrelated Mortality
-  other_mean_mortality_func <- function(sim_stalked_result, my_Probs) {
+  mean_other_mortality_per_age_interval_func <- function(sim_stalked_result, my_Probs) {
     
     age_intervals <- my_Probs %>% 
       dplyr::select(Lower, Larger) %>% 
@@ -377,7 +380,7 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
       dplyr::mutate(other_mortality = (Other.Death / total_alive) * 10^5) %>% 
       dplyr::mutate(age_interval = cut(age, breaks = breaks, labels = labels, right = FALSE)) %>% 
       dplyr::group_by(age_interval) %>% 
-      dplyr::summarise(other_mean_mortality = mean(other_mortality, na.rm = TRUE)) %>% 
+      dplyr::summarise(mean_other_mortality_per_age_interval = mean(other_mortality, na.rm = TRUE)) %>% 
       dplyr::ungroup()
     
     return(df)
@@ -386,14 +389,14 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
   }
   ##############################################################################
   
-  sim_result[[strategy_name]]$other_mean_mortality <-
-    other_mean_mortality_func(sim_stalked_result = sim_result[[strategy_name]],
+  sim_result[[strategy_name]]$mean_other_mortality_per_age_interval <-
+    mean_other_mortality_per_age_interval_func(sim_stalked_result = sim_result[[strategy_name]],
                               my_Probs = my_Probs)  
   
   
   ##############################################################################
   # Mean FIGO states across simulations by age interval
-  mean_FIGO_prevalence_Func <- function(sim_stalked_result, my_Probs) {
+  mean_FIGO_prevalence_per_age_interval_Func <- function(sim_stalked_result, my_Probs) {
     age_intervals <- my_Probs %>% 
       dplyr::select(Lower, Larger) %>% 
       unique() %>% 
@@ -434,14 +437,14 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
   ##############################################################################
   
   
-  sim_result[[strategy_name]]$mean_FIGO_prevalence <-
-    mean_FIGO_prevalence_Func(sim_stalked_result = 
+  sim_result[[strategy_name]]$mean_FIGO_prevalence_per_age_interval <-
+    mean_FIGO_prevalence_per_age_interval_Func(sim_stalked_result = 
                                 sim_result[[strategy_name]], my_Probs = my_Probs)  
   ##############################################################################
   
   ##############################################################################
   # Mean (accross simulations) of Cancer (FIGO.I-.IV)
-  mean_Figo_Func  <- function (sim_stalked_result, my_Probs) {
+  mean_Figo_per_age_interval_Func  <- function (sim_stalked_result, my_Probs) {
     age_intervals <- my_Probs %>% 
       dplyr::select(Lower, Larger) %>% 
       unique() %>% 
@@ -483,14 +486,14 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
   ##############################################################################
   
   # Concatenate the prevalence to the sim result 
-  sim_result[[strategy_name]]$mean_FIGO <-
-    mean_Figo_Func(sim_stalked_result = 
+  sim_result[[strategy_name]]$mean_FIGO_n_per_age_interval <-
+    mean_Figo_per_age_interval_Func(sim_stalked_result = 
                      sim_result[[strategy_name]], my_Probs = my_Probs)  
   ##############################################################################
   
   ##############################################################################
   # Mean diagnosed of Cancer averaged by age intervals (FIGO.I-.IV) and by sims
-  mean_Diagnosed_Per_Symp_Func  <- function (sim_stacked_result, my_Probs) {
+  mean_Diagnosed_Per_Symp_per_age_interval_Func  <- function (sim_stacked_result, my_Probs) {
     age_intervals <- my_Probs %>% 
       dplyr::select(Lower, Larger) %>% 
       unique() %>% 
@@ -545,8 +548,8 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
   }
   ##############################################################################
   
-  sim_result[[strategy_name]]$mean_Diagnosed_per_Symp  <-
-    mean_Diagnosed_Per_Symp_Func(sim_stacked_result =
+  sim_result[[strategy_name]]$mean_Diagnosed_per_Symp_per_age_interval  <-
+    mean_Diagnosed_Per_Symp_per_age_interval_Func(sim_stacked_result =
                           sim_result[[strategy_name]], my_Probs = my_Probs)  
   ##############################################################################
 
@@ -579,45 +582,45 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
     return(df)
   }
   ##############################################################################
-  new_averaged_CIN1_per_age_interval <- 
+   mean_new_cases_CIN1_per_age_interval <- 
     mean_new_cases_func(sim_result = sim_result[[strategy_name]], 
                         new_cases_name = "new_CIN1",
                         my_Probs = my_Probs)
   
-  new_averaged_CIN2_per_age_interval <- 
+  mean_new_cases_CIN2_per_age_interval <- 
     mean_new_cases_func(sim_result = sim_result[[strategy_name]], 
                         new_cases_name = "new_CIN2",
                         my_Probs = my_Probs)
   
-  new_averaged_CIN3_per_age_interval <- 
+  mean_new_cases_CIN3_per_age_interval <- 
     mean_new_cases_func(sim_result = sim_result[[strategy_name]], 
                         new_cases_name = "new_CIN3",
                         my_Probs = my_Probs)
   
-  new_averaged_Cancer_per_age_interval <- 
+  mean_new_cases_Cancer_per_age_interval <- 
     mean_new_cases_func(sim_result = sim_result[[strategy_name]], 
                         new_cases_name = "new_Cancer",
                         my_Probs = my_Probs)
   
-  new_averaged_CC_Death_per_age_interval <- 
+  mean_new_cases_CC_Death_per_age_interval <- 
     mean_new_cases_func(sim_result = sim_result[[strategy_name]], 
                         new_cases_name = "new_CC_Death",
                         my_Probs = my_Probs)
   
-  sim_result[[strategy_name]]$new_averaged_CIN1_per_age_interval <- 
-    new_averaged_CIN1_per_age_interval
+  sim_result[[strategy_name]]$mean_new_cases_CIN1_per_age_interval <- 
+    mean_new_cases_CIN1_per_age_interval
   
-  sim_result[[strategy_name]]$new_averaged_CIN2_per_age_interval <- 
-    new_averaged_CIN2_per_age_interval
+  sim_result[[strategy_name]]$mean_new_cases_CIN2_per_age_interval <- 
+    mean_new_cases_CIN2_per_age_interval
   
-  sim_result[[strategy_name]]$new_averaged_CIN3_per_age_interval <- 
-    new_averaged_CIN3_per_age_interval
+  sim_result[[strategy_name]]$mean_new_cases_CIN3_per_age_interval <- 
+    mean_new_cases_CIN3_per_age_interval
   
-  sim_result[[strategy_name]]$new_averaged_Cancer_per_age_interval <- 
-    new_averaged_Cancer_per_age_interval
+  sim_result[[strategy_name]]$mean_new_cases_Cancer_per_age_interval <- 
+    mean_new_cases_Cancer_per_age_interval
   
-  sim_result[[strategy_name]]$new_averaged_CC_Death_per_age_interval <- 
-    new_averaged_CC_Death_per_age_interval
+  sim_result[[strategy_name]]$mean_new_cases_CC_Death_per_age_interval <- 
+    mean_new_cases_CC_Death_per_age_interval
   
   ##############################################################################
  
