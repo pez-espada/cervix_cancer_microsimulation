@@ -668,19 +668,39 @@ for (strategy_name in names(sim_result[names(sim_result) != "runtime"])) {
   
 } # endfor strategy_name
 
+### Further Cleaning
+#remove_symptomatics <- function(sim_result, drop = TRUE) {
+#  if (drop) {
+#    sim_result <- lapply(sim_result, function(strategy) {
+#      strategy[setdiff(names(strategy), "symptomatics")]
+#    })
+#  }
+#  sim_result
+#}
+#
+## removing symptomatics object:
+#sim_result <- remove_symptomatics(sim_result, drop = TRUE)
+
+
 ## Further Cleaning
-remove_symptomatics <- function(sim_result, drop = TRUE) {
-  if (drop) {
-    sim_result <- lapply(sim_result, function(strategy) {
-      strategy[setdiff(names(strategy), "symptomatics")]
-    })
-  }
-  sim_result
+clean_sim_result <- function(sim_result, drop = NULL, keep = NULL) {
+  lapply(sim_result, function(strategy) {
+    if (!is.null(drop)) {
+      # remove items in drop if they exist
+      strategy <- strategy[setdiff(names(strategy), drop)]
+    }
+    if (!is.null(keep)) {
+      # keep only specified items (if they exist)
+      strategy <- strategy[intersect(names(strategy), keep)]
+    }
+    strategy
+  })
 }
+# Example usage:
+# sim_result <- clean_sim_result(sim_result, drop = c("symptomatics", " TR"))
+# dropping symptomatics and screening_cost:
+sim_result <- clean_sim_result(sim_result, drop = c("symptomatics", "screening_cost"))
 
-
-# removing symptomatics object:
-sim_result <- remove_symptomatics(sim_result, drop = TRUE)
 
 ################################################################################
 ################################################################################

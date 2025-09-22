@@ -223,6 +223,8 @@ return(transition_prob)
 # New Probs fnct:
 ################################################################################
 Probs <- function(M_it, my_Probs) {
+### The Probs function that updates the transition probabilities of every cycle:
+  ## It gives back a matrix of probabilities for all individuals.
   n_s <- length(v_n)
   n_i <- dim(M_it)[1]
   m_P_it <- matrix(NA, n_s, n_i) 
@@ -264,6 +266,10 @@ Probs <- function(M_it, my_Probs) {
 Probs_3_optimized <- function(M_it, v_n, n_i, seed, prob_matrix, prob_matrix_2, 
                               prob_matrix_2_nat_immunity, prob_matrix_4, 
                               prob_matrix_9, vacc_lbl, age) {
+  ## This function is an optimized version of the Probs() function
+  ## It splits the population into subgroups according to their vaccination
+  ## status and then applies the Probs() function to each subgroup
+  ## It gives back a matrix of probabilities for all individuals
   M_it <- tibble(ID = as.integer(1:length(M_it)), health_state = M_it)
   
   # merge data with vacc_lbl:
@@ -1041,7 +1047,7 @@ MicroSim <- function(strat=strat,
               CIN2plus_new <- diagnosed_ids[CIN2plus_mask & !(diagnosed_ids %in% detected_IDs)]
               detected_IDs <- unique(c(detected_IDs, CIN2plus_new))
 
-              # 8. Apply recovery logic
+              # 8. Apply  recovery logic
               recovery_probs <- screenProbs[diagnosed_indices]
               recovery_mask <- runif(length(diagnosed_ids)) < recovery_probs
 
@@ -1420,7 +1426,7 @@ MicroSim <- function(strat=strat,
         new_Cancer = new_Cancer,
         new_CC_Death = new_CC_Death,
         #CC_Death_by_diff = CC_Death_by_diff, 
-        #screening_cost = cost_log,
+        screening_cost = cost_log,
         total_cyto_screening_cost_per_sim = cost_log_by_sim,
         #rounds = all_rounds,
         my_round_cyto = my_round_cyto) 
@@ -1711,6 +1717,37 @@ for (n_strat in 1:length(screening_strategies)) {
     )
   rm(symptomatics)
   stacked_results[[strat]]$recovered_means_from_Symp <- recovered_means_from_Symp
+  
+  
+  # Compute mean recovered by stage from Cost Log 
+  # i.e., those who were diagnosed by screening and then recovered:
+  cost_log <- stacked_results[[strat]]$screening_cost
+  
+  recovered_cyto_means <- cost_log %>%
+    filter(str_detect(cost_type, "^recovery_from_")) %>%
+    mutate(stage = str_remove(cost_type, "recovery_from_")) %>%
+    group_by(sim, stage) %>%
+    summarise(recovered = n(), .groups = "drop") %>%
+    group_by(stage) %>%
+    summarise(mean_recovered = mean(recovered), .groups = "drop") %>%
+    bind_rows(
+      cost_log %>%
+        filter(str_detect(cost_type, "^recovery_from_")) %>%
+        mutate(stage = str_remove(cost_type, "recovery_from_")) %>%
+        group_by(sim) %>%
+        summarise(recovered = n(), .groups = "drop") %>%
+        summarise(mean_recovered = mean(recovered)) %>%
+        mutate(stage = "TOTAL") %>%
+        select(stage, mean_recovered)
+    )
+  rm(cost_log)
+  
+  
+  stacked_results[[strat]]$recovered_cyto_means <- recovered_cyto_means
+  
+  
+  
+  
   
   # Save
   sim_result[[strat]] <- stacked_results 
