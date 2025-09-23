@@ -23,7 +23,8 @@ module load apps/R
 #Rscript cervix_microSim_stacked_list_v.02_original_20250514.R "$SLURM_JOB_ID"
 #Rscript cervix_microSim_stacked_list_v.02_original_20250514_FOR_SUBMISSION.R "$SLURM_JOB_ID"
 #Rscript cervix_microSim_stacked_list_v.02_original_20250514_20250714_TEMP.R "$SLURM_JOB_ID"
-Rscript cervix_microSim_with_cyto_screening_20250725_v.1.R  "$SLURM_JOB_ID"
+#Rscript cervix_microSim_with_cyto_screening_20250725_v.1.R  "$SLURM_JOB_ID"
+Rscript cervix_microSim_with_cyto_screening_20250725_v.1_FOR_SUBMISSION.R  "$SLURM_JOB_ID"
 #Rscript cervix_microSim_stacked_list_v.02_B_original_20250514.R "$SLURM_JOB_ID"
 #Rscript PARALLEL_cervix_microSim_stacked_Natural_History_REPRODUCIBLE_20250328.R
 #Rscript PARALLEL_cervix_microSim_stacked_Natural_History_20250211.R # for natural history simulation

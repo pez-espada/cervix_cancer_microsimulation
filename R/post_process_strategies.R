@@ -699,7 +699,10 @@ clean_sim_result <- function(sim_result, drop = NULL, keep = NULL) {
 # Example usage:
 # sim_result <- clean_sim_result(sim_result, drop = c("symptomatics", " TR"))
 # dropping symptomatics and screening_cost:
-sim_result <- clean_sim_result(sim_result, drop = c("symptomatics", "screening_cost"))
+sim_result <- 
+  #clean_sim_result(sim_result, drop = c("symptomatics", "screening_cost", "my_round_cyto"))
+  clean_sim_result(sim_result, drop = c("symptomatics", "screening_cost"))
+#sim_result <- clean_sim_result(sim_result, drop = c("symptomatics"))#, "screening_cost"))
 
 
 ################################################################################

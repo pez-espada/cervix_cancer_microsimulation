@@ -127,8 +127,9 @@ my_Probs9 <- my_Probs9 %>% as.data.frame() #convert back to data.frame (no neede
 ################################################################################
 ## ----Model Parameters
 n_i <- 10^6               # number of simulated individuals
-n_i <- 10^4               # number of simulated individuals
-n_i <- 10^3               # number of simulated individuals
+n_i <- 10^5               # number of simulated individuals
+#n_i <- 10^4               # number of simulated individuals
+#n_i <- 10^3               # number of simulated individuals
 #n_t <- 3                  # time horizon, 3 cycles (it starts from 1)
 n_t <- 75                  # time horizon, 75 cycles (it starts from 1)
 ################################################################################
@@ -638,11 +639,6 @@ state_transition_log <- data.table()  # only used if log_transitions == TRUE
 ################################################################################
 
 
-
-
-
- 
-
 ################################################################################
 ################################################################################
 ################################################################################
@@ -670,79 +666,80 @@ MicroSim <- function(strat=strat,
                      vacc_coverage,
                      ScreenPrice,
                      costCoeff_md,
-                     citoSpecif
-)
+                     citoSpecif)
 {
+  #library(parallel)
   cat("I HAVE ENTERED THE SIMULATOR \n")
   cl <- NULL  # Ensure cl exists in all cases
   
-  if (use_parallel) {
-    n_cores <- min(detectCores() - 1, 4)  # Try using 8 or fewer cores
-    cat("Number of cores: ", n_cores, "\n")
-    # 6-hours timeout to prevent socket drop issues
-    cl <- makeCluster(n_cores, timeout = 6*60*60) 
-    
-    clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
-                        "vacc_lbl", "Probs_3_optimized",
-                        "my_Probs", "my_Probs2","my_Probs4", "my_Probs9", 
-                        "my_Probs2_nat_immunity", "utilityCoefs", "v_n", "samplev", 
-                        "my_age_prob_matrix_func","diagnose_column", 
-                        "update_column", "states_to_check", 
-                        "symptom_prob_vec", "survival_prob_vec", #"global_diagnosed", 
-                        "cost_Vec", "new_cases_2",
-                        "extract_screening_days", "IDs", "screenSensi",
-                        "screenProbs"))
-    
-    registerDoParallel(cl)
-  } else {
-    registerDoSEQ()  # Runs sequentially for debugging
+
+if (use_parallel) {
+  n_cores <- min(detectCores() - 1, 4)  # Try using 8 or fewer cores
+  cat("Number of cores: ", n_cores, "\n")
+  # 6-hours timeout to prevent socket drop issues
+  cl <- makeCluster(n_cores, timeout = 6*60*60) 
+  
+  clusterExport(cl, c("Costs_per_Cancer_Diag", "Effs", "trans_prb", "Probs",
+                      "vacc_lbl", "Probs_3_optimized",
+                      "my_Probs", "my_Probs2","my_Probs4", "my_Probs9", 
+                      "my_Probs2_nat_immunity", "utilityCoefs", "v_n", "samplev", 
+                      "my_age_prob_matrix_func","diagnose_column", 
+                      "update_column", "states_to_check", 
+                      "symptom_prob_vec", "survival_prob_vec", #"global_diagnosed", 
+                      "cost_Vec", "new_cases_2",
+                      "extract_screening_days", "IDs", "screenSensi",
+                      "screenProbs"))
+  
+  registerDoParallel(cl)
+} else {
+  registerDoSEQ()  # Runs sequentially for debugging
+}
+
+# Generate independent seeds for each simulation run
+if (reproducible && !is.null(master_seed)) {
+  set.seed(master_seed)
+  seeds <- sample.int(1e6, numb_of_sims)  # Generate unique seeds
+  cat("THE RANDOM SEEDS ARE:", seeds, "\n")
+} else {
+  seeds <- NULL  # No reproducibility
+}
+
+# Some Initiliazations: 
+simulation_results <- list() 
+
+# calculate the cost discount weight based on the discount rate d_c 
+v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   
+# calculate the QALY discount weight based on the discount rate d_e                                             
+v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   
+
+# If vaccination, apply vaccination cost to those vaccinated individuals
+# ONLY ONCE per sim batch:
+vacc_cost <- rep(0, n_i)
+if (any(vacc_coverage != 0)) { 
+  # vacc_covverage pos1 is bivalent, pos2 is 4-valent and pos3 is 9-valent
+  if (vacc_coverage[1] != 0) {
+    vaccinated_id <- which(vacc_lbl$vacc_state == "vacc_2")
+    vacc_cost[vaccinated_id] <- cost_vacc2
+    #cat("we have vaccinated here!\n")
   }
-  
-  # Generate independent seeds for each simulation run
-  if (reproducible && !is.null(master_seed)) {
-    set.seed(master_seed)
-    seeds <- sample.int(1e6, numb_of_sims)  # Generate unique seeds
-    cat("THE RANDOM SEEDS ARE:", seeds, "\n")
-  } else {
-    seeds <- NULL  # No reproducibility
+  if (vacc_coverage[2] != 0) {
+    vaccinated_id <- which(vacc_lbl$vacc_state == "vacc_4")
+    vacc_cost[vaccinated_id] <- cost_vacc4
   }
-  
-  # Some Initiliazations: 
-  simulation_results <- list() 
-  
-  # calculate the cost discount weight based on the discount rate d_c 
-  v_dwc <- 1 / (1 + d_c) ^ (0:(n_t-1))   
-  # calculate the QALY discount weight based on the discount rate d_e                                             
-  v_dwe <- 1 / (1 + d_e) ^ (0:(n_t-1))   
-  
-  # If vaccination, apply vaccination cost to those vaccinated individuals
-  # ONLY ONCE per sim batch:
-  vacc_cost <- rep(0, n_i)
-  if (any(vacc_coverage != 0)) { 
-    # vacc_covverage pos1 is bivalent, pos2 is 4-valent and pos3 is 9-valent
-    if (vacc_coverage[1] != 0) {
-      vaccinated_id <- which(vacc_lbl$vacc_state == "vacc_2")
-      vacc_cost[vaccinated_id] <- cost_vacc2
-      #cat("we have vaccinated here!\n")
-    }
-    if (vacc_coverage[2] != 0) {
-      vaccinated_id <- which(vacc_lbl$vacc_state == "vacc_4")
-      vacc_cost[vaccinated_id] <- cost_vacc4
-    }
-    if (vacc_coverage[2] != 0) {
-      vaccinated_id <- which(vacc_lbl$vacc_state == "vacc_9")
-      vacc_cost[vaccinated_id] <- cost_vacc9
-    }
+  if (vacc_coverage[2] != 0) {
+    vaccinated_id <- which(vacc_lbl$vacc_state == "vacc_9")
+    vacc_cost[vaccinated_id] <- cost_vacc9
   }
-  
-  # source("./R/sumarize_results_by_Strategy_Func.R")
-  #source("./R/sumarize_results_by_Strategy_Func_v2.R")
-  
-  stacked_results <- NULL
-  # initialize joined_batches_per_strategy
-  #joined_batches_per_strategy <- list()
-  
-  # Parallel processing using foreach - batch-level loop
+}
+
+# source("./R/sumarize_results_by_Strategy_Func.R")
+#source("./R/sumarize_results_by_Strategy_Func_v2.R")
+
+stacked_results <- NULL
+# initialize joined_batches_per_strategy
+#joined_batches_per_strategy <- list()
+
+# Parallel processing using foreach - batch-level loop
   simulation_results <- 
     foreach(sim = 1:numb_of_sims, .packages = c("dplyr", 
                                                 "tidyr", "purrr", 
@@ -1173,12 +1170,14 @@ MicroSim <- function(strat=strat,
       #################### close loop for cycles ############################# 
       ########################################################################
       
-      # Store rounds summary for this simulation
-      # return as a tibble (or data.frame)
-      dplyr::tibble(
-        sim = sim,
-        my_round_cyto = my_round_cyto
-      )
+      ## Store rounds summary for this simulation
+      ## return as a tibble (or data.frame)
+      #dplyr::tibble(
+      #  sim = sim,
+      #  my_round_cyto = my_round_cyto,
+      #  # attach cyto_screening_ages as a list column,
+      #  cyto_screening_ages = list(cyto_screening_ages)  
+      #)
       
       # ---- UPDATE m_C MATRIX WITH CURRENT COST_LOG ENTRIES ----
       ########################################################################
@@ -1371,7 +1370,7 @@ MicroSim <- function(strat=strat,
       cost_log_dt <- as.data.table(cost_log)
       
       # Summarize: total cost per simulation
-      cost_log_by_sim <- cost_log_dt[, .(total_cost = sum(cost, na.rm = TRUE)), by = sim] 
+      cost_log_by_sim <- cost_log_dt[, .(total_cost_cyto_screening = sum(cost, na.rm = TRUE)), by = sim] 
       
       ## Cleaning my_round_cyto
       #my_round_cyto <- my_round_cyto %>% 
@@ -1428,6 +1427,7 @@ MicroSim <- function(strat=strat,
         #CC_Death_by_diff = CC_Death_by_diff, 
         screening_cost = cost_log,
         total_cyto_screening_cost_per_sim = cost_log_by_sim,
+        cytoscreening_ages = unique(cyto_screening_ages),
         #rounds = all_rounds,
         my_round_cyto = my_round_cyto) 
       
@@ -1442,11 +1442,9 @@ MicroSim <- function(strat=strat,
       #    file = "debug_log.txt", append = TRUE)
       return(results)
       
-      
       # results$my_round_cyto %>% 
       #   dplyr::select(c(sim, `sim[[i]][[name_level_of_sim]]`)) %>% 
       #   rename(cyto_screening_rounds = `sim[[i]][[name_level_of_sim]]`)
-      
       #gc() #Force memory cleanup after each sim/batch 
       
     } # end of `foreach/dopar` loop
@@ -1459,7 +1457,9 @@ MicroSim <- function(strat=strat,
  
   return(simulation_results)
   
-} # end of MicroSim function
+} # end of MicroSim function 
+
+
 ################################################################################
 ################################################################################
 
@@ -1487,7 +1487,8 @@ is_slurm <- function() {
 # Paramters:
 # vaccination coverage for vacc 2, 4 and 9:
 
-vacc_coverage <- c(0.0, 0.0, 0.0) 
+#vacc_coverage <- c(0.0, 0.0, 0.0) 
+vacc_coverage <- c(0.6, 0.0, 0.0) 
 
 # natural immunity associated with vacc 2, 4, and 9:
 nat_immunity_linked_to_vacc <- c(0.0, 0.0, 0.0)
@@ -1567,7 +1568,7 @@ vacc_lbl <-
 Sys.setenv(OMP_NUM_THREADS = "1") # to prevent conflicts between OpenMP and R parallel
 p = Sys.time()
 numb_of_sims = 3
-#numb_of_sims =  4
+#numb_of_sims =  6
 #numb_of_sims = 1
 #numb_of_sims = 20
 
@@ -1742,14 +1743,56 @@ for (n_strat in 1:length(screening_strategies)) {
     )
   rm(cost_log)
   
-  
   stacked_results[[strat]]$recovered_cyto_means <- recovered_cyto_means
   
   
+  # Compute mean diagnosed by DiagnosedState from Cost Log
+  screening_cost <- stacked_results[[strat]]$screening_cost
+  
+  diagnosed_cyto_means <- screening_cost %>%
+    # keep only diagnosed-by-cyto entries
+    filter(grepl("^diagnosed_by_cyto_", cost_type)) %>%
+    # count per simulation and diagnosis type
+    group_by(sim, cost_type) %>%
+    summarise(n = n(), .groups = "drop") %>%
+    # compute mean across simulations
+    group_by(cost_type) %>%
+    summarise(mean_diagnosed = mean(n), .groups = "drop") %>%
+    # add TOTAL row
+    bind_rows(
+      tibble(
+        cost_type = "TOTAL",
+        mean_diagnosed = sum(.$mean_diagnosed)
+      )
+    )
+  rm(screening_cost)
+  
+  stacked_results[[strat]]$diagnosed_cyto_means <- diagnosed_cyto_means
   
   
+  # compute mean of cyto rounds:
+  mean_round_cyto <- 
+    stacked_results[[strat]]$my_round_cyto$`sim[[i]][[name_level_of_sim]]` %>%
+    mean()
+  stacked_results[[strat]]$mean_round_cyto <- mean_round_cyto
+ 
   
-  # Save
+ # Log ages of cytological screening:
+  #cytoscreening_ages <- stacked_results[[strat]]$cytoscreening_ages %>%
+  #  unlist() %>%
+  #  unique() %>%
+  #  sort()
+
+    
+  cytoscreening_ages <- stacked_results[[strat]]$cytoscreening_ages %>%
+    dplyr::select(`sim[[i]][[name_level_of_sim]]`) %>%
+    unique() %>%
+    rename("Ages_at_Cyto_Screenig" = `sim[[i]][[name_level_of_sim]]`)
+  stacked_results[[strat]]$cytoscreening_ages <- cytoscreening_ages
+  
+   
+  ############################################################################## 
+  # Store results in the main list  
   sim_result[[strat]] <- stacked_results 
   #sim_result[[strat]] <- stacked_results[[strat]] 
 } # End of loop for strategies
